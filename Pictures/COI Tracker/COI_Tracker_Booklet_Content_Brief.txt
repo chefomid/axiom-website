@@ -1,0 +1,391 @@
+COI TRACKER BOOKLET CONTENT BRIEF
+Prepared for downstream layout/automation bot
+Source folder: C:\Users\Orcc_\OneDrive\Desktop\AXIOM\website\Pictures\COI Tracker
+
+=====================================================================
+1) MAIN OBJECTIVE (BOOKLET NARRATIVE NORTH STAR)
+=====================================================================
+COI Tracker helps property operations teams keep insurance compliance current across every property and tenant by unifying:
+- portfolio visibility,
+- document validation,
+- outbound/inbound communications,
+- and repeatable enforcement workflows.
+
+Core promise:
+"Move from reactive, spreadsheet-driven compliance tracking to a proactive, auditable operating system."
+
+
+=====================================================================
+2) BOOKLET STORY ARC (RECOMMENDED PAGE FLOW)
+=====================================================================
+Act 1: Visibility & Control
+1. Compliance Dashboard
+2. Property Portfolio
+3. Tenant Management
+4. Certificates Registry
+
+Act 2: Standards & Accuracy
+5. Set Insurance Requirements
+6. Edit Property Profile
+7. COI Review Workspace
+
+Act 3: Communication & Automation
+8. Mailroom Workspace
+9. Dedicated Agent Automation
+10. Settings (AI + signatures + mail)
+
+Act 4: Scale & Reporting
+11. Data Export & Reports (overview)
+12. Report Field Configuration (detail)
+13. Import Data
+
+Appendix / Optional Supporting Visual
+14. Duplicate Property Portfolio shot (use only if additional spacing/page count needed)
+
+
+=====================================================================
+3) RETITLE MAP + MARKETING COPY PER SCREENSHOT
+=====================================================================
+
+---------------------------------------------------------------------
+[ASSET 01]
+Original file: Screenshot 2026-05-12 215630.png
+Suggested title: Compliance Command Center
+Suggested output filename: 01-compliance-command-center.png
+Booklet role: Hero overview of day-to-day risk posture.
+
+Primary features shown:
+- Open Items queue with tenant-level actions
+- Live compliance KPI panel (overall compliance)
+- Aging buckets (expiring, deficient)
+
+Sub-features to call out:
+- Immediate "missing certificate" visibility
+- Direct "waive" action routing
+- Timestamped data freshness
+
+Marketing description:
+"The Compliance Dashboard gives operations teams a single command center for insurance risk. Open items, tenant-level status, and portfolio KPIs are surfaced in one view so teams can prioritize remediation instantly instead of hunting across spreadsheets and inboxes."
+
+Tie to objective:
+Transforms compliance from reactive tracking into prioritized daily execution.
+
+---------------------------------------------------------------------
+[ASSET 02]
+Original file: Screenshot 2026-05-12 215555.png
+Suggested title: Property Portfolio Overview
+Suggested output filename: 02-property-portfolio-overview.png
+Booklet role: Portfolio context and property-level health.
+
+Primary features shown:
+- Property cards with occupancy progress
+- Compliance rate by location
+- Quick actions (edit requirements/property controls)
+
+Sub-features to call out:
+- Building-by-building risk segmentation
+- At-a-glance tenant occupancy/compliance relationship
+
+Marketing description:
+"Property Portfolio turns scattered site data into a clear compliance map. Teams can compare each location’s occupancy and certificate readiness, then drill into exactly where policy enforcement needs to tighten."
+
+Tie to objective:
+Creates location-level accountability for portfolio-wide compliance.
+
+---------------------------------------------------------------------
+[ASSET 03]
+Original file: Screenshot 2026-05-12 220006.png
+Suggested title: Property Portfolio (Alternate Crop)
+Suggested output filename: 02b-property-portfolio-overview-alt.png
+Booklet role: Backup/alternate for layout flexibility.
+
+Primary features shown:
+- Same as Asset 02
+
+Sub-features to call out:
+- Use as optional duplicate if spread needs balancing
+
+Marketing description:
+"Alternative crop of the property command view for flexible booklet layout."
+
+Tie to objective:
+Supports design continuity; no new feature coverage beyond Asset 02.
+
+---------------------------------------------------------------------
+[ASSET 04]
+Original file: Screenshot 2026-05-12 220042.png
+Suggested title: Tenant Compliance Operations
+Suggested output filename: 03-tenant-compliance-operations.png
+Booklet role: Tenant-level workflow control.
+
+Primary features shown:
+- Tenant roster with compliance tags
+- Contact details embedded in table
+- Action shortcuts (email, upload COI, edit)
+
+Sub-features to call out:
+- Bulk-friendly tabular operations
+- Fast outreach from operational context
+- Compliance segmentation at the tenant record level
+
+Marketing description:
+"Tenant Management centralizes every tenant record, contact, and compliance state in one operational grid. From one screen, teams can trigger outreach, upload updated certificates, and close gaps faster."
+
+Tie to objective:
+Connects compliance insight directly to execution actions.
+
+---------------------------------------------------------------------
+[ASSET 05]
+Original file: Screenshot 2026-05-12 215640.png
+Suggested title: Certificate Registry & Endorsement Validation
+Suggested output filename: 04-certificate-registry-validation.png
+Booklet role: Source-of-truth proof for document status.
+
+Primary features shown:
+- Certificate index by tenant and property
+- Effective/expiration timelines with remaining days
+- Endorsement legend (AI/WOS/PNC)
+
+Sub-features to call out:
+- Standardized validation states (validated/pending/rejected)
+- Archive handling for older documents
+- Coverage endorsement readability for non-technical users
+
+Marketing description:
+"The Certificates view provides an auditable, portfolio-wide registry of every COI with validation status, expiration windows, and endorsement checks. Teams gain a defensible record of what’s compliant now and what needs remediation next."
+
+Tie to objective:
+Delivers the auditable core system of record for COI compliance.
+
+---------------------------------------------------------------------
+[ASSET 06]
+Original file: Screenshot 2026-05-12 220029.png
+Suggested title: Insurance Requirement Policy Builder
+Suggested output filename: 05-insurance-requirements-policy-builder.png
+Booklet role: Define the compliance standard before review.
+
+Primary features shown:
+- Certificate holder identity and address
+- Minimum limits (GL, aggregate, excess/umbrella)
+- Required provisions (AI, WOS, PNC)
+
+Sub-features to call out:
+- Required wording/operations clause
+- Property-specific policy baselining
+- Saveable requirement profiles
+
+Marketing description:
+"Set Insurance Requirements lets teams codify policy expectations at the property level, including limits and mandatory endorsements. This ensures every incoming certificate is evaluated against a clear, repeatable standard."
+
+Tie to objective:
+Prevents ambiguity by converting policy into enforceable configuration.
+
+---------------------------------------------------------------------
+[ASSET 07]
+Original file: Screenshot 2026-05-12 220016.png
+Suggested title: Property Record Management
+Suggested output filename: 06-property-record-management.png
+Booklet role: Master data quality and operational metadata.
+
+Primary features shown:
+- Editable property profile fields
+- Manager/contact information
+- Optional sample COI document upload
+
+Sub-features to call out:
+- Data normalization for downstream workflows
+- Property-level communication context
+- COI sample attachment support
+
+Marketing description:
+"Edit Property provides a complete management record for each location, including operating details and key contacts. Clean property metadata improves matching, outreach quality, and compliance accountability."
+
+Tie to objective:
+Improves data integrity, which improves compliance outcomes.
+
+---------------------------------------------------------------------
+[ASSET 08]
+Original file: Screenshot 2026-05-12 215906.png
+Suggested title: AI-Powered COI Review Workspace
+Suggested output filename: 07-ai-coi-review-workspace.png
+Booklet role: Intake and analysis initiation.
+
+Primary features shown:
+- Drag/drop COI ingestion (PDF/JPG/PNG)
+- Review queue panel
+- Mechanical + AI-assisted processing surface
+
+Sub-features to call out:
+- Batch-friendly upload behavior
+- Visual staging area for review sessions
+- Ready for extraction/matching/analyze pipeline
+
+Marketing description:
+"COI Review is the intake engine where incoming documents become actionable compliance data. Teams can upload at scale and run standardized analysis workflows to accelerate validation and exception handling."
+
+Tie to objective:
+Compresses review cycle time while preserving review consistency.
+
+---------------------------------------------------------------------
+[ASSET 09]
+Original file: Screenshot 2026-05-12 215915.png
+Suggested title: Mailroom Thread Operations
+Suggested output filename: 08-mailroom-thread-operations.png
+Booklet role: Communication workflow hub.
+
+Primary features shown:
+- Tracked tenant thread list
+- Full conversation viewer
+- Tabs for tracked threads, autonomous mode, mailbox
+
+Sub-features to call out:
+- Bi-directional thread context
+- Deficiency follow-up history in one pane
+- Refresh and thread-level controls
+
+Marketing description:
+"Mailroom unifies outbound requests and inbound tenant responses into a single thread-centric workspace. Teams can track every certificate conversation lifecycle without leaving the compliance platform."
+
+Tie to objective:
+Closes the communication loop that usually breaks compliance workflows.
+
+---------------------------------------------------------------------
+[ASSET 10]
+Original file: Screenshot 2026-05-12 215950.png
+Suggested title: Dedicated Agent Automation Controls
+Suggested output filename: 09-dedicated-agent-automation-controls.png
+Booklet role: Automation governance and safety gates.
+
+Primary features shown:
+- Mode selection (autonomous vs review-gated)
+- Attachment monitoring and COI queue toggles
+- Deficiency reply rules and approval gates
+
+Sub-features to call out:
+- Always-CC controls
+- Policy-aware send restrictions
+- Granular automation preference management
+
+Marketing description:
+"Dedicated Agent settings let teams automate repetitive tenant follow-up while preserving governance. Operations can choose where AI acts autonomously and where human approval remains required."
+
+Tie to objective:
+Scales throughput without sacrificing compliance controls.
+
+---------------------------------------------------------------------
+[ASSET 11]
+Original file: Screenshot 2026-05-12 220129.png
+Suggested title: Platform Settings & AI Configuration
+Suggested output filename: 10-platform-settings-ai-configuration.png
+Booklet role: Trust, branding, and integration controls.
+
+Primary features shown:
+- Mailbox/send integration settings
+- Outbound signature builder/preview
+- AI provider/model/API key controls
+
+Sub-features to call out:
+- Signature import/export workflows
+- Model/provider flexibility
+- Admin-level configuration in one surface
+
+Marketing description:
+"Settings centralizes platform governance: email infrastructure, outbound identity, and AI model controls. Teams can align communication quality and AI behavior to operational policy."
+
+Tie to objective:
+Ensures the compliance engine is configurable, secure, and brand-consistent.
+
+---------------------------------------------------------------------
+[ASSET 12]
+Original file: Screenshot 2026-05-12 220059.png
+Suggested title: Executive Reporting & Export
+Suggested output filename: 11-executive-reporting-export.png
+Booklet role: Outcome visibility for leadership and audits.
+
+Primary features shown:
+- Portfolio compliance scorecards
+- Property-by-property score summary
+- Export-to-Excel action
+
+Sub-features to call out:
+- Field-level export customization controls
+- Aggregated and segmented reporting
+- Shareable outputs for stakeholders
+
+Marketing description:
+"Data Export & Reports turns operational compliance data into executive-ready reporting. Leadership can measure portfolio risk, compare property performance, and export audit-friendly datasets instantly."
+
+Tie to objective:
+Converts day-to-day compliance work into measurable business outcomes.
+
+---------------------------------------------------------------------
+[ASSET 13]
+Original file: Screenshot 2026-05-12 220105.png
+Suggested title: Report Builder Field Selection
+Suggested output filename: 12-report-builder-field-selection.png
+Booklet role: Detailed reporting configurability.
+
+Primary features shown:
+- Field groups for tenant/property/contact/certificate data
+- Select-all/deselect and granular field control
+- Validation/deficiency metric selection
+
+Sub-features to call out:
+- Purpose-built exports by audience
+- Balance between summary KPIs and detailed evidence
+
+Marketing description:
+"The report field selector gives teams control over exactly what each export communicates, from summary metrics to granular validation evidence. This supports tailored reporting for operations, ownership, and compliance audits."
+
+Tie to objective:
+Provides precision reporting for each stakeholder use case.
+
+---------------------------------------------------------------------
+[ASSET 14]
+Original file: Screenshot 2026-05-12 220116.png
+Suggested title: Bulk Import & Portfolio Onboarding
+Suggested output filename: 13-bulk-import-portfolio-onboarding.png
+Booklet role: Adoption and scaling entry point.
+
+Primary features shown:
+- CSV import templates and instructions
+- Drag/drop ingestion and Excel paste support
+- Multiple import modes (properties, tenants, batch COI)
+
+Sub-features to call out:
+- Reduced setup friction for new portfolios
+- Structured ingestion for cleaner downstream operations
+
+Marketing description:
+"Import Data accelerates onboarding by turning existing spreadsheets into structured compliance records. Teams can launch quickly with guided templates, paste workflows, and batch ingestion pathways."
+
+Tie to objective:
+Speeds time-to-value so compliance programs can scale faster.
+
+
+=====================================================================
+4) COPY BLOCKS FOR BOOKLET FRONT/BACK
+=====================================================================
+Front cover headline:
+"From Missing Certificates to Measurable Compliance."
+
+Front cover subheadline:
+"COI Tracker unifies policy standards, document review, tenant outreach, and reporting into one operating system for property compliance."
+
+Back cover CTA:
+"Standardize your COI workflow. Reduce follow-up churn. Prove compliance with confidence."
+
+
+=====================================================================
+5) IMPLEMENTATION NOTES FOR LAYOUT BOT
+=====================================================================
+- Use Suggested output filename values as canonical naming in booklet assets.
+- Prefer one screenshot per spread with:
+  - left: screenshot
+  - right: title + marketing description + feature/sub-feature bullets.
+- Place Assets 12 and 13 as a paired reporting spread.
+- Asset 03 is optional (duplicate portfolio visual); include only if spacing is needed.
+- Keep terminology consistent:
+  - "COI" = certificate of insurance
+  - "AI, WOS, PNC" = endorsement abbreviations shown in-product.
+

@@ -1,0 +1,400 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  height: 100%;
+}
+
+body {
+  background-color: #080808;
+  color: #f0f0f0;
+  min-height: 100%;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100%;
+}
+
+body.home-snap {
+  scroll-snap-type: y mandatory;
+}
+
+body.home-snap [data-snap-section] {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+::selection {
+  background: #e8e8e8;
+  color: #080808;
+}
+
+.sleek-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #4a4a4a #0b0b0b;
+}
+
+.sleek-scrollbar::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.sleek-scrollbar::-webkit-scrollbar-track {
+  background: #0b0b0b;
+}
+
+.sleek-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #5a5a5a 0%, #3c3c3c 100%);
+  border-radius: 999px;
+  border: 2px solid #0b0b0b;
+}
+
+.sleek-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #6a6a6a 0%, #4a4a4a 100%);
+}
+
+/* MapLibre sizes its own canvas — never force width/height or filters on .maplibregl-canvas */
+
+.command-map-host {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.command-map-user-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #3dd68c;
+  border: 2px solid #fff;
+  box-shadow: 0 0 16px rgba(61, 214, 140, 0.75);
+}
+
+.command-map-marker__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.command-map-marker__dot--stable { background: #3dd68c; }
+.command-map-marker__dot--live { background: #4a9eff; }
+.command-map-marker__dot--watch { background: #e8a838; }
+.command-map-marker__dot--critical { background: #e05252; }
+
+.map-point-tooltip {
+  position: absolute;
+  z-index: 25;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+  max-width: 168px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid #333;
+  background: rgba(10, 10, 10, 0.94);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.map-point-tooltip__meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.map-point-tooltip__dot {
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.map-point-tooltip__dot--stable { background: #3dd68c; }
+.map-point-tooltip__dot--live { background: #4a9eff; }
+.map-point-tooltip__dot--watch { background: #e8a838; }
+.map-point-tooltip__dot--critical { background: #e05252; }
+
+.map-point-tooltip__title {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #f0f0f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.command-scanline {
+  pointer-events: none;
+  overflow: visible;
+  /* Soft fade at map top/bottom so glow is not hard-clipped */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 10%,
+    #000 90%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 10%,
+    #000 90%,
+    transparent 100%
+  );
+}
+
+/* Scanline — dark green beam with soft vertical + horizontal falloff */
+.command-scanline__beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 1px;
+  top: 0;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(22, 90, 56, 0.2) 8%,
+    rgba(32, 118, 72, 0.55) 35%,
+    rgba(42, 145, 88, 0.75) 50%,
+    rgba(32, 118, 72, 0.55) 65%,
+    rgba(22, 90, 56, 0.2) 92%,
+    transparent 100%
+  );
+  animation: command-scan 9s linear infinite;
+  will-change: top, opacity;
+}
+
+.command-scanline__beam::before {
+  content: '';
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  top: 50%;
+  height: 72px;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(18, 72, 45, 0.06) 18%,
+    rgba(28, 105, 65, 0.22) 42%,
+    rgba(38, 130, 80, 0.32) 50%,
+    rgba(28, 105, 65, 0.22) 58%,
+    rgba(18, 72, 45, 0.06) 82%,
+    transparent 100%
+  );
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.command-scanline__beam::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 28px;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(35, 120, 75, 0.14) 30%,
+    rgba(45, 155, 95, 0.28) 50%,
+    rgba(35, 120, 75, 0.14) 70%,
+    transparent 100%
+  );
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+@keyframes command-scan {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+/* Pin mode: + crosshair on map canvas */
+.maplibregl-canvas.map-canvas--pin-mode {
+  cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath stroke='%23c8c8c8' stroke-width='1.5' stroke-linecap='round' d='M12 5v14M5 12h14'/%3E%3C/svg%3E")
+      12 12,
+    crosshair !important;
+}
+
+.maplibregl-ctrl-bottom-left {
+  bottom: 4.5rem !important;
+  left: 0.75rem !important;
+}
+
+/* Separate zoom buttons + dynamic scale bar (bottom-left) */
+.map-corner-controls {
+  --map-zoom-width: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.map-corner-controls__cell {
+  background: rgba(13, 13, 13, 0.94);
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.map-corner-controls__zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--map-zoom-width);
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1;
+  color: #9a9a9a;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.map-corner-controls__zoom-btn:hover {
+  color: #e8e8e8;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.map-corner-controls__zoom-btn:focus-visible {
+  outline: 1px solid rgba(61, 214, 140, 0.5);
+  outline-offset: -1px;
+}
+
+.map-corner-controls__scale {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  min-width: var(--map-zoom-width);
+  padding: 7px 8px 6px;
+  box-sizing: border-box;
+}
+
+.map-corner-controls__scale-bar {
+  position: relative;
+  height: 2px;
+  min-width: 20px;
+  background: #6e6e6e;
+  border-radius: 0;
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: width;
+}
+
+.map-corner-controls__scale-bar::before,
+.map-corner-controls__scale-bar::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  width: 1px;
+  height: 6px;
+  background: rgba(61, 214, 140, 0.45);
+}
+
+.map-corner-controls__scale-bar::before {
+  left: 0;
+}
+
+.map-corner-controls__scale-bar::after {
+  right: 0;
+}
+
+.map-corner-controls__scale-label {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1;
+  color: #9a9a9a;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+
+.map-measure-tooltip {
+  position: absolute;
+  z-index: 15;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+  max-width: 140px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(232, 168, 56, 0.35);
+  background: rgba(10, 10, 10, 0.94);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.map-measure-tooltip__meta {
+  display: block;
+  font-family: ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e8a838;
+}
+
+.map-measure-tooltip__title {
+  display: block;
+  margin-top: 2px;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: #f0f0f0;
+}
+
+.map-measure-tooltip__bearing {
+  display: block;
+  margin-top: 2px;
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  color: #6e6e6e;
+}
+
+@layer components {
+  .cmd-dock-bar {
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+}

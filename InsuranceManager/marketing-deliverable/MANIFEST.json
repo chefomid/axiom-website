@@ -1,0 +1,121 @@
+{
+  "product": "AXIOM Insurance Manager",
+  "tagline": "Your program in one workspace. Faster intake. One source of truth. Broker-ready communication.",
+  "audience": "Commercial insureds, risk managers, and executive buyers evaluating operations software",
+  "tone": "Succinct, punctual, business-first — not generic AI hype",
+  "deck_order": [
+    {
+      "slide": 1,
+      "id": "portfolio-ai",
+      "image": "screenshots/01-portfolio-overview-ai-mode.png",
+      "image_status": "available_partial",
+      "headline": "All coverages in one view",
+      "subhead": "Policy summary, limits, premiums, and exposures — no spreadsheet archaeology",
+      "bullets": [
+        "GL, Auto, Property, WC, and Umbrella on one screen",
+        "AI or Manual intake — same normalized vault either way",
+        "One-click exposure workbooks and BOR letters"
+      ],
+      "speaker_note": "Opens on program visibility: every line, carrier, limit, and premium in minutes."
+    },
+    {
+      "slide": 2,
+      "id": "portfolio-manual",
+      "image": "screenshots/02-portfolio-overview-manual-import.SPEC.md",
+      "image_status": "spec_only_re_export_needed",
+      "headline": "Your process. Your controls.",
+      "subhead": "Schema-guided manual import when you want prompts + JSON, not black-box extraction",
+      "bullets": [
+        "Download per-LOB instructions matched to Vault JSON schema",
+        "Run your agent on policy PDFs; upload .txt or .json per line",
+        "Same Portfolio Overview and exports as full AI mode"
+      ],
+      "speaker_note": "Enterprise buyers see hybrid control — AI speed without losing auditability."
+    },
+    {
+      "slide": 3,
+      "id": "exposures-consolidated",
+      "image": "screenshots/03-exposures-gl-locations.SPEC.md",
+      "image_status": "spec_only_re_export_needed",
+      "headline": "Detailed exposure views",
+      "subhead": "GL locations, NHTSA VIN validation, and WC class codes — one session, underwriter-ready",
+      "bullets": [
+        "GL locations and exposures in sortable, exportable tables",
+        "NHTSA VIN Check: strikethrough errors, one-click accept corrections",
+        "WC class codes, basis, and amounts by state with grand total payroll"
+      ],
+      "speaker_note": "Consolidated exposures story: GL grid, Auto VIN check, WC class codes with grand total."
+    },
+    {
+      "slide": 4,
+      "id": "broker-connect",
+      "image": "screenshots/06-broker-connect-new-endorsement.png",
+      "image_status": "available",
+      "headline": "Broker Connect",
+      "subhead": "One endorsement transaction — edit, stack, confirm once, send once",
+      "bullets": [
+        "Session rail lists every line; start one draft, stack every change",
+        "Edit GL, Auto, Property, WC, Umbrella, and Account tables inline",
+        "Diff-style review before send — nothing vague in the request",
+        "Confirm endorsement: parts count, slip PDF, narrative, Confirm & send email"
+      ],
+      "speaker_note": "Full Broker Connect flow: New endorsement → inline edits → stack changes → confirm & send."
+    },
+    {
+      "slide": 5,
+      "id": "mailman-inbox",
+      "image": "screenshots/10-mailman-inbox-powered-by-nylas.png",
+      "image_status": "available",
+      "headline": "Insurance email inside the workflow",
+      "subhead": "Powered by Nylas · Outlook mailbox",
+      "bullets": [
+        "Inbox, Sent, Spam with search and unread filter",
+        "COI thread visible beside portfolio imports sidebar",
+        "POWERED BY NYLAS · enterprise Outlook sync"
+      ],
+      "speaker_note": "Header: POWERED BY NYLAS · axiom_coi@outlook.com. Show COI thread in list."
+    },
+    {
+      "slide": 6,
+      "id": "mailman-compose",
+      "image": "screenshots/11-mailman-compose-empty-state.png",
+      "image_status": "available",
+      "headline": "Compose without leaving AXIOM",
+      "subhead": "Reply, attach, tag — broker traffic stays traceable",
+      "bullets": [
+        "Pick a thread or Compose new email",
+        "Integrated with Broker Connect outbound (COI-1 · END-1 tracker)",
+        "Enterprise-grade sync via Nylas"
+      ],
+      "speaker_note": "Empty state with dashed panel and Compose new email button."
+    }
+  ],
+  "closing": {
+    "headline": "Insurance operations with intelligence built in",
+    "body": "AXIOM Insurance Manager turns policy PDFs and email threads into one auditable portfolio — then moves COIs, endorsements, and applications through Broker Connect and Mailman on infrastructure you already trust.",
+    "cta_options": [
+      "Schedule a demo",
+      "Start a pilot workspace",
+      "Contact sales"
+    ]
+  },
+  "architecture_proof_points": [
+    "Vault-aligned JSON schema per LOB with format validation",
+    "Hybrid AI + manual intake; same deliverables either path",
+    "Assistant tool-grounded on session/vault facts — not invented limits",
+    "Nylas for Outlook mailbox sync and send (API keys server-side)",
+    "Command center for the insured — not replacement for broker or carrier of record"
+  ],
+  "original_screenshot_paths_missing": [
+    "assets/.../Screenshot_2026-05-16_192415-3227b985-2f0f-4a11-a506-da7e58ad6bf0.png",
+    "assets/.../Screenshot_2026-05-16_192429-264bb8d7-051d-466b-b838-d7733dc24d9d.png",
+    "assets/.../Screenshot_2026-05-16_192516-4c449e95-6d31-41fc-8c58-a20d839b580b.png",
+    "assets/.../Screenshot_2026-05-16_193103-b5e7aaef-51aa-410c-9692-f1b421e903d1.png",
+    "assets/.../Screenshot_2026-05-17_175831-ba242fc1-3f9e-4eb7-b28a-35ec32f9f7fe.png",
+    "assets/.../Screenshot_2026-05-17_180200-908de4c2-c2b8-4739-83bb-9fa7807bff1d.png",
+    "assets/.../Screenshot_2026-05-17_185202-f49deafa-5bf1-4d69-a606-c7c997378d8c.png",
+    "assets/.../Screenshot_2026-05-17_185826-d16be3cc-2f21-4a3c-aecd-8e38f2684542.png",
+    "assets/.../Screenshot_2026-05-17_185942-564f1582-7ee7-4d84-b470-adab53006946.png",
+    "assets/.../Screenshot_2026-05-17_190024-d7e2d975-5789-4106-a7ca-174feda325a7.png"
+  ]
+}
