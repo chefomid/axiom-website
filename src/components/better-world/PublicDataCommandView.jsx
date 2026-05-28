@@ -52,7 +52,7 @@ function PublicDataCommandViewInner() {
   const [activeDataSources, setActiveDataSources] = useState(defaultSources)
   const [selectedMarkerId, setSelectedMarkerId] = useState(null)
 
-  const [scope, setScope] = useState('national')
+  const [scope, setScope] = useState('global')
   const [radiusMiles, setRadiusMiles] = useState(50)
   const [countryId, setCountryId] = useState('US')
   const [userLocation, setUserLocation] = useState(null)

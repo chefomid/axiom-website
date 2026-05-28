@@ -521,8 +521,8 @@ export default function CommandMap({
       map = new maplibregl.Map({
         container,
         style: MAP_STYLE,
-        center: [-98.5, 39.8],
-        zoom: 3.4,
+        center: [-20, 30],
+        zoom: 1.8,
         minZoom: 2,
         maxZoom: 14,
         attributionControl: false,
