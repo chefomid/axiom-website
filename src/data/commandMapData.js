@@ -102,4 +102,4 @@ export const TELEMETRY_TEMPLATES = []
 
 /** One-line description for Impact Map public hazard feeds (Intelligence Panel footer). */
 export const PUBLIC_HAZARD_TAGLINE =
-  'Live USGS, NWS, FEMA, and NASA hazard data on one map.'
+  'Live USGS, NWS, FEMA, and NASA hazard data.'
