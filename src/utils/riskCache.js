@@ -4,7 +4,6 @@ const TTL_MS = {
   usgs: 5 * 60 * 1000,
   nws: 3 * 60 * 1000,
   firms: 15 * 60 * 1000,
-  airnow: 30 * 60 * 1000,
   nfhl: 7 * 24 * 60 * 60 * 1000,
 }
 
@@ -13,7 +12,7 @@ function storageKey(feed, key) {
 }
 
 /**
- * @param {'usgs'|'nws'|'firms'|'airnow'|'nfhl'} feed
+ * @param {'usgs'|'nws'|'firms'|'nfhl'} feed
  * @param {string} key
  */
 export function getRiskCache(feed, key) {
@@ -40,7 +39,7 @@ export function getRiskCache(feed, key) {
 }
 
 /**
- * @param {'usgs'|'nws'|'firms'|'airnow'|'nfhl'} feed
+ * @param {'usgs'|'nws'|'firms'|'nfhl'} feed
  * @param {string} key
  * @param {unknown} data
  */

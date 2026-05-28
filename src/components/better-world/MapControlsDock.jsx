@@ -216,8 +216,9 @@ export default function MapControlsDock({
                 {pinMode ? (
                   <>
                     Crosshair cursor on the map — click to place a pin (max 10). Click one pin,
-                    then another to measure distance. Right-click a pin to remove it. Amber rings
-                    are your annotations, not live hazard data.
+                    then another to measure distance. Connect three pins into a triangle and hover
+                    inside it for surface area. Right-click a pin to remove it. Amber rings are
+                    your annotations, not live hazard data.
                   </>
                 ) : (
                   <>Enable Pin mode from the dock to place measure pins on the map.</>

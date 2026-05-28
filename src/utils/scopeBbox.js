@@ -1,5 +1,5 @@
 import { COUNTRIES } from '../data/commandMapData'
-import { destinationPoint } from './geo'
+import { destinationPoint, distanceMiles } from './geo'
 
 export const COUNTRY_BBOX = {
   US: { west: -180, south: 18, east: -65, north: 72 },
@@ -58,6 +58,30 @@ export function bboxIntersects(a, b) {
 
 export function pointInBbox(lat, lng, bbox) {
   return lng >= bbox.west && lng <= bbox.east && lat >= bbox.south && lat <= bbox.north
+}
+
+/**
+ * Whether a lat/lng point marker lies inside the active command scope.
+ * @param {{ lat: number, lng: number, country?: string | null }} marker
+ * @param {{ scope: string, userLocation?: { lat: number, lng: number }, radiusMiles?: number, countryId?: string }} config
+ */
+export function markerInScope(marker, config) {
+  const { scope, userLocation, radiusMiles = 50, countryId = 'US' } = config
+  if (scope === 'global') return true
+  if (!Number.isFinite(marker.lat) || !Number.isFinite(marker.lng)) return false
+
+  if (scope === 'national') {
+    const bbox = COUNTRY_BBOX[countryId]
+    if (bbox) return pointInBbox(marker.lat, marker.lng, bbox)
+    return marker.country === countryId
+  }
+
+  if (scope === 'local') {
+    if (!userLocation) return false
+    return distanceMiles(userLocation, marker) <= radiusMiles
+  }
+
+  return true
 }
 
 /**

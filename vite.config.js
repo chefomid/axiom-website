@@ -30,11 +30,6 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: path => path.replace(/^\/api\/firms/, ''),
       },
-      '/api/airnow': {
-        target: 'https://www.airnowapi.org',
-        changeOrigin: true,
-        rewrite: path => path.replace(/^\/api\/airnow/, ''),
-      },
     },
   },
 })

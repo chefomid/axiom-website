@@ -18,12 +18,6 @@ export function firmsApiUrl(path) {
   return `https://firms.modaps.eosdis.nasa.gov${normalized}`
 }
 
-export function airNowApiUrl(path) {
-  const normalized = path.startsWith('/') ? path : `/${path}`
-  if (import.meta.env.DEV) return `/api/airnow${normalized}`
-  return `https://www.airnowapi.org${normalized}`
-}
-
 export function defaultFetchHeaders(extra = {}) {
   return {
     Accept: 'application/json, application/geo+json',

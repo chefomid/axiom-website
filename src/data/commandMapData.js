@@ -21,7 +21,6 @@ export const DATA_SOURCES = [
   { id: 'nws', label: 'NWS', defaultActive: true },
   { id: 'fema', label: 'FEMA', defaultActive: true },
   { id: 'nasa', label: 'NASA', defaultActive: true },
-  { id: 'epa', label: 'EPA', defaultActive: true },
 ]
 
 export const COUNTRIES = [
@@ -40,7 +39,6 @@ export const LAYER_COLORS = {
   weather: '#f0d030',
   wildfire: '#e05252',
   flood: '#4a9eff',
-  environment: '#3dd68c',
 }
 
 export const RISK_LAYERS = [
@@ -76,14 +74,6 @@ export const RISK_LAYERS = [
     color: LAYER_COLORS.flood,
     defaultActive: true,
   },
-  {
-    id: 'environment',
-    label: 'Air Quality',
-    shortLabel: 'Air',
-    sources: 'EPA AirNow',
-    color: LAYER_COLORS.environment,
-    defaultActive: true,
-  },
 ]
 
 export const SEVERITY = {
@@ -102,4 +92,4 @@ export const TELEMETRY_TEMPLATES = []
 
 /** One-line description for Impact Map public hazard feeds (Intelligence Panel footer). */
 export const PUBLIC_HAZARD_TAGLINE =
-  'Live USGS, NWS, FEMA, NASA, and EPA hazard data on one map.'
+  'Live USGS, NWS, FEMA, and NASA hazard data on one map.'

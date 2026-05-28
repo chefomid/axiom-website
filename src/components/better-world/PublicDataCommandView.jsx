@@ -10,13 +10,11 @@ import useUsgsEarthquakes from '../../hooks/useUsgsEarthquakes'
 import useNwsAlerts from '../../hooks/useNwsAlerts'
 import useNasaFirms from '../../hooks/useNasaFirms'
 import useFemaNfhl from '../../hooks/useFemaNfhl'
-import useAirNow from '../../hooks/useAirNow'
 import useMapPins from '../../hooks/useMapPins'
 import { earthquakesToSignals } from '../../services/usgsEarthquakes'
 import { nwsToSignals } from '../../services/nwsAlerts'
 import { firmsToSignals } from '../../services/nasaFirms'
 import { nfhlToSignals } from '../../services/femaNfhl'
-import { airNowToSignals } from '../../services/airNow'
 import {
   filterMarkers,
   filterMarkersByScope,
@@ -112,17 +110,9 @@ function PublicDataCommandViewInner() {
     meta: femaMeta,
   } = useFemaNfhl({ ...scopeConfig, enabled: femaEnabled })
 
-  const airNowEnabled = activeDataSources.has('epa') && activeLayers.has('environment')
-  const {
-    markers: airNowMarkers,
-    loading: airNowLoading,
-    error: airNowError,
-    meta: airNowMeta,
-  } = useAirNow({ ...scopeConfig, enabled: airNowEnabled })
-
   const allPointMarkers = useMemo(
-    () => [...usgsMarkers, ...firmsMarkers, ...airNowMarkers],
-    [usgsMarkers, firmsMarkers, airNowMarkers],
+    () => [...usgsMarkers, ...firmsMarkers],
+    [usgsMarkers, firmsMarkers],
   )
 
   const allZones = useMemo(() => [...nwsZones, ...nfhlZones], [nwsZones, nfhlZones])
@@ -182,22 +172,10 @@ function PublicDataCommandViewInner() {
       ? nfhlToSignals(visibleZones.filter(z => z.layer === 'flood'))
       : []
 
-    const airSignals = airNowEnabled
-      ? airNowToSignals(visibleMarkers.filter(m => m.layer === 'environment'))
-      : []
-
-    return [...usgsSignals, ...nwsSignals, ...firmsSignals, ...nfhlSignals, ...airSignals]
+    return [...usgsSignals, ...nwsSignals, ...firmsSignals, ...nfhlSignals]
       .filter(s => allIds.includes(s.markerId))
       .slice(0, 12)
-  }, [
-    visibleMarkers,
-    visibleZones,
-    usgsEnabled,
-    nwsEnabled,
-    firmsEnabled,
-    femaEnabled,
-    airNowEnabled,
-  ])
+  }, [visibleMarkers, visibleZones, usgsEnabled, nwsEnabled, firmsEnabled, femaEnabled])
 
   const nfhlRaster = useMemo(() => {
     if (!femaEnabled || !femaMeta.rasterUrl || !femaMeta.bbox) return null
@@ -286,8 +264,15 @@ function PublicDataCommandViewInner() {
       sessionStorage.setItem(SCOPE_STORAGE_KEY, 'true')
 
       const scopeLabels = { local: 'Local', national: 'National', global: 'Global' }
+      const country = COUNTRIES.find(c => c.id === nextCountry)
+      const detail =
+        nextScope === 'national' && country
+          ? `${scopeLabels[nextScope]} · ${country.label}`
+          : nextScope === 'local'
+            ? `${scopeLabels[nextScope]} · ${nextRadius} mi`
+            : scopeLabels[nextScope] ?? nextScope
       pushEvent({
-        text: `Operational scope applied — ${scopeLabels[nextScope] ?? nextScope}`,
+        text: `Operational scope applied — ${detail}`,
         type: 'live',
         source: 'Scope',
       })
@@ -345,9 +330,8 @@ function PublicDataCommandViewInner() {
       weather: nwsLoading,
       wildfire: firmsLoading,
       flood: femaLoading,
-      environment: airNowLoading,
     }),
-    [usgsLoading, nwsLoading, firmsLoading, femaLoading, airNowLoading],
+    [usgsLoading, nwsLoading, firmsLoading, femaLoading],
   )
 
   const liveFeedErrors = useMemo(() => {
@@ -356,9 +340,8 @@ function PublicDataCommandViewInner() {
     if (nwsError) errors.push({ source: 'NWS', message: nwsError })
     if (firmsError) errors.push({ source: 'NASA FIRMS', message: firmsError })
     if (femaError) errors.push({ source: 'FEMA NFHL', message: femaError })
-    if (airNowError) errors.push({ source: 'AirNow', message: airNowError })
     return errors
-  }, [usgsError, nwsError, firmsError, femaError, airNowError])
+  }, [usgsError, nwsError, firmsError, femaError])
 
   const feedStatus = useMemo(
     () => [
@@ -398,15 +381,6 @@ function PublicDataCommandViewInner() {
         lastFetchedAt: femaMeta.lastFetchedAt,
         requestUrl: femaMeta.requestUrl,
       },
-      {
-        sourceName: 'AirNow',
-        enabled: activeDataSources.has('epa'),
-        loading: airNowLoading,
-        error: airNowError,
-        recordCount: airNowMeta.recordCount,
-        lastFetchedAt: airNowMeta.lastFetchedAt,
-        requestUrl: airNowMeta.requestUrl,
-      },
     ],
     [
       activeDataSources,
@@ -422,9 +396,6 @@ function PublicDataCommandViewInner() {
       femaLoading,
       femaError,
       femaMeta,
-      airNowLoading,
-      airNowError,
-      airNowMeta,
     ],
   )
 

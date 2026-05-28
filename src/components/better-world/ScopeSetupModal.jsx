@@ -1,15 +1,31 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { COUNTRIES, RADIUS_OPTIONS, SCOPE_MODES } from '../../data/commandMapData'
 import { GhostButton, PrimaryButton, SegmentButton } from '../ui/CommandControls'
 
-export default function ScopeSetupModal({ open, onApply, onClose }) {
-  const [scope, setScope] = useState('national')
-  const [radiusMiles, setRadiusMiles] = useState(50)
-  const [countryId, setCountryId] = useState('US')
+export default function ScopeSetupModal({
+  open,
+  onApply,
+  onClose,
+  initialScope = 'national',
+  initialRadiusMiles = 50,
+  initialCountryId = 'US',
+}) {
+  const [scope, setScope] = useState(initialScope)
+  const [radiusMiles, setRadiusMiles] = useState(initialRadiusMiles)
+  const [countryId, setCountryId] = useState(initialCountryId)
   const [countryQuery, setCountryQuery] = useState('')
   const [locating, setLocating] = useState(false)
   const [locationError, setLocationError] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setScope(initialScope)
+    setRadiusMiles(initialRadiusMiles)
+    setCountryId(initialCountryId)
+    setCountryQuery('')
+    setLocationError('')
+  }, [open, initialScope, initialRadiusMiles, initialCountryId])
 
   const filteredCountries = useMemo(() => {
     const q = countryQuery.trim().toLowerCase()

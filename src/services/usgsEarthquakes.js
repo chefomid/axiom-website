@@ -131,7 +131,14 @@ export async function fetchUsgsEarthquakes(scopeConfig, options = {}) {
   const requestUrl = buildUsgsRequestUrl(scopeConfig, { limit: 2000 })
 
   const features = await fetchAllUsgsFeatures(buildUrl, { signal: options.signal })
-  const markers = features.map(featureToMarker)
+  let markers = features.map(featureToMarker)
+
+  if (scopeConfig.scope === 'national') {
+    const bbox = COUNTRY_BBOX[scopeConfig.countryId]
+    if (bbox) {
+      markers = markers.filter(m => pointInBbox(m.lat, m.lng, bbox))
+    }
+  }
 
   return { markers, requestUrl, totalFetched: features.length }
 }

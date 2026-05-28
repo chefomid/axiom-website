@@ -8,7 +8,15 @@ import {
   localRadiusLinesGeoJSON,
   zoomForRadiusMiles,
 } from '../../utils/geo'
-import { formatBearing, formatDistance, pinsToGeoJSON, segmentsToGeoJSON } from '../../utils/mapPins'
+import {
+  findPinTriangles,
+  formatArea,
+  formatBearing,
+  formatDistance,
+  pinTrianglesToGeoJSON,
+  pinsToGeoJSON,
+  segmentsToGeoJSON,
+} from '../../utils/mapPins'
 import RiskMarkerCard from './RiskMarkerCard'
 import ScopeControlBar from './ScopeControlBar'
 import ScopeSetupModal from './ScopeSetupModal'
@@ -157,6 +165,7 @@ export default function CommandMap({
   const [mapReady, setMapReady] = useState(false)
   const [mapInitError, setMapInitError] = useState(null)
   const [hoverTip, setHoverTip] = useState(null)
+  const [triangleHover, setTriangleHover] = useState(null)
   const [measureLabels, setMeasureLabels] = useState([])
 
   onSelectRef.current = onSelectMarker
@@ -193,6 +202,13 @@ export default function CommandMap({
   const userPinLinesGeoJson = useMemo(
     () => segmentsToGeoJSON(segments, pins),
     [segments, pins],
+  )
+
+  const pinTriangles = useMemo(() => findPinTriangles(pins, segments), [pins, segments])
+
+  const userPinTrianglesGeoJson = useMemo(
+    () => pinTrianglesToGeoJSON(pinTriangles),
+    [pinTriangles],
   )
 
   const allSelectable = useMemo(() => [...markers, ...zones], [markers, zones])
@@ -308,6 +324,17 @@ export default function CommandMap({
           'line-opacity': 0.65,
         },
         layout: { 'line-cap': 'round', 'line-join': 'round' },
+      })
+
+      map.addSource('user-pin-triangles', { type: 'geojson', data: EMPTY_GEOJSON })
+      map.addLayer({
+        id: 'user-pin-triangles-fill',
+        type: 'fill',
+        source: 'user-pin-triangles',
+        paint: {
+          'fill-color': '#e8a838',
+          'fill-opacity': 0.08,
+        },
       })
 
       map.addSource('user-pins', { type: 'geojson', data: EMPTY_GEOJSON })
@@ -426,6 +453,27 @@ export default function CommandMap({
       map.on('mouseenter', 'user-pins', setMapCursor)
       map.on('mouseleave', 'user-pins', setMapCursor)
 
+      const clearTriangleHover = () => setTriangleHover(null)
+
+      map.on('mousemove', 'user-pin-triangles-fill', e => {
+        const feature = e.features?.[0]
+        if (!feature) {
+          clearTriangleHover()
+          return
+        }
+        const areaSqMiles = Number(feature.properties?.areaSqMiles)
+        setTriangleHover({
+          x: e.point.x,
+          y: e.point.y,
+          areaSqMiles: Number.isFinite(areaSqMiles) ? areaSqMiles : null,
+        })
+        map.getCanvas().style.cursor = 'crosshair'
+      })
+      map.on('mouseleave', 'user-pin-triangles-fill', () => {
+        clearTriangleHover()
+        setMapCursor()
+      })
+
       bindLayerPointer('risk-points', 'pointer')
       bindLayerPointer('risk-zones-fill', 'pointer')
       eventsBoundRef.current = true
@@ -533,10 +581,12 @@ export default function CommandMap({
       if (pinsSource) pinsSource.setData(userPinsGeoJson)
       const linesSource = map.getSource('user-pin-lines')
       if (linesSource) linesSource.setData(userPinLinesGeoJson)
+      const trianglesSource = map.getSource('user-pin-triangles')
+      if (trianglesSource) trianglesSource.setData(userPinTrianglesGeoJson)
     } catch (err) {
       console.error('Failed to update user pins:', err)
     }
-  }, [userPinsGeoJson, userPinLinesGeoJson, mapReady])
+  }, [userPinsGeoJson, userPinLinesGeoJson, userPinTrianglesGeoJson, mapReady])
 
   useEffect(() => {
     const map = mapRef.current
@@ -744,6 +794,19 @@ export default function CommandMap({
         </div>
       ))}
 
+      {triangleHover && Number.isFinite(triangleHover.areaSqMiles) && (
+        <div
+          className="map-measure-tooltip"
+          style={{ left: triangleHover.x, top: triangleHover.y }}
+          role="tooltip"
+        >
+          <span className="map-measure-tooltip__meta">Area</span>
+          <span className="map-measure-tooltip__title">
+            {formatArea(triangleHover.areaSqMiles)}
+          </span>
+        </div>
+      )}
+
       {hoverTip && !pinMode && (
         <div
           className="map-point-tooltip"
@@ -806,6 +869,9 @@ export default function CommandMap({
 
       <ScopeSetupModal
         open={scopeModalOpen}
+        initialScope={scope}
+        initialRadiusMiles={radiusMiles}
+        initialCountryId={countryId}
         onApply={onScopeApply}
         onClose={onCloseScopeModal}
       />
