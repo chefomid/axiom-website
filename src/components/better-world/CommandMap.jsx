@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import maplibregl from '../../lib/maplibre'
 import { MapCornerControls } from '../../lib/mapCornerControls'
-import { COUNTRIES, RISK_LAYERS } from '../../data/commandMapData'
+import { COUNTRIES, RISK_LAYERS, SEVERITY_HEX } from '../../data/commandMapData'
 import {
   createCirclePolygon,
+  geometryCentroid,
   localRadiusLinesGeoJSON,
   zoomForRadiusMiles,
 } from '../../utils/geo'
@@ -59,14 +60,34 @@ const RISK_POINT_RADIUS = [
   ['case', ['==', ['get', 'selected'], true], 9, ['+', ['get', 'pointRadius'], 3.5]],
 ]
 
-const SEVERITY_COLORS = {
-  stable: '#3dd68c',
-  live: '#4a9eff',
-  watch: '#e8a838',
-  critical: '#e05252',
-}
-
 const LAYER_SHORT_LABEL = Object.fromEntries(RISK_LAYERS.map(l => [l.id, l.shortLabel]))
+
+function flyToMapItem(map, item) {
+  if (!item) return
+
+  let lng
+  let lat
+  let zoom = Math.max(map.getZoom(), 5)
+
+  if (Number.isFinite(item.lat) && Number.isFinite(item.lng)) {
+    lng = item.lng
+    lat = item.lat
+    if (item.geometry) zoom = Math.max(map.getZoom(), 6.5)
+    if (item.layer === 'earthquake' && item.mag != null) {
+      zoom = Math.max(zoom, item.mag >= 5 ? 7 : item.mag >= 4 ? 6.5 : 6)
+    }
+  } else if (item.geometry) {
+    const centroid = geometryCentroid(item.geometry)
+    if (!centroid) return
+    lng = centroid.lng
+    lat = centroid.lat
+    zoom = Math.max(map.getZoom(), 6.5)
+  } else {
+    return
+  }
+
+  map.flyTo({ center: [lng, lat], zoom, duration: 900 })
+}
 
 function truncateLabel(text, max = 52) {
   if (!text) return ''
@@ -85,7 +106,7 @@ function zonesToGeoJSON(zones, selectedMarkerId) {
           id: zone.id,
           layer: zone.layer,
           severity: zone.severity,
-          color: SEVERITY_COLORS[zone.severity] ?? SEVERITY_COLORS.live,
+          color: SEVERITY_HEX[zone.severity] ?? SEVERITY_HEX.live,
           selected: zone.id === selectedMarkerId,
         },
       })),
@@ -102,7 +123,7 @@ function markersToGeoJSON(markers, selectedMarkerId) {
         geometry: { type: 'Point', coordinates: [marker.lng, marker.lat] },
         properties: {
           id: marker.id,
-          color: SEVERITY_COLORS[marker.severity] ?? SEVERITY_COLORS.live,
+          color: SEVERITY_HEX[marker.severity] ?? SEVERITY_HEX.live,
           selected: marker.id === selectedMarkerId,
           pointRadius: marker.pointRadius ?? 5,
         },
@@ -161,6 +182,8 @@ export default function CommandMap({
   const onRemovePinRef = useRef(onRemovePin)
   const pinModeRef = useRef(pinMode)
   const markersByIdRef = useRef(new Map())
+  const lastFlownMarkerIdRef = useRef(null)
+  const pendingFlyMarkerIdRef = useRef(null)
   const setHoverTipRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
   const [mapInitError, setMapInitError] = useState(null)
@@ -176,8 +199,11 @@ export default function CommandMap({
   setHoverTipRef.current = setHoverTip
 
   useEffect(() => {
-    markersByIdRef.current = new Map(markers.map(m => [m.id, m]))
-  }, [markers])
+    markersByIdRef.current = new Map([
+      ...markers.map(m => [m.id, m]),
+      ...zones.map(z => [z.id, z]),
+    ])
+  }, [markers, zones])
 
   const geoJson = useMemo(
     () => markersToGeoJSON(markers, selectedMarkerId),
@@ -387,17 +413,23 @@ export default function CommandMap({
         const id = e.features?.[0]?.properties?.id
         if (!id) return
         onSelectRef.current(id)
-        map.flyTo({
-          center: e.lngLat,
-          zoom: Math.max(map.getZoom(), 5),
-          duration: 900,
-        })
+        const marker = markersByIdRef.current.get(id)
+        if (marker) flyToMapItem(map, marker)
+        else
+          map.flyTo({
+            center: e.lngLat,
+            zoom: Math.max(map.getZoom(), 5),
+            duration: 900,
+          })
       })
 
       map.on('click', 'risk-zones-fill', e => {
         if (pinModeRef.current) return
         const id = e.features?.[0]?.properties?.id
-        if (id) onSelectRef.current(id)
+        if (!id) return
+        onSelectRef.current(id)
+        const zone = markersByIdRef.current.get(id)
+        if (zone) flyToMapItem(map, zone)
       })
 
       map.on('click', e => {
@@ -748,6 +780,30 @@ export default function CommandMap({
       map.flyTo({ center: [-20, 30], zoom: 1.8, duration: 1000 })
     }
   }, [scope, userLocation, radiusMiles, countryId, mapReady])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady || !selectedMarkerId) {
+      lastFlownMarkerIdRef.current = null
+      pendingFlyMarkerIdRef.current = null
+      return
+    }
+
+    const item = markersByIdRef.current.get(selectedMarkerId)
+    if (!item) {
+      pendingFlyMarkerIdRef.current = selectedMarkerId
+      return
+    }
+
+    const shouldFly =
+      lastFlownMarkerIdRef.current !== selectedMarkerId ||
+      pendingFlyMarkerIdRef.current === selectedMarkerId
+    if (!shouldFly) return
+
+    lastFlownMarkerIdRef.current = selectedMarkerId
+    pendingFlyMarkerIdRef.current = null
+    flyToMapItem(map, item)
+  }, [selectedMarkerId, mapReady, markers, zones])
 
   if (mapInitError) {
     return (

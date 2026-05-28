@@ -180,6 +180,7 @@ export function firmsToSignals(markers, limit = 6) {
     .map(marker => ({
       id: `firms-signal-${marker.id}`,
       severity: marker.severity,
+      layer: marker.layer ?? 'wildfire',
       title: marker.title,
       source: 'NASA FIRMS',
       dataSources: ['nasa'],

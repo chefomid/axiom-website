@@ -139,6 +139,7 @@ export function nfhlToSignals(zoneMarkers, limit = 6) {
     .map(marker => ({
       id: `nfhl-signal-${marker.id}`,
       severity: marker.severity,
+      layer: marker.layer ?? 'flood',
       title: marker.title,
       source: 'FEMA NFHL',
       dataSources: ['fema'],

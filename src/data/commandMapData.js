@@ -76,12 +76,22 @@ export const RISK_LAYERS = [
   },
 ]
 
-export const SEVERITY = {
-  stable: { label: 'Stable', color: 'command-stable' },
-  live: { label: 'Live', color: 'command-live' },
-  watch: { label: 'Watch', color: 'command-watch' },
-  critical: { label: 'Critical', color: 'command-critical' },
+/** Map point colors — keep in sync with Intelligence Panel signal cards */
+export const SEVERITY_HEX = {
+  stable: '#3dd68c',
+  live: '#4a9eff',
+  watch: '#e8a838',
+  critical: '#e05252',
 }
+
+export const SEVERITY = {
+  stable: { label: 'Stable', color: 'command-stable', hex: SEVERITY_HEX.stable },
+  live: { label: 'Live', color: 'command-live', hex: SEVERITY_HEX.live },
+  watch: { label: 'Watch', color: 'command-watch', hex: SEVERITY_HEX.watch },
+  critical: { label: 'Critical', color: 'command-critical', hex: SEVERITY_HEX.critical },
+}
+
+export const LAYER_BY_ID = Object.fromEntries(RISK_LAYERS.map(layer => [layer.id, layer]))
 
 /** No static map markers — all layers use live APIs */
 export const RISK_MARKERS = []

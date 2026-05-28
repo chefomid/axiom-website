@@ -147,9 +147,10 @@ export function earthquakesToSignals(markers, limit = 6) {
   return [...markers]
     .sort((a, b) => (b.mag ?? 0) - (a.mag ?? 0))
     .slice(0, limit)
-    .map((marker, index) => ({
+    .map(marker => ({
       id: `usgs-signal-${marker.id}`,
       severity: marker.severity,
+      layer: marker.layer,
       title: marker.title,
       source: 'USGS FDSNWS',
       dataSources: ['usgs'],

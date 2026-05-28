@@ -130,6 +130,7 @@ export function nwsToSignals(zoneMarkers, limit = 6) {
     .map(marker => ({
       id: `nws-signal-${marker.id}`,
       severity: marker.severity,
+      layer: marker.layer ?? 'weather',
       title: marker.title,
       source: 'NWS api.weather.gov',
       dataSources: ['nws'],
