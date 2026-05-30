@@ -1,7 +1,11 @@
+import { dirname } from 'node:path'
+
 import chromium from '@sparticuz/chromium'
 import puppeteer from 'puppeteer-core'
 
 import { renderReportHtml } from './renderReportHtml.js'
+
+chromium.setGraphicsMode = false
 
 export const config = {
   maxDuration: 60,
@@ -21,6 +25,17 @@ function slugifyLocation(label) {
     .slice(0, 60)
 }
 
+async function launchBrowser() {
+  const executablePath = await chromium.executablePath()
+  process.env.LD_LIBRARY_PATH = dirname(executablePath)
+  return puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath,
+    headless: chromium.headless,
+  })
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ detail: 'Method not allowed' })
@@ -36,12 +51,7 @@ export default async function handler(req, res) {
   let browser
   try {
     const html = renderReportHtml(document)
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-    })
+    browser = await launchBrowser()
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'load', timeout: 30000 })
     await page.waitForSelector('#report-print-ready', { timeout: 15000 })
