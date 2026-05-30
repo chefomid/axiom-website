@@ -168,6 +168,16 @@ const Y_AXIS_TICK = {
 
 const CHART_MARGINS = { top: 4, right: 10, left: 6, bottom: 4 }
 
+function compactBarChartProps(compact) {
+  if (!compact) return { barCategoryGap: '12%' }
+  return { barCategoryGap: '28%' }
+}
+
+function compactBarProps(compact) {
+  if (!compact) return {}
+  return { maxBarSize: 22 }
+}
+
 function formatYAxisTick(value) {
   if (!Number.isFinite(value)) return ''
   if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`
@@ -363,7 +373,8 @@ export function AnnularDensityChart({ data, view = 'density', compact = false })
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
-            margin={compact ? { top: 2, right: 6, left: 2, bottom: 0 } : CHART_MARGINS}
+            margin={compact ? { top: 2, right: 6, left: 2, bottom: 12 } : CHART_MARGINS}
+            {...compactBarChartProps(compact)}
           >
           <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
           <XAxis
@@ -378,7 +389,7 @@ export function AnnularDensityChart({ data, view = 'density', compact = false })
             interval={compact ? 'preserveStartEnd' : 0}
             angle={compact ? -35 : -25}
             textAnchor="end"
-            height={compact ? 36 : 48}
+            height={compact ? 42 : 48}
           />
           <YAxis
             tick={Y_AXIS_TICK}
@@ -397,10 +408,11 @@ export function AnnularDensityChart({ data, view = 'density', compact = false })
           <Bar
             dataKey={viewConfig.dataKey}
             name={viewConfig.label}
-            radius={[4, 4, 0, 0]}
+            radius={compact ? [2, 2, 0, 0] : [4, 4, 0, 0]}
             stroke="none"
             isAnimationActive={false}
             activeBar={{ fill: BAR_FILL_HOVER, stroke: 'none' }}
+            {...compactBarProps(compact)}
           >
             {chartData.map(row => (
               <Cell key={row.label} fill={BAR_FILL} stroke="none" strokeWidth={0} />
@@ -528,7 +540,8 @@ export function TemporalDensityChart({ data, view = 'density', compact = false }
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
-            margin={compact ? { top: 10, right: 6, left: 2, bottom: 0 } : CHART_MARGINS}
+            margin={compact ? { top: 10, right: 6, left: 2, bottom: 12 } : CHART_MARGINS}
+            {...compactBarChartProps(compact)}
           >
           <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
           <XAxis
@@ -543,7 +556,7 @@ export function TemporalDensityChart({ data, view = 'density', compact = false }
             interval={compact ? 'preserveStartEnd' : 0}
             angle={compact ? -35 : -25}
             textAnchor="end"
-            height={compact ? 36 : 48}
+            height={compact ? 42 : 48}
           />
           <YAxis
             tick={Y_AXIS_TICK}
@@ -563,10 +576,11 @@ export function TemporalDensityChart({ data, view = 'density', compact = false }
           <Bar
             dataKey={valueKey}
             name={viewConfig.label}
-            radius={[4, 4, 0, 0]}
+            radius={compact ? [2, 2, 0, 0] : [4, 4, 0, 0]}
             stroke="none"
             isAnimationActive={false}
             activeBar={{ fill: BAR_FILL_HOVER, stroke: 'none' }}
+            {...compactBarProps(compact)}
           >
             {chartData.map(row => (
               <Cell key={row.label} fill={BAR_FILL} stroke="none" strokeWidth={0} />
@@ -618,11 +632,15 @@ export function MagnitudeDistributionChart({ events = [], minMagnitude = 2.5, co
 
   return (
     <div
-      className={`eq-chart eq-chart--bars flex w-full min-w-0 flex-col ${compact ? 'h-[180px]' : 'h-[240px]'}`}
+      className={`eq-chart eq-chart--bars flex w-full min-w-0 flex-col ${compact ? 'h-[132px]' : 'h-[240px]'}`}
     >
       <BarChartFrame yAxisLabel={compact ? null : 'Events'}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={bins} margin={compact ? { top: 10, right: 6, left: 2, bottom: 0 } : CHART_MARGINS}>
+          <BarChart
+            data={bins}
+            margin={compact ? { top: 10, right: 6, left: 2, bottom: 12 } : CHART_MARGINS}
+            {...compactBarChartProps(compact)}
+          >
             <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="label"
@@ -646,10 +664,27 @@ export function MagnitudeDistributionChart({ events = [], minMagnitude = 2.5, co
               {...TOOLTIP_PROPS}
               formatter={value => [`${value} events`, 'Count']}
             />
-            <Bar dataKey="count" name="Events" radius={[4, 4, 0, 0]} fill={BAR_FILL} isAnimationActive={false}>
+            <Bar
+              dataKey="count"
+              name="Events"
+              radius={compact ? [2, 2, 0, 0] : [4, 4, 0, 0]}
+              fill={BAR_FILL}
+              isAnimationActive={false}
+              {...compactBarProps(compact)}
+            >
               {bins.map(row => (
                 <Cell key={row.label} fill={BAR_FILL} stroke="none" />
               ))}
+              {compact ? (
+                <LabelList
+                  dataKey="count"
+                  position="top"
+                  formatter={value => formatYAxisTick(Number(value))}
+                  fill={LABEL_COLOR}
+                  fontSize={7}
+                  fontFamily="IBM Plex Mono, monospace"
+                />
+              ) : null}
             </Bar>
           </BarChart>
         </ResponsiveContainer>

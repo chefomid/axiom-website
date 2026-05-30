@@ -6,15 +6,18 @@
   "scripts": {
     "dev": "vite",
     "dev:all": "concurrently \"npm run dev\" \"npm run property-api\"",
+    "dev:restart": "powershell -ExecutionPolicy Bypass -Command \"Get-Process python* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; npm run dev:all\"",
     "build": "vite build",
     "preview": "vite preview",
-    "property-api": "cd services/property-api && python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000",
+    "property-api": "python -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir services/property-api",
+    "property-api:dev": "python -m uvicorn main:app --reload --reload-dir services/property-api --host 127.0.0.1 --port 8000 --app-dir services/property-api",
     "install:superpowers": "powershell -ExecutionPolicy Bypass -File scripts/install-superpowers.ps1"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^131.0.1",
     "framer-motion": "^11.0.0",
-    "html2pdf.js": "^0.14.0",
     "maplibre-gl": "^5.24.0",
+    "puppeteer-core": "^23.11.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-router-dom": "^6.23.0",

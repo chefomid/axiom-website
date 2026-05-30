@@ -11,6 +11,7 @@ export default defineConfig({
     target: 'es2022',
   },
   server: {
+    host: '127.0.0.1',
     proxy: {
       '/api/nws': {
         target: 'https://api.weather.gov',
@@ -34,6 +35,11 @@ export default defineConfig({
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         rewrite: path => path.replace(/^\/api\/property/, ''),
+      },
+      '/api/reports': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api\/reports/, '/reports'),
       },
       '/api/photon': {
         target: 'https://photon.komoot.io',

@@ -16,15 +16,32 @@ from pydantic import BaseModel, Field, HttpUrl
 
 app = FastAPI(title="AXIOM Property Intelligence API", version="0.1.0")
 
+CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://www.axiompropertycasualty.com",
+    "https://axiompropertycasualty.com",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+from fastapi.responses import HTMLResponse
+
 from geocode import geocode_address
+from report_html import render_report_html
+from report_pdf import (
+    check_playwright_ready,
+    create_session,
+    get_session,
+    pdf_response,
+    pdf_response_for_document,
+)
 
 
 class EnrichRequest(BaseModel):
@@ -126,9 +143,62 @@ async def crawl_url(url: str) -> tuple[str | None, str | None]:
         return None, f"Crawl failed: {e}"
 
 
+class ReportSessionCreate(BaseModel):
+    document: dict[str, Any]
+
+
+class ReportSessionResponse(BaseModel):
+    sessionId: str
+
+
+class ReportSessionDocument(BaseModel):
+    document: dict[str, Any]
+
+
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "property-intelligence-api"}
+
+
+@app.get("/reports/health")
+async def reports_health():
+    ready, detail = check_playwright_ready()
+    return {
+        "ok": ready,
+        "service": "report-pdf",
+        "playwright": ready,
+        "detail": detail,
+    }
+
+
+@app.post("/reports/pdf")
+async def generate_pdf_direct(body: ReportSessionCreate):
+    if not body.document:
+        raise HTTPException(status_code=400, detail="Report document is required.")
+    return await pdf_response_for_document(body.document)
+
+
+@app.post("/reports/sessions", response_model=ReportSessionResponse)
+async def create_report_session(body: ReportSessionCreate):
+    if not body.document:
+        raise HTTPException(status_code=400, detail="Report document is required.")
+    session_id = create_session(body.document)
+    return ReportSessionResponse(sessionId=session_id)
+
+
+@app.get("/reports/sessions/{session_id}", response_model=ReportSessionDocument)
+async def read_report_session(session_id: str):
+    return ReportSessionDocument(document=get_session(session_id))
+
+
+@app.get("/reports/sessions/{session_id}/render", response_class=HTMLResponse)
+async def render_report_session(session_id: str):
+    return HTMLResponse(content=render_report_html(get_session(session_id)))
+
+
+@app.post("/reports/sessions/{session_id}/pdf")
+async def generate_report_pdf(session_id: str):
+    return await pdf_response(session_id)
 
 
 @app.post("/enrich", response_model=EnrichResponse)

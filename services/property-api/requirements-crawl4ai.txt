@@ -1,0 +1,4 @@
+# Optional — property page crawling (not required for seismic report PDFs).
+# On Windows, enable long paths if install fails: https://pip.pypa.io/warnings/enable-long-paths
+-r requirements.txt
+crawl4ai>=0.6.0

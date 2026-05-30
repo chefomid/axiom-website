@@ -1,15 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import html2pdf from 'html2pdf.js'
 
 import useEarthquakeAnalytics from '../../hooks/useEarthquakeAnalytics'
+import { downloadReportPdf, checkReportApiHealth } from '../../services/reportApi'
 import { assessTemporalPeriodQuality, dateRangeForYears } from '../../utils/earthquakeAnalytics'
-import {
-  buildReportNarrative,
-  formatReportDate,
-  reportPdfFilename,
-  REPORT_DEPTH_PRESETS,
-} from '../../utils/earthquakeReport'
+import { buildReportNarrative } from '../../utils/earthquakeReport'
+import { buildReportDocument, validateReportDocument } from '../../utils/reportDocument'
 import {
   DepthBreakdownGuide,
   MagnitudeDistributionGuide,
@@ -64,8 +60,21 @@ function ReportMetric({ label, value, accent = false }) {
   )
 }
 
-function ReportChartFrame({ children }) {
-  return <div className="eq-report-chart-frame eq-report-chart">{children}</div>
+function ReportChartFrame({ children, compact = true }) {
+  return (
+    <div className={`eq-report-chart-frame eq-report-chart ${compact ? 'eq-report-chart-frame--compact' : ''}`.trim()}>
+      {children}
+    </div>
+  )
+}
+
+function ReportChartCell({ label, children }) {
+  return (
+    <div className="eq-report-chart-cell">
+      {label ? <p className="eq-report-chart-label">{label}</p> : null}
+      {children}
+    </div>
+  )
 }
 
 function FilterPills({ filterSummary }) {
@@ -99,6 +108,8 @@ export default function EarthquakeReportViewer({
 }) {
   const reportRef = useRef(null)
   const [pdfBusy, setPdfBusy] = useState(false)
+  const [pdfError, setPdfError] = useState(null)
+  const [pdfServiceOk, setPdfServiceOk] = useState(null)
 
   const {
     loading,
@@ -135,20 +146,32 @@ export default function EarthquakeReportViewer({
   const showGenerating = (!config && generating) || (Boolean(config) && loading)
   const displayError = resolveError || (!showGenerating && error)
   const reportReady = Boolean(config) && !loading && (summary || dataQuality?.level === 'none')
+
+  const { startDate } = useMemo(
+    () => dateRangeForYears(yearPreset?.years ?? 5),
+    [yearPreset?.years],
+  )
+
+  const temporalPeriodQuality = useMemo(
+    () => assessTemporalPeriodQuality(temporalAnnular, { truncated }),
+    [temporalAnnular, truncated],
+  )
+
   const narrative = useMemo(
     () =>
       !config
         ? null
         : buildReportNarrative({
-        scope: config?.scope ?? 'location',
-        locationLabel: resolved?.locationLabel ?? config?.centerOverride?.label ?? 'Selected location',
-        yearPreset,
-        minMagnitude,
-        activeMaxRadiusMiles: config?.maxRadiusMiles ?? 250,
-        globalAnalysis,
-        summary,
-        events,
-      }),
+            scope: config?.scope ?? 'location',
+            locationLabel:
+              resolved?.locationLabel ?? config?.centerOverride?.label ?? 'Selected location',
+            yearPreset,
+            minMagnitude,
+            activeMaxRadiusMiles: config?.maxRadiusMiles ?? 250,
+            globalAnalysis,
+            summary,
+            events,
+          }),
     [
       config,
       config?.scope,
@@ -163,18 +186,59 @@ export default function EarthquakeReportViewer({
     ],
   )
 
-  const { startDate } = useMemo(
-    () => dateRangeForYears(yearPreset?.years ?? 5),
-    [yearPreset?.years],
-  )
+  const reportDocument = useMemo(() => {
+    if (!config || !reportReady) return null
+    const locationLabel = resolved?.locationLabel ?? config.centerOverride?.label ?? 'Selected location'
+    return buildReportDocument({
+      config,
+      locationLabel,
+      summary,
+      events,
+      yearPreset,
+      minMagnitude,
+      globalAnalysis,
+      hasTemporalAnalytics,
+      temporalAnnular,
+      temporalPeriodQuality,
+      annular,
+      dataQuality,
+    })
+  }, [
+    annular,
+    config,
+    dataQuality,
+    events,
+    globalAnalysis,
+    hasTemporalAnalytics,
+    minMagnitude,
+    reportReady,
+    resolved?.locationLabel,
+    summary,
+    temporalAnnular,
+    temporalPeriodQuality,
+    yearPreset,
+  ])
 
-  const temporalPeriodQuality = useMemo(
-    () => assessTemporalPeriodQuality(temporalAnnular, { truncated }),
-    [temporalAnnular, truncated],
-  )
-
-  const depthLabel =
-    REPORT_DEPTH_PRESETS.find(p => p.id === config?.depthId)?.label ?? 'Standard'
+  useEffect(() => {
+    if (!open || !reportReady) {
+      setPdfServiceOk(null)
+      return
+    }
+    let cancelled = false
+    checkReportApiHealth().then(result => {
+      if (!cancelled) {
+        setPdfServiceOk(result.ok)
+        if (!result.ok && result.detail) {
+          setPdfError(result.detail)
+        } else if (result.ok) {
+          setPdfError(null)
+        }
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open, reportReady])
 
   const guideProps = {
     center: config?.centerOverride,
@@ -209,49 +273,23 @@ export default function EarthquakeReportViewer({
     }
   }
 
-  const strongestValue =
-    summary?.maxEvent?.mag != null
-      ? globalAnalysis
-        ? `M${summary.maxEvent.mag.toFixed(1)}`
-        : `M${summary.maxEvent.mag.toFixed(1)} · ${summary.maxEvent.dist?.toFixed(0) ?? '—'} mi`
-      : '—'
-
-  const handleDownloadPdf = async () => {
-    if (!reportRef.current || pdfBusy) return
+  const handleDownloadPdf = useCallback(async () => {
+    if (pdfBusy || !reportDocument) return
+    setPdfError(null)
     setPdfBusy(true)
     try {
-      await html2pdf()
-        .set({
-          margin: [10, 12, 14, 12],
-          filename: reportPdfFilename(resolved?.locationLabel ?? config?.centerOverride?.label),
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
-            scale: 2.5,
-            useCORS: true,
-            backgroundColor: '#050505',
-            logging: false,
-            windowWidth: 680,
-            onclone: doc => {
-              const root = doc.querySelector('.eq-report-doc')
-              if (root) root.classList.add('eq-report-pdf-export')
-              doc.querySelectorAll('.recharts-tooltip-wrapper').forEach(el => {
-                el.remove()
-              })
-            },
-          },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-          pagebreak: {
-            mode: ['css', 'legacy'],
-            before: '.eq-report-page-break',
-            avoid: ['.eq-report-block', '.eq-report-chart-frame', '.eq-report-hero'],
-          },
-        })
-        .from(reportRef.current)
-        .save()
+      const validation = validateReportDocument(reportDocument)
+      if (!validation.ok) {
+        throw new Error(validation.errors.join(' '))
+      }
+      const locationLabel = reportDocument.meta.location
+      await downloadReportPdf(reportDocument, locationLabel)
+    } catch (err) {
+      setPdfError(err.message ?? 'Report PDF service unavailable.')
     } finally {
       setPdfBusy(false)
     }
-  }
+  }, [pdfBusy, reportDocument])
 
   const showCharts = config?.includeCharts && !showGenerating && dataQuality?.level !== 'none'
 
@@ -262,7 +300,7 @@ export default function EarthquakeReportViewer({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="eq-report-viewer fixed inset-0 z-[70] flex flex-col bg-[#050505]"
+          className="eq-report-viewer eq-report-print-root fixed inset-0 z-[70] flex flex-col bg-[#050505]"
         >
           <header className="eq-report-no-print flex shrink-0 items-center gap-3 border-b border-[#222] bg-[#0a0a0a] px-5 py-3">
             <div className="min-w-0 flex-1">
@@ -274,14 +312,21 @@ export default function EarthquakeReportViewer({
               ) : null}
             </div>
             {!showGenerating && reportReady ? (
-              <button
-                type="button"
-                onClick={handleDownloadPdf}
-                disabled={pdfBusy}
-                className="rounded-lg border border-[#ff9348]/40 bg-[#ff9348]/10 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[#ff9348] transition hover:border-[#ff9348]/60 hover:bg-[#ff9348]/15 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {pdfBusy ? 'Saving…' : 'Download PDF'}
-              </button>
+              <div className="flex flex-col items-end gap-1">
+                {pdfError ? (
+                  <p className="max-w-xs text-right font-mono text-[9px] leading-snug text-command-critical">
+                    {pdfError}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={pdfBusy || !reportDocument || pdfServiceOk === false}
+                  className="rounded-lg border border-[#ff9348]/40 bg-[#ff9348]/10 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[#ff9348] transition hover:border-[#ff9348]/60 hover:bg-[#ff9348]/15 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {pdfBusy ? 'Generating PDF…' : pdfServiceOk === null ? 'Checking PDF…' : 'Download PDF'}
+                </button>
+              </div>
             ) : null}
             <button
               type="button"
@@ -292,31 +337,32 @@ export default function EarthquakeReportViewer({
             </button>
           </header>
 
-          <div className="sleek-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-8">
+          <div className="eq-report-print-body sleek-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-8">
             {showGenerating ? (
               <ReportGeneratingIndicator />
             ) : displayError ? (
               <p className="py-16 text-center font-mono text-[11px] text-command-critical">{displayError}</p>
-            ) : config && narrative ? (
+            ) : config && reportDocument && narrative ? (
               <article ref={reportRef} className="eq-report-doc pb-12">
                 <header className="eq-report-hero">
-                  <div className="eq-report-hero__brand">
-                    <span className="eq-report-hero__eyebrow">USGS Earthquake Catalog</span>
-                    <span className="eq-report-hero__badge">{depthLabel} report</span>
-                  </div>
-                  <h1 className="eq-report-hero__title">Seismic Activity Report</h1>
-                  <p className="eq-report-hero__location">
-                    {resolved?.locationLabel ?? config.centerOverride?.label}
-                  </p>
+                  <span className="eq-report-hero__eyebrow">{reportDocument.meta.dataSource}</span>
+                  <h1 className="eq-report-hero__title">{reportDocument.meta.title}</h1>
+                  <p className="eq-report-hero__kind">{reportDocument.meta.type}</p>
+                  <p className="eq-report-hero__location">{reportDocument.meta.location}</p>
                   <FilterPills filterSummary={narrative.filterSummary} />
-                  <p className="eq-report-hero__date">Generated {formatReportDate()}</p>
+                  <p className="eq-report-hero__date">Generated {reportDocument.meta.generatedDate}</p>
                 </header>
 
-                {dataQuality?.level === 'none' ? (
+                {pdfError ? (
+                  <p className="eq-report-no-print mb-4 rounded border border-command-critical/40 bg-command-critical/10 px-4 py-3 font-mono text-[11px] text-command-critical">
+                    {pdfError}
+                  </p>
+                ) : null}
+
+                {reportDocument.noData ? (
                   <ReportBlock title="No catalog data">
                     <p className="eq-report-block__body text-command-watch">
-                      {dataQuality.message ??
-                        'No events match these filters for the selected focus.'}
+                      {reportDocument.noDataMessage}
                     </p>
                   </ReportBlock>
                 ) : (
@@ -325,42 +371,30 @@ export default function EarthquakeReportViewer({
                       title="At a glance"
                       badge={
                         <span className={ACTIVITY_BADGE_CLASS[narrative.activityLevel.tone]}>
-                          {narrative.activityLevel.label}
+                          {reportDocument.executiveSummary.activityLevel}
                         </span>
                       }
                     >
                       <p className="eq-report-block__body eq-report-block__body--bright">
-                        {narrative.headline}
+                        {reportDocument.executiveSummary.headline}
                       </p>
                       <div className="eq-report-metrics mt-4">
-                        <ReportMetric
-                          label="Total events"
-                          value={(summary?.totalEvents ?? 0).toLocaleString()}
-                          accent
-                        />
-                        <ReportMetric label="Strongest" value={strongestValue} />
-                        {!globalAnalysis && summary?.peakDensityPer1000SqMiPerYear != null ? (
+                        {reportDocument.kpis.map(kpi => (
                           <ReportMetric
-                            label="Peak density"
-                            value={`${summary.peakDensityPer1000SqMiPerYear.toFixed(1)} / yr`}
+                            key={kpi.id}
+                            label={kpi.label}
+                            value={kpi.value}
+                            accent={kpi.highlight}
                           />
-                        ) : null}
-                        <ReportMetric
-                          label="Avg per year"
-                          value={
-                            narrative.eventsPerYear >= 10
-                              ? Math.round(narrative.eventsPerYear).toLocaleString()
-                              : narrative.eventsPerYear.toFixed(1)
-                          }
-                        />
+                        ))}
                       </div>
                     </ReportBlock>
 
                     <ReportBlock title="What this means">
-                      <p className="eq-report-block__body">{narrative.meaning}</p>
-                      {narrative.bullets.length > 0 ? (
+                      <p className="eq-report-block__body">{reportDocument.executiveSummary.meaning}</p>
+                      {reportDocument.executiveSummary.bullets.length > 0 ? (
                         <ul className="eq-report-bullets">
-                          {narrative.bullets.map(bullet => (
+                          {reportDocument.executiveSummary.bullets.map(bullet => (
                             <li key={bullet}>{bullet}</li>
                           ))}
                         </ul>
@@ -370,64 +404,75 @@ export default function EarthquakeReportViewer({
                     {showCharts ? (
                       <>
                         {!globalAnalysis ? (
-                          <>
-                            <ReportBlock
-                              title="Cumulative frequency"
-                              subtitle={
-                                hasTemporalAnalytics
-                                  ? `Events within ${config.maxRadiusMiles} mi, cumulated through the selected window.`
-                                  : 'Events within each distance band over the selected window.'
-                              }
-                            >
-                              <ReportChartFrame>
-                                {hasTemporalAnalytics ? (
-                                  <CumulativeTimeChart data={temporalCumulative} />
-                                ) : (
-                                  <CumulativeRadiusChart data={cumulative} />
-                                )}
-                              </ReportChartFrame>
-                            </ReportBlock>
-
-                            <ReportBlock
-                              title="Events by distance"
-                              subtitle="Earthquake density in each radius band from the report focus."
-                            >
-                              <ReportChartFrame>
-                                <AnnularDensityChart data={annular} view="density" />
-                              </ReportChartFrame>
-                            </ReportBlock>
-
-                            {hasTemporalAnalytics && temporalAnnular?.length ? (
-                              <ReportBlock
-                                title="Activity by time period"
-                                subtitle="How earthquake counts varied across each period in the search radius."
-                              >
+                          <ReportBlock
+                            className="eq-report-block--charts"
+                            title="Catalog charts"
+                            subtitle="USGS event counts for this report focus — compact views for distance, time, and magnitude."
+                          >
+                            <div className="eq-report-charts-grid">
+                              <ReportChartCell label="Cumulative frequency">
                                 <ReportChartFrame>
-                                  <TemporalDensityChart data={temporalAnnular} view="density" />
+                                  {hasTemporalAnalytics ? (
+                                    <CumulativeTimeChart data={temporalCumulative} compact />
+                                  ) : (
+                                    <CumulativeRadiusChart data={cumulative} compact />
+                                  )}
                                 </ReportChartFrame>
-                              </ReportBlock>
-                            ) : null}
-                          </>
-                        ) : null}
+                              </ReportChartCell>
 
-                        <div className="eq-report-page-break" aria-hidden />
+                              <ReportChartCell label="Events by distance">
+                                <ReportChartFrame>
+                                  <AnnularDensityChart data={annular} view="density" compact />
+                                </ReportChartFrame>
+                              </ReportChartCell>
 
-                        <ReportBlock
-                          title="Magnitude distribution"
-                          subtitle="Share of events in each magnitude band for this report focus."
-                        >
-                          <ReportChartFrame>
-                            <MagnitudeDistributionChart events={events} minMagnitude={minMagnitude} />
-                          </ReportChartFrame>
-                        </ReportBlock>
+                              {hasTemporalAnalytics && temporalAnnular?.length ? (
+                                <ReportChartCell label="Activity by time period">
+                                  <ReportChartFrame>
+                                    <TemporalDensityChart data={temporalAnnular} view="density" compact />
+                                  </ReportChartFrame>
+                                </ReportChartCell>
+                              ) : null}
+
+                              <ReportChartCell label="Magnitude distribution">
+                                <ReportChartFrame>
+                                  <MagnitudeDistributionChart
+                                    events={events}
+                                    minMagnitude={minMagnitude}
+                                    compact
+                                  />
+                                </ReportChartFrame>
+                              </ReportChartCell>
+                            </div>
+                          </ReportBlock>
+                        ) : (
+                          <ReportBlock
+                            title="Magnitude distribution"
+                            subtitle="Share of events in each magnitude band for this report focus."
+                          >
+                            <div className="eq-report-charts-grid eq-report-charts-grid--single">
+                              <ReportChartCell>
+                                <ReportChartFrame>
+                                  <MagnitudeDistributionChart
+                                    events={events}
+                                    minMagnitude={minMagnitude}
+                                    compact
+                                  />
+                                </ReportChartFrame>
+                              </ReportChartCell>
+                            </div>
+                          </ReportBlock>
+                        )}
                       </>
                     ) : null}
 
                     {config.sectionIds?.map(sectionId => (
                       <ReportBlock key={sectionId} title={SECTION_TITLES[sectionId] ?? sectionId}>
-                        <div className="eq-report-block__body">{renderSection(sectionId)}</div>
+                        <div className="eq-report-block__body eq-report-guide">{renderSection(sectionId)}</div>
                       </ReportBlock>
                     ))}
+
+                    <div className="eq-report-page-break" aria-hidden />
                   </>
                 )}
 
@@ -437,16 +482,12 @@ export default function EarthquakeReportViewer({
                   </div>
                   <div className="eq-report-footer">
                     <p>
-                      Source: USGS Earthquake Catalog. Counts reflect published historical records for
-                      the selected magnitude threshold and time window.
+                      Source: {reportDocument.methodology.source}. Counts reflect published historical
+                      records for the selected magnitude threshold and time window.
                     </p>
-                    <p>
-                      Past earthquake activity does not predict when or where future earthquakes will
-                      occur. This report is for general awareness — not engineering, insurance, or
-                      emergency planning decisions.
-                    </p>
-                    {dataQuality?.message && dataQuality.level !== 'ok' && dataQuality.level !== 'none' ? (
-                      <p style={{ color: '#e8a838' }}>{dataQuality.message}</p>
+                    <p>{reportDocument.methodology.disclaimer}</p>
+                    {reportDocument.methodology.dataQualityNote ? (
+                      <p className="eq-report-footnote--warn">{reportDocument.methodology.dataQualityNote}</p>
                     ) : null}
                   </div>
                 </footer>

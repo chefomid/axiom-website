@@ -4,10 +4,12 @@ import Home from './pages/Home'
 import BetterWorld from './pages/BetterWorld'
 import PublicDataCommand from './pages/PublicDataCommand'
 import PropertyIntelligence from './pages/PropertyIntelligence'
+import ReportPrint from './pages/ReportPrint'
 import {
   LEGACY_IMPACT_MAP_PATH,
   PROPERTY_INTELLIGENCE_PATH,
   PUBLIC_DATA_COMMAND_PATH,
+  REPORT_PRINT_PATH,
 } from './constants/routes'
 
 export default function App() {
@@ -19,6 +21,7 @@ export default function App() {
           <Route path="/a-better-world" element={<BetterWorld />} />
           <Route path={PUBLIC_DATA_COMMAND_PATH} element={<PublicDataCommand />} />
           <Route path={PROPERTY_INTELLIGENCE_PATH} element={<PropertyIntelligence />} />
+          <Route path={REPORT_PRINT_PATH} element={<ReportPrint />} />
           <Route
             path={LEGACY_IMPACT_MAP_PATH}
             element={<Navigate to={PUBLIC_DATA_COMMAND_PATH} replace />}

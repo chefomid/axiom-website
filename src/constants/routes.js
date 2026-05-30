@@ -6,6 +6,9 @@ export const PUBLIC_DATA_COMMAND_LABEL = 'Public Data Command'
 export const PROPERTY_INTELLIGENCE_PATH = '/property-intelligence'
 export const PROPERTY_INTELLIGENCE_LABEL = 'Property Intelligence'
 
+/** Playwright PDF print preview (no chrome) */
+export const REPORT_PRINT_PATH = '/reports/print/:sessionId'
+
 /** Legacy URLs (redirect targets) */
 export const LEGACY_IMPACT_MAP_PATH = '/impact-map'
 

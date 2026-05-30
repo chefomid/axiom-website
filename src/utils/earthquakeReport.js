@@ -348,13 +348,23 @@ export function formatReportDate(date = new Date()) {
   })
 }
 
-export function reportPdfFilename(locationLabel) {
-  const slug = String(locationLabel ?? 'report')
+function reportExportSlug(locationLabel) {
+  return String(locationLabel ?? 'report')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 48)
-  return `seismic-report-${slug || 'export'}.pdf`
+}
+
+/** Suggested filename when saving from the browser print dialog. */
+export function reportPdfFilename(locationLabel) {
+  return `seismic-report-${reportExportSlug(locationLabel) || 'export'}.pdf`
+}
+
+/** Document title while printing (browser uses this for default PDF name). */
+export function reportPrintDocumentTitle(locationLabel) {
+  const slug = reportExportSlug(locationLabel) || 'export'
+  return `Seismic Activity Report — ${slug.replace(/-/g, ' ')}`
 }
 
 export function requestBrowserLocation() {
