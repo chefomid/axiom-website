@@ -29,10 +29,10 @@ async function launchBrowser() {
   const executablePath = await chromium.executablePath()
   process.env.LD_LIBRARY_PATH = dirname(executablePath)
   return puppeteer.launch({
-    args: chromium.args,
+    args: await puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' }),
     defaultViewport: chromium.defaultViewport,
     executablePath,
-    headless: chromium.headless,
+    headless: 'shell',
   })
 }
 
