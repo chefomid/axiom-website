@@ -3,9 +3,6 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "env": {
-    "AWS_LAMBDA_JS_RUNTIME": "nodejs22.x"
-  },
   "functions": {
     "api/reports/pdf.js": {
       "maxDuration": 60

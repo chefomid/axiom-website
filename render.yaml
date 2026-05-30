@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: axiom-report-api
+    runtime: docker
+    rootDir: services/property-api
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /reports/health
+    envVars:
+      - key: FRONTEND_URL
+        value: https://www.axiompropertycasualty.com
+      - key: REPORT_SESSION_TTL_SECONDS
+        value: "900"

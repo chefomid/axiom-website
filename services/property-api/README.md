@@ -73,7 +73,29 @@ VITE_REPORT_API_URL=https://your-property-api.example.com/reports
 
 If unset in production, the client falls back to `/api/reports` (requires a reverse proxy).
 
-## Production deployment (Railway or Fly.io)
+## Production deployment (Render — required for PDF)
+
+Playwright/Chromium **cannot run on Vercel serverless**. Production PDFs use this API on Render; Vercel proxies `/api/reports/*` to it via `REPORT_API_URL`.
+
+### One-time setup
+
+1. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint** → connect `chefomid/axiom-website`.
+2. Render reads `render.yaml` and creates `axiom-report-api` (Docker + Playwright).
+3. Copy the service URL (e.g. `https://axiom-report-api.onrender.com`).
+4. Vercel → **Settings** → **Environment Variables** → add:
+   - `REPORT_API_URL` = `https://axiom-report-api.onrender.com/reports` (Production)
+5. Redeploy the Vercel site (or wait for the next push).
+
+Verify:
+
+```bash
+curl https://axiom-report-api.onrender.com/reports/health
+curl https://www.axiompropertycasualty.com/api/reports/health
+```
+
+Local dev is unchanged: `npm run dev:all` proxies `/api/reports` → `localhost:8000/reports`.
+
+## Production deployment (Railway or Fly.io — alternative)
 
 The Vercel frontend cannot run Playwright. Deploy this service separately.
 

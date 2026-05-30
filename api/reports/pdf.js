@@ -1,18 +1,5 @@
-import { dirname } from 'node:path'
-
-import chromium from '@sparticuz/chromium-min'
-import puppeteer from 'puppeteer-core'
-
-import { renderReportHtml } from './renderReportHtml.js'
-
-const CHROMIUM_PACK =
-  'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar'
-
-chromium.setGraphicsMode = false
-
 export const config = {
   maxDuration: 60,
-  memory: 2048,
   api: {
     bodyParser: {
       sizeLimit: '10mb',
@@ -20,23 +7,8 @@ export const config = {
   },
 }
 
-function slugifyLocation(label) {
-  return String(label ?? 'location')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 60)
-}
-
-async function launchBrowser() {
-  const executablePath = await chromium.executablePath(CHROMIUM_PACK)
-  process.env.LD_LIBRARY_PATH = dirname(executablePath)
-  return puppeteer.launch({
-    args: await puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' }),
-    defaultViewport: chromium.defaultViewport,
-    executablePath,
-    headless: 'shell',
-  })
+function upstreamBase() {
+  return process.env.REPORT_API_URL?.replace(/\/$/, '') ?? null
 }
 
 export default async function handler(req, res) {
@@ -45,36 +17,41 @@ export default async function handler(req, res) {
     return
   }
 
-  const document = req.body?.document
-  if (!document) {
-    res.status(400).json({ detail: 'Report document is required.' })
+  const base = upstreamBase()
+  if (!base) {
+    res.status(503).json({
+      detail:
+        'PDF service is not configured. Deploy services/property-api to Render and set REPORT_API_URL on Vercel.',
+    })
     return
   }
 
-  let browser
   try {
-    const html = renderReportHtml(document)
-    browser = await launchBrowser()
-    const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'load', timeout: 30000 })
-    await page.waitForSelector('#report-print-ready', { timeout: 15000 })
-    const pdf = await page.pdf({
-      format: 'Letter',
-      printBackground: true,
-      preferCSSPageSize: true,
-      margin: { top: 0, bottom: 0, left: 0, right: 0 },
+    const upstream = await fetch(`${base}/pdf`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/pdf',
+        'User-Agent': 'AXIOM-SeismicReport/1.0 (vercel-proxy)',
+      },
+      body: JSON.stringify(req.body),
     })
-    const slug = slugifyLocation(document.meta?.location)
-    res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', `attachment; filename="seismic-report-${slug}.pdf"`)
-    res.status(200).send(Buffer.from(pdf))
+
+    const body = Buffer.from(await upstream.arrayBuffer())
+    const contentType = upstream.headers.get('content-type') ?? 'application/json'
+
+    if (!upstream.ok) {
+      res.status(upstream.status).setHeader('Content-Type', contentType).send(body)
+      return
+    }
+
+    res.setHeader('Content-Type', contentType)
+    const disposition = upstream.headers.get('content-disposition')
+    if (disposition) res.setHeader('Content-Disposition', disposition)
+    res.status(200).send(body)
   } catch (err) {
     res.status(502).json({
-      detail: `PDF generation failed: ${err?.message ?? String(err)}`,
+      detail: `PDF proxy failed: ${err?.message ?? String(err)}`,
     })
-  } finally {
-    if (browser) {
-      await browser.close().catch(() => {})
-    }
   }
 }
