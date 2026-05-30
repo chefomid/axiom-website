@@ -1,9 +1,12 @@
 import { dirname } from 'node:path'
 
-import chromium from '@sparticuz/chromium'
+import chromium from '@sparticuz/chromium-min'
 import puppeteer from 'puppeteer-core'
 
 import { renderReportHtml } from './renderReportHtml.js'
+
+const CHROMIUM_PACK =
+  'https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar'
 
 chromium.setGraphicsMode = false
 
@@ -26,7 +29,7 @@ function slugifyLocation(label) {
 }
 
 async function launchBrowser() {
-  const executablePath = await chromium.executablePath()
+  const executablePath = await chromium.executablePath(CHROMIUM_PACK)
   process.env.LD_LIBRARY_PATH = dirname(executablePath)
   return puppeteer.launch({
     args: await puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' }),

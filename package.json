@@ -14,7 +14,7 @@
     "install:superpowers": "powershell -ExecutionPolicy Bypass -File scripts/install-superpowers.ps1"
   },
   "dependencies": {
-    "@sparticuz/chromium": "^149.0.0",
+    "@sparticuz/chromium-min": "^149.0.0",
     "framer-motion": "^11.0.0",
     "maplibre-gl": "^5.24.0",
     "puppeteer-core": "^25.1.0",
