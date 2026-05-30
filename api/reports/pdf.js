@@ -5,7 +5,7 @@ import { renderReportHtml } from './renderReportHtml.js'
 
 export const config = {
   maxDuration: 60,
-  memory: 3008,
+  memory: 2048,
   api: {
     bodyParser: {
       sizeLimit: '10mb',
