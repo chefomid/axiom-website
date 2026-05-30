@@ -1,11 +1,15 @@
 /**
- * Paginate USGS FDSNWS GeoJSON until a page returns fewer than `pageSize` features.
+ * Paginate USGS FDSNWS GeoJSON until a page returns fewer than `pageSize` features
+ * or `maxEvents` is reached (USGS catalog cap is 20,000 per query series).
  */
-export async function fetchAllUsgsFeatures(buildUrl, { pageSize = 2000, signal } = {}) {
+export async function fetchAllUsgsFeatures(
+  buildUrl,
+  { pageSize = 2000, maxEvents = 20000, signal } = {},
+) {
   const all = []
 
-  while (true) {
-    const pagination = { limit: pageSize }
+  while (all.length < maxEvents) {
+    const pagination = { limit: Math.min(pageSize, maxEvents - all.length) }
     if (all.length > 0) {
       pagination.offset = all.length + 1
     }
@@ -18,10 +22,11 @@ export async function fetchAllUsgsFeatures(buildUrl, { pageSize = 2000, signal }
     const data = await response.json()
     const page = data.features ?? []
     all.push(...page)
-    if (page.length < pageSize) break
+    if (page.length < pagination.limit) break
+    if (all.length >= maxEvents) break
   }
 
-  return all
+  return all.slice(0, maxEvents)
 }
 
 /**

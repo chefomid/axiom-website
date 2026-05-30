@@ -54,6 +54,11 @@ function formatScaleLabel(distance, unit) {
   return `${Math.round(n)} ${unit}`
 }
 
+const FAULT_TOGGLE_ICON = `
+<svg class="analysis-fault-toggle__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M4 17 L8.5 10.5 L12 13.5 L16 7 L20 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`
+
 /**
  * Bottom-left zoom (+/−) buttons and imperial scale bar (separate controls).
  * @implements {import('maplibre-gl').IControl}
@@ -88,11 +93,58 @@ export class MapCornerControls {
 
     this._bar = document.createElement('div')
     this._bar.className = 'map-corner-controls__scale-bar'
-    this._scale.appendChild(this._bar)
 
     this._label = document.createElement('span')
     this._label.className = 'map-corner-controls__scale-label'
-    this._scale.appendChild(this._label)
+
+    const satellite = this.options.satellite
+    const faultLines = this.options.faultLines
+    if (satellite || faultLines) {
+      this._scale.classList.add('map-corner-controls__scale--with-map-toggles')
+
+      const scaleMain = document.createElement('div')
+      scaleMain.className = 'map-corner-controls__scale-main'
+      scaleMain.appendChild(this._bar)
+      scaleMain.appendChild(this._label)
+
+      const divider = document.createElement('span')
+      divider.className = 'map-corner-controls__scale-divider'
+      divider.setAttribute('aria-hidden', 'true')
+
+      const toggles = document.createElement('div')
+      toggles.className = 'map-corner-controls__map-toggles'
+
+      if (faultLines) {
+        this._faultBtn = document.createElement('button')
+        this._faultBtn.type = 'button'
+        this._faultBtn.className = 'analysis-fault-toggle'
+        this._faultBtn.setAttribute('aria-label', 'Toggle fault lines')
+        this._faultBtn.title = 'Fault Lines'
+        this._faultBtn.innerHTML = FAULT_TOGGLE_ICON
+        this._faultBtn.addEventListener('click', () => faultLines.onToggle?.())
+        toggles.appendChild(this._faultBtn)
+      }
+
+      if (satellite) {
+        this._satelliteBtn = document.createElement('button')
+        this._satelliteBtn.type = 'button'
+        this._satelliteBtn.className = 'analysis-satellite-toggle'
+        this._satelliteBtn.setAttribute('aria-label', 'Toggle satellite imagery')
+        this._satelliteBtn.title = 'Show satellite imagery'
+        if (satellite.previewBackground) {
+          this._satelliteBtn.style.background = satellite.previewBackground
+        }
+        this._satelliteBtn.addEventListener('click', () => satellite.onToggle?.())
+        toggles.appendChild(this._satelliteBtn)
+      }
+
+      this._scale.appendChild(scaleMain)
+      this._scale.appendChild(divider)
+      this._scale.appendChild(toggles)
+    } else {
+      this._scale.appendChild(this._bar)
+      this._scale.appendChild(this._label)
+    }
 
     root.appendChild(zoomIn)
     root.appendChild(zoomOut)
@@ -130,4 +182,16 @@ export class MapCornerControls {
     this._label.textContent = formatScaleLabel(distance, unit)
   }
 
+  setSatelliteActive(active) {
+    if (!this._satelliteBtn) return
+    const on = Boolean(active)
+    this._satelliteBtn.setAttribute('aria-pressed', String(on))
+    this._satelliteBtn.title = on ? 'Hide satellite imagery' : 'Show satellite imagery'
+  }
+
+  setFaultLinesActive(active) {
+    if (!this._faultBtn) return
+    this._faultBtn.setAttribute('aria-pressed', String(Boolean(active)))
+    this._faultBtn.title = 'Fault Lines'
+  }
 }

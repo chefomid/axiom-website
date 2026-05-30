@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="FEMA">
+  <path fill="#003087" d="M16 2 4 8v10c0 7.2 5.1 13.9 12 14 6.9-.1 12-6.8 12-14V8L16 2z"/>
+  <path fill="#fff" d="M16 6.5 7.5 11v7c0 5.4 3.8 10.4 8.5 10.8 4.7-.4 8.5-5.4 8.5-10.8v-7L16 6.5z"/>
+  <text x="16" y="19" text-anchor="middle" fill="#003087" font-family="Arial,Helvetica,sans-serif" font-size="7.5" font-weight="700">FEMA</text>
+</svg>

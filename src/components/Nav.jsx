@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
+  PROPERTY_INTELLIGENCE_LABEL,
+  PROPERTY_INTELLIGENCE_PATH,
   PUBLIC_DATA_COMMAND_LABEL,
   PUBLIC_DATA_COMMAND_PATH,
 } from '../constants/routes'
@@ -32,6 +34,12 @@ export default function Nav() {
           className={`${linkClass} ${pathname === PUBLIC_DATA_COMMAND_PATH ? 'text-white' : ''}`}
         >
           {PUBLIC_DATA_COMMAND_LABEL}
+        </Link>
+        <Link
+          to={PROPERTY_INTELLIGENCE_PATH}
+          className={`${linkClass} ${pathname === PROPERTY_INTELLIGENCE_PATH ? 'text-white' : ''}`}
+        >
+          {PROPERTY_INTELLIGENCE_LABEL}
         </Link>
       </nav>
     </header>

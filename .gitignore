@@ -7,3 +7,7 @@ dist
 .vercel
 *.log
 .vite
+.cursor/superpowers
+services/property-api/.venv
+services/property-api/__pycache__
+services/property-api/.crawl4ai

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 
 const MAX_ENTRIES = 12
+const DEDUPE_MS = 4000
 
 const TelemetryContext = createContext(null)
 
@@ -15,15 +16,23 @@ export function TelemetryProvider({ children }) {
     {
       id: 'boot-0',
       time: formatTime(),
-      text: 'Public Data Command initialized',
+      text: 'Map ready',
       type: 'stable',
-      source: 'System',
+      source: 'Map',
     },
   ])
   const counterRef = useRef(0)
+  const lastEntryRef = useRef(null)
 
   const pushEvent = useCallback(({ text, type = 'live', source = 'System' }) => {
     if (!text) return
+
+    const now = Date.now()
+    const last = lastEntryRef.current
+    if (last && last.text === text && last.source === source && now - last.at < DEDUPE_MS) {
+      return last.entry
+    }
+
     counterRef.current += 1
     entryCounter += 1
     const entry = {
@@ -33,6 +42,7 @@ export function TelemetryProvider({ children }) {
       type,
       source,
     }
+    lastEntryRef.current = { text, source, at: now, entry }
     setEntries(prev => [...prev, entry].slice(-MAX_ENTRIES))
     return entry
   }, [])

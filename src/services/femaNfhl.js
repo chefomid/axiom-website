@@ -57,7 +57,7 @@ function arcgisFeatureToRiskEvent(feature) {
     dataSources: ['fema'],
     raw: props,
     links: {
-      official: 'https://msc.fema.gov/portal/home',
+      official: `https://msc.fema.gov/portal/search?AddressQuery=${centroid.lat},${centroid.lng}`,
     },
   }
 }
@@ -146,6 +146,7 @@ export function nfhlToSignals(zoneMarkers, limit = 6) {
       confidence: marker.confidence,
       action: marker.action,
       markerId: marker.id,
+      timestamp: marker.timestamp ?? null,
       live: true,
     }))
 }

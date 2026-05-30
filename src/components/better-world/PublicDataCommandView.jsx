@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { TelemetryProvider, useTelemetry } from '../../context/TelemetryContext'
 import {
   COUNTRIES,
@@ -20,12 +21,19 @@ import {
   filterMarkersByScope,
   filterZones,
 } from '../../utils/filterMapData'
+import {
+  dataSourceToggleMessage,
+  layerToggleMessage,
+  scopeAppliedMessage,
+  TELEMETRY_SOURCE,
+} from '../../utils/userTelemetry'
 import CommandHeader from './CommandHeader'
 import FeedStatusBar from './FeedStatusBar'
 import IntelligencePanel from './IntelligencePanel'
 import TelemetryFeed from './TelemetryFeed'
 import MapErrorBoundary from './MapErrorBoundary'
 import CommandMap from './CommandMap'
+import EarthquakeAnalysisModal from './EarthquakeAnalysisModal'
 
 const SCOPE_STORAGE_KEY = 'axiom-command-scope-configured'
 
@@ -39,6 +47,12 @@ export default function PublicDataCommandView() {
 
 function PublicDataCommandViewInner() {
   const { pushEvent } = useTelemetry()
+  const [searchParams] = useSearchParams()
+  const deepLat = parseFloat(searchParams.get('lat') ?? '')
+  const deepLng = parseFloat(searchParams.get('lng') ?? '')
+  const deepScope = searchParams.get('scope')
+  const hasDeepLocation =
+    deepScope === 'local' && Number.isFinite(deepLat) && Number.isFinite(deepLng)
   const defaultLayers = useMemo(
     () => new Set(RISK_LAYERS.filter(l => l.defaultActive).map(l => l.id)),
     [],
@@ -52,12 +66,26 @@ function PublicDataCommandViewInner() {
   const [activeDataSources, setActiveDataSources] = useState(defaultSources)
   const [selectedMarkerId, setSelectedMarkerId] = useState(null)
 
-  const [scope, setScope] = useState('global')
+  const [scope, setScope] = useState(hasDeepLocation ? 'local' : 'global')
   const [radiusMiles, setRadiusMiles] = useState(50)
   const [countryId, setCountryId] = useState('US')
-  const [userLocation, setUserLocation] = useState(null)
+  const [userLocation, setUserLocation] = useState(
+    hasDeepLocation ? { lat: deepLat, lng: deepLng } : null,
+  )
   const [scopeModalOpen, setScopeModalOpen] = useState(false)
+  const [scopeApplyKey, setScopeApplyKey] = useState(0)
+  const [analysisOpen, setAnalysisOpen] = useState(false)
   const [minEarthquakeMag, setMinEarthquakeMag] = useState(2.5)
+
+  useEffect(() => {
+    if (!hasDeepLocation) return
+    sessionStorage.setItem(SCOPE_STORAGE_KEY, 'true')
+    pushEvent({
+      text: 'Map centered on your property',
+      type: 'live',
+      source: TELEMETRY_SOURCE.scope,
+    })
+  }, [hasDeepLocation, deepLat, deepLng, pushEvent])
 
   const scopeConfig = { scope, userLocation, radiusMiles, countryId }
 
@@ -71,8 +99,11 @@ function PublicDataCommandViewInner() {
     addPin,
     selectPin,
     removePin,
+    movePin,
     clearPins,
   } = useMapPins({ pushEvent })
+
+  const [analysisPinCenter, setAnalysisPinCenter] = useState(null)
 
   const usgsEnabled = activeDataSources.has('usgs') && activeLayers.has('earthquake')
   const {
@@ -99,6 +130,7 @@ function PublicDataCommandViewInner() {
     markers: firmsMarkers,
     loading: firmsLoading,
     error: firmsError,
+    errorRetryAt: firmsErrorRetryAt,
     meta: firmsMeta,
   } = useNasaFirms({ ...scopeConfig, enabled: firmsEnabled })
 
@@ -198,9 +230,9 @@ function PublicDataCommandViewInner() {
         if (enabling) next.add(layerId)
         else next.delete(layerId)
         pushEvent({
-          text: enabling ? `${label} layer enabled` : `${label} layer disabled`,
+          text: layerToggleMessage(label, enabling),
           type: enabling ? 'live' : 'stable',
-          source: 'Layers',
+          source: TELEMETRY_SOURCE.layers,
         })
         return next
       })
@@ -210,12 +242,12 @@ function PublicDataCommandViewInner() {
 
   const enableAllLayers = useCallback(() => {
     setActiveLayers(new Set(RISK_LAYERS.map(l => l.id)))
-    pushEvent({ text: 'All data layers enabled', type: 'live', source: 'Layers' })
+    pushEvent({ text: 'All layers turned on', type: 'live', source: TELEMETRY_SOURCE.layers })
   }, [pushEvent])
 
   const clearAllLayers = useCallback(() => {
     setActiveLayers(new Set())
-    pushEvent({ text: 'All data layers cleared', type: 'watch', source: 'Layers' })
+    pushEvent({ text: 'All layers turned off', type: 'watch', source: TELEMETRY_SOURCE.layers })
   }, [pushEvent])
 
   const toggleSource = useCallback(
@@ -227,9 +259,9 @@ function PublicDataCommandViewInner() {
         if (enabling) next.add(sourceId)
         else next.delete(sourceId)
         pushEvent({
-          text: enabling ? `${label} data source enabled` : `${label} data source disabled`,
+          text: dataSourceToggleMessage(label, enabling),
           type: enabling ? 'live' : 'stable',
-          source: 'Sources',
+          source: TELEMETRY_SOURCE.layers,
         })
         return next
       })
@@ -241,15 +273,15 @@ function PublicDataCommandViewInner() {
     id => {
       setSelectedMarkerId(id)
       if (!id) {
-        pushEvent({ text: 'Selection cleared', type: 'stable', source: 'Map' })
+        pushEvent({ text: 'Selection cleared', type: 'stable', source: TELEMETRY_SOURCE.map })
         return
       }
       const item =
         allPointMarkers.find(m => m.id === id) ?? allZones.find(z => z.id === id)
       pushEvent({
-        text: `Selected — ${item?.title ?? id}`,
+        text: `Selected — ${item?.title ?? 'map item'}`,
         type: 'live',
-        source: 'Map',
+        source: TELEMETRY_SOURCE.map,
       })
     },
     [pushEvent, allPointMarkers, allZones],
@@ -261,20 +293,17 @@ function PublicDataCommandViewInner() {
       setRadiusMiles(nextRadius)
       setCountryId(nextCountry)
       setUserLocation(nextLocation)
+      setScopeApplyKey(k => k + 1)
       sessionStorage.setItem(SCOPE_STORAGE_KEY, 'true')
 
-      const scopeLabels = { local: 'Local', national: 'National', global: 'Global' }
       const country = COUNTRIES.find(c => c.id === nextCountry)
-      const detail =
-        nextScope === 'national' && country
-          ? `${scopeLabels[nextScope]} · ${country.label}`
-          : nextScope === 'local'
-            ? `${scopeLabels[nextScope]} · ${nextRadius} mi`
-            : scopeLabels[nextScope] ?? nextScope
       pushEvent({
-        text: `Operational scope applied — ${detail}`,
+        text: scopeAppliedMessage(nextScope, {
+          radiusMiles: nextRadius,
+          countryLabel: country?.label,
+        }),
         type: 'live',
-        source: 'Scope',
+        source: TELEMETRY_SOURCE.scope,
       })
     },
     [pushEvent],
@@ -284,27 +313,34 @@ function PublicDataCommandViewInner() {
     partial => {
       if (partial.scope !== undefined) {
         setScope(partial.scope)
-        pushEvent({
-          text: `Scope mode — ${partial.scope}`,
-          type: 'live',
-          source: 'Scope',
-        })
+        const scopeText = {
+          local: 'Switched to nearby view',
+          national: 'Switched to country view',
+          global: 'Switched to worldwide view',
+        }[partial.scope]
+        if (scopeText) {
+          pushEvent({
+            text: scopeText,
+            type: 'live',
+            source: TELEMETRY_SOURCE.scope,
+          })
+        }
       }
       if (partial.radiusMiles !== undefined) {
         setRadiusMiles(partial.radiusMiles)
         pushEvent({
-          text: `Local radius set to ${partial.radiusMiles} mi`,
+          text: `Search radius set to ${partial.radiusMiles} miles`,
           type: 'stable',
-          source: 'Scope',
+          source: TELEMETRY_SOURCE.scope,
         })
       }
       if (partial.countryId !== undefined) {
         setCountryId(partial.countryId)
         const country = COUNTRIES.find(c => c.id === partial.countryId)
         pushEvent({
-          text: `National scope — ${country?.label ?? partial.countryId}`,
+          text: `Showing ${country?.label ?? 'selected country'}`,
           type: 'stable',
-          source: 'Scope',
+          source: TELEMETRY_SOURCE.scope,
         })
       }
     },
@@ -316,13 +352,46 @@ function PublicDataCommandViewInner() {
       setMinEarthquakeMag(value)
       const label = EARTHQUAKE_MAGNITUDE_OPTIONS.find(o => o.value === value)?.label ?? `M${value}+`
       pushEvent({
-        text: `Earthquake filter set to ${label} (last 30 days)`,
+        text: `Showing earthquakes ${label} (last 30 days)`,
         type: 'live',
-        source: 'USGS',
+        source: TELEMETRY_SOURCE.earthquake,
       })
     },
     [pushEvent],
   )
+
+  const handleOpenAnalysis = useCallback(() => {
+    setAnalysisPinCenter(null)
+    setAnalysisOpen(true)
+    pushEvent({
+      text: 'Opened earthquake analysis',
+      type: 'live',
+      source: TELEMETRY_SOURCE.earthquake,
+    })
+  }, [pushEvent])
+
+  const handleAnalyzeAtPin = useCallback(
+    pin => {
+      if (!pin) return
+      setAnalysisPinCenter({
+        lat: pin.lat,
+        lng: pin.lng,
+        label: pin.label ?? `${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}`,
+      })
+      setAnalysisOpen(true)
+      pushEvent({
+        text: `Earthquake analysis at ${pin.label ?? 'pin'}`,
+        type: 'live',
+        source: TELEMETRY_SOURCE.earthquake,
+      })
+    },
+    [pushEvent],
+  )
+
+  const handleCloseAnalysis = useCallback(() => {
+    setAnalysisOpen(false)
+    setAnalysisPinCenter(null)
+  }, [])
 
   const layerLoading = useMemo(
     () => ({
@@ -338,10 +407,12 @@ function PublicDataCommandViewInner() {
     const errors = []
     if (usgsError) errors.push({ source: 'USGS', message: usgsError })
     if (nwsError) errors.push({ source: 'NWS', message: nwsError })
-    if (firmsError) errors.push({ source: 'NASA FIRMS', message: firmsError })
+    if (firmsError) {
+      errors.push({ source: 'NASA FIRMS', message: firmsError, retryAt: firmsErrorRetryAt })
+    }
     if (femaError) errors.push({ source: 'FEMA NFHL', message: femaError })
     return errors
-  }, [usgsError, nwsError, firmsError, femaError])
+  }, [usgsError, nwsError, firmsError, firmsErrorRetryAt, femaError])
 
   const feedStatus = useMemo(
     () => [
@@ -420,6 +491,7 @@ function PublicDataCommandViewInner() {
                 onSelectMarker={handleSelectMarker}
                 onScopeApply={handleScopeApply}
                 onScopeChange={handleScopeChange}
+                scopeApplyKey={scopeApplyKey}
                 scopeModalOpen={scopeModalOpen}
                 onOpenScopeModal={() => setScopeModalOpen(true)}
                 onCloseScopeModal={() => setScopeModalOpen(false)}
@@ -441,6 +513,8 @@ function PublicDataCommandViewInner() {
                     : 0
                 }
                 usgsEnabled={usgsEnabled}
+                analysisOpen={analysisOpen}
+                onOpenAnalysis={handleOpenAnalysis}
                 zoneCount={visibleZones.length}
                 pinMode={pinMode}
                 pins={pins}
@@ -449,6 +523,8 @@ function PublicDataCommandViewInner() {
                 onAddPin={addPin}
                 onSelectPin={selectPin}
                 onRemovePin={removePin}
+                onMovePin={movePin}
+                onAnalyzeAtPin={handleAnalyzeAtPin}
                 onTogglePinMode={togglePinMode}
                 onClearPins={clearPins}
                 pinCount={pinCount}
@@ -483,6 +559,16 @@ function PublicDataCommandViewInner() {
       </div>
 
       <TelemetryFeed />
+
+      <EarthquakeAnalysisModal
+        open={analysisOpen && usgsEnabled}
+        onClose={handleCloseAnalysis}
+        scope={scope}
+        userLocation={userLocation}
+        countryId={countryId}
+        initialMinMagnitude={minEarthquakeMag}
+        initialCenterOverride={analysisPinCenter}
+      />
     </div>
   )
 }

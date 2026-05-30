@@ -29,6 +29,8 @@ export function ToggleChip({
   accent = 'cyber',
   layerColor,
   showDot = true,
+  iconSrc,
+  iconAlt = '',
   title,
 }) {
   const a = ACCENT[accent] ?? ACCENT.cyber
@@ -57,22 +59,33 @@ export function ToggleChip({
         useLayerColor ? neutralChip : active ? a.active : neutralChip
       } ${loading ? 'opacity-90' : ''}`}
     >
-      {showDot && (
-        <span
-          style={dotStyle}
-          className={`h-2 w-2 shrink-0 rounded-full transition-all ${
-            useLayerColor
-              ? loading
-                ? 'animate-pulse'
-                : ''
-              : active
-                ? a.dot
-                : loading
-                  ? 'animate-pulse bg-command-watch'
-                  : 'bg-[#555]'
-          }`}
-          aria-hidden
+      {iconSrc ? (
+        <img
+          src={iconSrc}
+          alt={iconAlt}
+          aria-hidden={iconAlt ? undefined : true}
+          className={`h-4 w-4 shrink-0 rounded-sm object-contain transition-opacity ${
+            active ? 'opacity-100' : 'opacity-55'
+          } ${loading ? 'animate-pulse' : ''}`}
         />
+      ) : (
+        showDot && (
+          <span
+            style={dotStyle}
+            className={`h-2 w-2 shrink-0 rounded-full transition-all ${
+              useLayerColor
+                ? loading
+                  ? 'animate-pulse'
+                  : ''
+                : active
+                  ? a.dot
+                  : loading
+                    ? 'animate-pulse bg-command-watch'
+                    : 'bg-[#555]'
+            }`}
+            aria-hidden
+          />
+        )
       )}
       <span className="min-w-0 truncate">{children}</span>
     </button>
@@ -138,7 +151,7 @@ export function TextAction({ onClick, children, highlight = false, disabled = fa
 }
 
 /** Side-panel row toggle with switch */
-export function PanelToggle({ active, onClick, label, meta, accent = 'live' }) {
+export function PanelToggle({ active, onClick, label, meta, accent = 'live', iconSrc, iconAlt = '' }) {
   const borderAccent =
     accent === 'stable' ? 'border-command-stable' : accent === 'cyber' ? 'border-command-cyber' : 'border-command-live'
   const textAccent =
@@ -154,6 +167,16 @@ export function PanelToggle({ active, onClick, label, meta, accent = 'live' }) {
           : 'border-l-2 border-transparent hover:bg-white/[0.02]'
       }`}
     >
+      {iconSrc && (
+        <img
+          src={iconSrc}
+          alt={iconAlt}
+          aria-hidden={iconAlt ? undefined : true}
+          className={`h-5 w-5 shrink-0 rounded-sm object-contain transition-opacity ${
+            active ? 'opacity-100' : 'opacity-55 group-hover:opacity-75'
+          }`}
+        />
+      )}
       <div className="min-w-0 flex-1">
         <span className={`block font-mono text-[12px] ${active ? 'text-white' : 'text-ink-faint group-hover:text-ink-secondary'}`}>
           {label}

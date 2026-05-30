@@ -27,6 +27,16 @@ function brightnessSeverity(brightness) {
   return 'live'
 }
 
+function firmsAcquisitionTimestamp(row) {
+  if (!row.acq_date) return null
+  if (!row.acq_time) return row.acq_date
+
+  const padded = String(row.acq_time).padStart(4, '0')
+  const hours = padded.slice(0, 2)
+  const minutes = padded.slice(2, 4)
+  return `${row.acq_date}T${hours}:${minutes}:00Z`
+}
+
 function rowToRiskEvent(row) {
   const lat = parseFloat(row.latitude)
   const lng = parseFloat(row.longitude)
@@ -46,7 +56,7 @@ function rowToRiskEvent(row) {
     label: `FIRMS-${lat.toFixed(2)},${lng.toFixed(2)}`,
     title: `Fire hotspot · ${row.acq_date ?? 'recent'}`,
     severity: brightnessSeverity(row.bright_ti4 ?? row.brightness),
-    timestamp: row.acq_date,
+    timestamp: firmsAcquisitionTimestamp(row),
     confidence: row.confidence === 'h' ? 95 : row.confidence === 'n' ? 70 : 85,
     detail: [
       `Brightness ${row.bright_ti4 ?? row.brightness ?? 'n/a'}`,
@@ -187,6 +197,7 @@ export function firmsToSignals(markers, limit = 6) {
       confidence: marker.confidence,
       action: marker.action,
       markerId: marker.id,
+      timestamp: marker.timestamp ?? null,
       live: true,
     }))
 }

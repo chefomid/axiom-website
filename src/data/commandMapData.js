@@ -1,4 +1,18 @@
-export const RADIUS_OPTIONS = [25, 50, 75, 100, 250]
+export const RADIUS_OPTIONS = [25, 50, 75, 100, 150, 200, 250]
+
+export const ANALYTICS_RADIUS_BREAKPOINTS = [25, 50, 75, 100, 150, 200, 250]
+
+/** Continental US national analysis — wider bands from geographic center. */
+export const NATIONAL_US_MAX_RADIUS_MILES = 1600
+export const NATIONAL_US_RADIUS_BREAKPOINTS = [100, 250, 500, 750, 1000, 1250, 1600]
+export const NATIONAL_US_RADIUS_OPTIONS = [500, 750, 1000, 1250, 1600]
+
+export const ANALYTICS_YEAR_PRESETS = [
+  { id: '1y', label: '1Y', years: 1 },
+  { id: '5y', label: '5Y', years: 5 },
+  { id: '10y', label: '10Y', years: 10 },
+  { id: '30y', label: '30Y', years: 30 },
+]
 
 export const SCOPE_MODES = [
   { id: 'local', label: 'Local' },
@@ -17,10 +31,10 @@ export const EARTHQUAKE_MAGNITUDE_OPTIONS = [
 
 /** Live public-sector feeds on Public Data Command */
 export const DATA_SOURCES = [
-  { id: 'usgs', label: 'USGS', defaultActive: true },
-  { id: 'nws', label: 'NWS', defaultActive: true },
-  { id: 'fema', label: 'FEMA', defaultActive: true },
-  { id: 'nasa', label: 'NASA', defaultActive: true },
+  { id: 'usgs', label: 'USGS', logo: '/data-sources/usgs.svg', defaultActive: true },
+  { id: 'nws', label: 'NWS', logo: '/data-sources/nws.svg', defaultActive: true },
+  { id: 'fema', label: 'FEMA', logo: '/data-sources/fema.svg', defaultActive: true },
+  { id: 'nasa', label: 'NASA', logo: '/data-sources/nasa.svg', defaultActive: true },
 ]
 
 export const COUNTRIES = [
@@ -31,6 +45,53 @@ export const COUNTRIES = [
   { id: 'DE', label: 'Germany', center: [10.4, 51.1], zoom: 5.2 },
   { id: 'AU', label: 'Australia', center: [133.8, -25.3], zoom: 3.8 },
   { id: 'JP', label: 'Japan', center: [138.0, 36.2], zoom: 4.8 },
+]
+
+/** Bounding boxes [minLon, minLat, maxLon, maxLat] for address search + USGS seismic analysis */
+export const SEISMIC_COUNTRY_BBOX = {
+  US: [-125.0, 24.5, -66.9, 49.5],
+  CA: [-141.0, 41.7, -52.6, 83.1],
+  MX: [-118.4, 14.5, -86.7, 32.7],
+  GB: [-8.6, 49.9, 1.8, 60.9],
+  DE: [5.9, 47.3, 15.0, 55.1],
+  AU: [113.3, -43.6, 153.6, -10.7],
+  JP: [129.0, 30.0, 146.0, 45.5],
+}
+
+/** Worldwide seismic analysis — full USGS catalog, no regional filter */
+export const GLOBAL_ANALYSIS_COUNTRY = {
+  id: 'GLOBAL',
+  label: 'Global',
+  center: [-20, 30],
+  zoom: 1.8,
+  bbox: null,
+  addressPlaceholder: 'Select a country for address search',
+}
+
+/** Countries with verified USGS catalog coverage for seismic analytics (Step 1 picker). */
+export const SEISMIC_ANALYTICS_COUNTRY_IDS = ['US', 'CA', 'MX', 'JP', 'AU']
+
+/** Countries with USGS catalog coverage used in Seismic Analysis location picker */
+export const SEISMIC_ANALYSIS_COUNTRIES = [
+  GLOBAL_ANALYSIS_COUNTRY,
+  ...COUNTRIES.filter(country => SEISMIC_ANALYTICS_COUNTRY_IDS.includes(country.id)).map(country => ({
+  ...country,
+  bbox: SEISMIC_COUNTRY_BBOX[country.id],
+  addressPlaceholder:
+    country.id === 'US'
+      ? '825 NE Multnomah St, Portland OR'
+      : country.id === 'CA'
+        ? '100 Queen St W, Toronto ON'
+        : country.id === 'MX'
+          ? 'Av. Paseo de la Reforma 222, CDMX'
+          : country.id === 'GB'
+            ? '10 Downing St, London'
+            : country.id === 'DE'
+              ? 'Unter den Linden 1, Berlin'
+              : country.id === 'AU'
+                ? '1 Macquarie St, Sydney NSW'
+                : '1 Chiyoda, Tokyo',
+  })),
 ]
 
 /** Map + UI accent hex per risk layer (matches CommandMap zone/point palette) */

@@ -24,6 +24,19 @@ function signalAccent(signal) {
   }
 }
 
+function formatSignalDateTime(value) {
+  if (value == null) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 export default function IntelligencePanel({ signals, selectedMarkerId, onSelectSignal, scope }) {
   const listRef = useRef(null)
 
@@ -69,6 +82,7 @@ export default function IntelligencePanel({ signals, selectedMarkerId, onSelectS
               const accent = signalAccent(signal)
               const layer = LAYER_BY_ID[signal.layer]
               const layerColor = LAYER_COLORS[signal.layer] ?? '#888888'
+              const occurredAt = formatSignalDateTime(signal.timestamp)
 
               return (
                 <li key={signal.id}>
@@ -121,6 +135,11 @@ export default function IntelligencePanel({ signals, selectedMarkerId, onSelectS
                           </span>
                         </div>
                         <p className="mt-1.5 text-sm leading-snug text-white">{signal.title}</p>
+                        {occurredAt && (
+                          <p className="mt-1 font-mono text-[10px] tabular-nums text-ink-faint">
+                            {occurredAt}
+                          </p>
+                        )}
                         <p className="mt-1.5 font-mono text-[10px] text-ink-muted">
                           Source: {signal.source} · Confidence: {signal.confidence}%
                         </p>

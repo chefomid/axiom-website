@@ -2,24 +2,27 @@ const memory = new Map()
 
 const TTL_MS = {
   usgs: 5 * 60 * 1000,
+  'usgs-history': 60 * 60 * 1000,
   nws: 3 * 60 * 1000,
   firms: 15 * 60 * 1000,
   nfhl: 7 * 24 * 60 * 60 * 1000,
 }
+
+const SESSION_FEEDS = new Set(['usgs', 'usgs-history'])
 
 function storageKey(feed, key) {
   return `axiom-risk-cache:${feed}:${key}`
 }
 
 /**
- * @param {'usgs'|'nws'|'firms'|'nfhl'} feed
+ * @param {'usgs'|'usgs-history'|'nws'|'firms'|'nfhl'} feed
  * @param {string} key
  */
 export function getRiskCache(feed, key) {
   const mem = memory.get(`${feed}:${key}`)
   if (mem && Date.now() < mem.expiresAt) return mem.data
 
-  if (feed === 'usgs') {
+  if (SESSION_FEEDS.has(feed)) {
     try {
       const raw = sessionStorage.getItem(storageKey(feed, key))
       if (!raw) return null
@@ -39,15 +42,15 @@ export function getRiskCache(feed, key) {
 }
 
 /**
- * @param {'usgs'|'nws'|'firms'|'nfhl'} feed
+ * @param {'usgs'|'usgs-history'|'nws'|'firms'|'nfhl'} feed
  * @param {string} key
  * @param {unknown} data
  */
 export function setRiskCache(feed, key, data) {
-  const entry = { data, expiresAt: Date.now() + TTL_MS[feed] }
+  const entry = { data, expiresAt: Date.now() + (TTL_MS[feed] ?? 5 * 60 * 1000) }
   memory.set(`${feed}:${key}`, entry)
 
-  if (feed === 'usgs') {
+  if (SESSION_FEEDS.has(feed)) {
     try {
       sessionStorage.setItem(storageKey(feed, key), JSON.stringify(entry))
     } catch {

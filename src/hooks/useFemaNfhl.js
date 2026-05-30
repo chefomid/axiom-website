@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import { useTelemetry } from '../context/TelemetryContext'
 import { fetchFemaNfhlZones } from '../services/femaNfhl'
 import { riskEventsToZones } from '../utils/riskNormalize'
+import {
+  feedFailedMessage,
+  feedLoadedMessage,
+  shouldAnnounceFeedLoad,
+  telemetrySourceForLayer,
+} from '../utils/userTelemetry'
 
 const EMPTY_META = {
   sourceName: 'FEMA NFHL',
@@ -35,7 +41,6 @@ export default function useFemaNfhl({ scope, userLocation, radiusMiles, countryI
     async function load() {
       setLoading(true)
       setError(null)
-      pushEvent({ text: 'FEMA NFHL flood zone request started', type: 'live', source: 'FEMA' })
 
       try {
         const result = await fetchFemaNfhlZones(scopeConfig, { signal: controller.signal })
@@ -55,19 +60,24 @@ export default function useFemaNfhl({ scope, userLocation, radiusMiles, countryI
           bbox: result.bbox,
         })
 
-        const cacheNote = result.fromCache ? ' (cache)' : ''
-        pushEvent({
-          text: `FEMA NFHL returned ${markers.length} flood zone${markers.length === 1 ? '' : 's'}${cacheNote}`,
-          type: markers.length > 0 ? 'stable' : 'watch',
-          source: 'FEMA',
-        })
+        if (shouldAnnounceFeedLoad(result.fromCache)) {
+          pushEvent({
+            text: feedLoadedMessage('flood', markers.length),
+            type: markers.length > 0 ? 'stable' : 'watch',
+            source: telemetrySourceForLayer('flood'),
+          })
+        }
       } catch (err) {
         if (cancelled || err.name === 'AbortError') return
         const message = err.message ?? 'Failed to load FEMA NFHL data'
         setError(message)
         setZones([])
         setMeta(EMPTY_META)
-        pushEvent({ text: `FEMA NFHL failed — ${message}`, type: 'critical', source: 'FEMA' })
+        pushEvent({
+          text: feedFailedMessage('FEMA NFHL', message),
+          type: 'critical',
+          source: telemetrySourceForLayer('flood'),
+        })
       } finally {
         if (!cancelled) setLoading(false)
       }

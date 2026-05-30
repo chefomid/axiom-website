@@ -22,6 +22,7 @@ import RiskMarkerCard from './RiskMarkerCard'
 import ScopeControlBar from './ScopeControlBar'
 import ScopeSetupModal from './ScopeSetupModal'
 import MapControlsDock from './MapControlsDock'
+import FeedErrorBanner from './FeedErrorBanner'
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 const MAP_STYLE_FALLBACK = 'https://demotiles.maplibre.org/style.json'
@@ -144,6 +145,7 @@ export default function CommandMap({
   onSelectMarker,
   onScopeApply,
   onScopeChange,
+  scopeApplyKey = 0,
   scopeModalOpen,
   onOpenScopeModal,
   onCloseScopeModal,
@@ -161,6 +163,8 @@ export default function CommandMap({
   earthquakeCount,
   usgsEnabled,
   zoneCount = 0,
+  analysisOpen = false,
+  onOpenAnalysis,
   pinMode = false,
   pins = [],
   segments = [],
@@ -168,6 +172,8 @@ export default function CommandMap({
   onAddPin,
   onSelectPin,
   onRemovePin,
+  onMovePin,
+  onAnalyzeAtPin,
   onTogglePinMode,
   onClearPins,
   pinCount = 0,
@@ -180,8 +186,13 @@ export default function CommandMap({
   const onAddPinRef = useRef(onAddPin)
   const onSelectPinRef = useRef(onSelectPin)
   const onRemovePinRef = useRef(onRemovePin)
+  const onMovePinRef = useRef(onMovePin)
+  const onAnalyzeAtPinRef = useRef(onAnalyzeAtPin)
   const pinModeRef = useRef(pinMode)
+  const pinDragRef = useRef({ id: null, moved: false, startX: 0, startY: 0 })
+  const pinDragJustEndedRef = useRef(false)
   const markersByIdRef = useRef(new Map())
+  const pinsByIdRef = useRef(new Map())
   const lastFlownMarkerIdRef = useRef(null)
   const pendingFlyMarkerIdRef = useRef(null)
   const setHoverTipRef = useRef(null)
@@ -195,6 +206,8 @@ export default function CommandMap({
   onAddPinRef.current = onAddPin
   onSelectPinRef.current = onSelectPin
   onRemovePinRef.current = onRemovePin
+  onMovePinRef.current = onMovePin
+  onAnalyzeAtPinRef.current = onAnalyzeAtPin
   pinModeRef.current = pinMode
   setHoverTipRef.current = setHoverTip
 
@@ -204,6 +217,10 @@ export default function CommandMap({
       ...zones.map(z => [z.id, z]),
     ])
   }, [markers, zones])
+
+  useEffect(() => {
+    pinsByIdRef.current = new Map(pins.map(p => [p.id, p]))
+  }, [pins])
 
   const geoJson = useMemo(
     () => markersToGeoJSON(markers, selectedMarkerId),
@@ -295,15 +312,12 @@ export default function CommandMap({
         source: 'risk-zones',
         paint: {
           'fill-color': [
-            'match',
-            ['get', 'layer'],
-            'weather',
-            '#e8a838',
-            'flood',
-            '#4a9eff',
-            '#888888',
+            'case',
+            ['==', ['get', 'selected'], true],
+            '#ffe566',
+            ['get', 'color'],
           ],
-          'fill-opacity': ['case', ['==', ['get', 'selected'], true], 0.35, 0.18],
+          'fill-opacity': ['case', ['==', ['get', 'selected'], true], 0.52, 0.2],
         },
       })
       map.addLayer({
@@ -312,16 +326,24 @@ export default function CommandMap({
         source: 'risk-zones',
         paint: {
           'line-color': [
-            'match',
-            ['get', 'layer'],
-            'weather',
-            '#e8a838',
-            'flood',
-            '#4a9eff',
-            '#aaaaaa',
+            'case',
+            ['==', ['get', 'selected'], true],
+            '#ffffff',
+            ['get', 'color'],
           ],
-          'line-width': ['case', ['==', ['get', 'selected'], true], 2.5, 1.2],
-          'line-opacity': 0.75,
+          'line-width': ['case', ['==', ['get', 'selected'], true], 2.5, 1],
+          'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.95, 0.65],
+        },
+      })
+      map.addLayer({
+        id: 'risk-zones-selected-outline',
+        type: 'line',
+        source: 'risk-zones',
+        filter: ['==', ['get', 'selected'], true],
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': 4,
+          'line-opacity': 1,
         },
       })
 
@@ -432,8 +454,51 @@ export default function CommandMap({
         if (zone) flyToMapItem(map, zone)
       })
 
+      const PIN_DRAG_THRESHOLD_PX = 5
+
+      map.on('mousedown', 'user-pins', e => {
+        if (!pinModeRef.current) return
+        const id = e.features?.[0]?.properties?.id
+        if (!id) return
+        e.preventDefault()
+        pinDragRef.current = {
+          id,
+          moved: false,
+          startX: e.point.x,
+          startY: e.point.y,
+        }
+        map.dragPan.disable()
+        map.getCanvas().style.cursor = 'grabbing'
+      })
+
+      map.on('mousemove', e => {
+        const drag = pinDragRef.current
+        if (!drag.id) return
+        const dx = e.point.x - drag.startX
+        const dy = e.point.y - drag.startY
+        if (!drag.moved && Math.hypot(dx, dy) < PIN_DRAG_THRESHOLD_PX) return
+        drag.moved = true
+        onMovePinRef.current?.(drag.id, e.lngLat.lat, e.lngLat.lng)
+      })
+
+      const endPinDrag = () => {
+        const drag = pinDragRef.current
+        if (!drag.id) return
+        pinDragJustEndedRef.current = drag.moved
+        map.dragPan.enable()
+        map.getCanvas().style.cursor = ''
+        pinDragRef.current = { id: null, moved: false, startX: 0, startY: 0 }
+      }
+
+      map.on('mouseup', endPinDrag)
+      map.on('mouseout', endPinDrag)
+
       map.on('click', e => {
         if (!pinModeRef.current) return
+        if (pinDragJustEndedRef.current) {
+          pinDragJustEndedRef.current = false
+          return
+        }
         const pinFeatures = map.queryRenderedFeatures(e.point, { layers: ['user-pins'] })
         if (pinFeatures.length > 0) {
           const id = pinFeatures[0].properties?.id
@@ -445,6 +510,15 @@ export default function CommandMap({
         })
         if (hazardFeatures.length > 0) return
         onAddPinRef.current?.(e.lngLat.lat, e.lngLat.lng)
+      })
+
+      map.on('dblclick', 'user-pins', e => {
+        if (!pinModeRef.current) return
+        e.preventDefault()
+        const id = e.features?.[0]?.properties?.id
+        if (!id) return
+        const pin = pinsByIdRef.current.get(id)
+        if (pin) onAnalyzeAtPinRef.current?.(pin)
       })
 
       map.on('contextmenu', e => {
@@ -720,6 +794,15 @@ export default function CommandMap({
 
   useEffect(() => {
     const map = mapRef.current
+    if (!map || !mapReady || !map.getLayer('nfhl-raster-layer')) return
+
+    const selected = zones.find(z => z.id === selectedMarkerId)
+    const dimRaster = selected?.layer === 'flood'
+    map.setPaintProperty('nfhl-raster-layer', 'raster-opacity', dimRaster ? 0.18 : 0.45)
+  }, [selectedMarkerId, zones, mapReady])
+
+  useEffect(() => {
+    const map = mapRef.current
     if (!map || !mapReady) return
     const id = window.requestAnimationFrame(() => map.resize())
     return () => window.cancelAnimationFrame(id)
@@ -779,7 +862,7 @@ export default function CommandMap({
     if (scope === 'global') {
       map.flyTo({ center: [-20, 30], zoom: 1.8, duration: 1000 })
     }
-  }, [scope, userLocation, radiusMiles, countryId, mapReady])
+  }, [scope, userLocation?.lat, userLocation?.lng, radiusMiles, countryId, mapReady, scopeApplyKey])
 
   useEffect(() => {
     const map = mapRef.current
@@ -904,21 +987,21 @@ export default function CommandMap({
         onMinEarthquakeMagChange={onMinEarthquakeMagChange}
         earthquakeCount={earthquakeCount}
         usgsEnabled={usgsEnabled}
+        analysisOpen={analysisOpen}
+        onOpenAnalysis={onOpenAnalysis}
         pinMode={pinMode}
         onTogglePinMode={onTogglePinMode}
         pinCount={pinCount}
         onClearPins={onClearPins}
+        pins={pins}
+        selectedPinId={selectedPinId}
+        onAnalyzeAtPin={onAnalyzeAtPin}
       />
 
       {liveFeedErrors.length > 0 && (
-        <div className="absolute left-3 top-16 z-20 flex max-w-xs flex-col gap-1">
-          {liveFeedErrors.map(({ source, message }) => (
-            <p
-              key={source}
-              className="rounded border border-command-critical/40 bg-[#0d0d0d]/90 px-2 py-1 font-mono text-[9px] text-command-critical backdrop-blur-sm"
-            >
-              {source} feed: {message}
-            </p>
+        <div className="absolute left-3 top-16 z-20 flex max-w-xs flex-col gap-1.5">
+          {liveFeedErrors.map(({ source, message, retryAt }) => (
+            <FeedErrorBanner key={source} source={source} message={message} retryAt={retryAt} />
           ))}
         </div>
       )}

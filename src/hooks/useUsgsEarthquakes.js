@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import { useTelemetry } from '../context/TelemetryContext'
 import { fetchUsgsEarthquakes } from '../services/usgsEarthquakes'
 import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
+import {
+  feedFailedMessage,
+  feedLoadedMessage,
+  shouldAnnounceFeedLoad,
+  telemetrySourceForLayer,
+} from '../utils/userTelemetry'
 
 const EMPTY_META = {
   sourceName: 'USGS',
@@ -40,7 +46,6 @@ export default function useUsgsEarthquakes({
     async function load() {
       setLoading(true)
       setError(null)
-      pushEvent({ text: 'USGS earthquake catalog request started', type: 'live', source: 'USGS' })
 
       try {
         const cacheKey = riskCacheKey([
@@ -79,19 +84,24 @@ export default function useUsgsEarthquakes({
           recordCount: results.length,
           requestUrl,
         })
-        const cacheNote = fromCache ? ' (cache)' : ''
-        pushEvent({
-          text: `USGS returned ${results.length} event${results.length === 1 ? '' : 's'} (M${minMagnitude}+, last 30 days)${cacheNote}`,
-          type: results.length > 0 ? 'stable' : 'watch',
-          source: 'USGS',
-        })
+        if (shouldAnnounceFeedLoad(fromCache)) {
+          pushEvent({
+            text: feedLoadedMessage('earthquake', results.length, { minMagnitude }),
+            type: results.length > 0 ? 'stable' : 'watch',
+            source: telemetrySourceForLayer('earthquake'),
+          })
+        }
       } catch (err) {
         if (cancelled || err.name === 'AbortError') return
         const message = err.message ?? 'Failed to load USGS data'
         setError(message)
         setMarkers([])
         setMeta(EMPTY_META)
-        pushEvent({ text: `USGS request failed — ${message}`, type: 'critical', source: 'USGS' })
+        pushEvent({
+          text: feedFailedMessage('USGS', message),
+          type: 'critical',
+          source: telemetrySourceForLayer('earthquake'),
+        })
       } finally {
         if (!cancelled) setLoading(false)
       }

@@ -70,6 +70,8 @@ export function toRiskZone(event) {
       officialUrl: event.links?.official,
       nwsUrl: event.layer === 'weather' ? event.links?.official : undefined,
       femaUrl: event.layer === 'flood' ? event.links?.official : undefined,
+      timestamp: event.timestamp,
+      raw: event.raw,
     },
   }
 }

@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import { useTelemetry } from '../context/TelemetryContext'
 import { fetchNwsAlerts } from '../services/nwsAlerts'
 import { riskEventsToZones } from '../utils/riskNormalize'
+import {
+  feedFailedMessage,
+  feedLoadedMessage,
+  shouldAnnounceFeedLoad,
+  telemetrySourceForLayer,
+} from '../utils/userTelemetry'
 
 const EMPTY_META = {
   sourceName: 'NWS',
@@ -33,7 +39,6 @@ export default function useNwsAlerts({ scope, userLocation, radiusMiles, country
     async function load() {
       setLoading(true)
       setError(null)
-      pushEvent({ text: 'NWS active alerts request started', type: 'live', source: 'NWS' })
 
       try {
         const result = await fetchNwsAlerts(scopeConfig, { signal: controller.signal })
@@ -51,19 +56,24 @@ export default function useNwsAlerts({ scope, userLocation, radiusMiles, country
           requestUrl: result.requestUrl,
         })
 
-        const cacheNote = result.fromCache ? ' (cache)' : ''
-        pushEvent({
-          text: `NWS returned ${markers.length} alert zone${markers.length === 1 ? '' : 's'}${cacheNote}`,
-          type: markers.length > 0 ? 'stable' : 'watch',
-          source: 'NWS',
-        })
+        if (shouldAnnounceFeedLoad(result.fromCache)) {
+          pushEvent({
+            text: feedLoadedMessage('weather', markers.length),
+            type: markers.length > 0 ? 'stable' : 'watch',
+            source: telemetrySourceForLayer('weather'),
+          })
+        }
       } catch (err) {
         if (cancelled || err.name === 'AbortError') return
         const message = err.message ?? 'Failed to load NWS data'
         setError(message)
         setZones([])
         setMeta(EMPTY_META)
-        pushEvent({ text: `NWS request failed — ${message}`, type: 'critical', source: 'NWS' })
+        pushEvent({
+          text: feedFailedMessage('NWS', message),
+          type: 'critical',
+          source: telemetrySourceForLayer('weather'),
+        })
       } finally {
         if (!cancelled) setLoading(false)
       }

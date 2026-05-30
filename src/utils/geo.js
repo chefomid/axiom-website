@@ -86,12 +86,118 @@ export function createCirclePolygon(center, radiusMiles, steps = 64) {
   }
 }
 
+/** Axis-aligned square centered on a point; halfSideMiles = center to each edge. */
+export function createSquarePolygon(center, halfSideMiles) {
+  const cornerDist = halfSideMiles * Math.SQRT2
+  const coords = [45, 135, 225, 315].map(bearing => {
+    const pt = destinationPoint(center.lat, center.lng, bearing, cornerDist)
+    return [pt.lng, pt.lat]
+  })
+  coords.push(coords[0])
+  return {
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [coords] },
+  }
+}
+
+export function createSquareRingPolygon(center, innerHalfSide, outerHalfSide) {
+  const outer = createSquarePolygon(center, outerHalfSide).geometry.coordinates[0]
+  const inner = createSquarePolygon(center, innerHalfSide).geometry.coordinates[0].slice().reverse()
+  return {
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [outer, inner] },
+  }
+}
+
+export function squareBoundsForHalfSide(center, halfSideMiles) {
+  const cornerDist = halfSideMiles * Math.SQRT2
+  const corners = [45, 135, 225, 315].map(bearing =>
+    destinationPoint(center.lat, center.lng, bearing, cornerDist),
+  )
+  const lats = corners.map(c => c.lat)
+  const lngs = corners.map(c => c.lng)
+  return [
+    [Math.min(...lngs), Math.min(...lats)],
+    [Math.max(...lngs), Math.max(...lats)],
+  ]
+}
+
+/** World polygon with a circular hole — dims everything outside the analysis radius. */
+export function createCircleOutsideMask(center, radiusMiles, steps = 64) {
+  const inner = createCirclePolygon(center, radiusMiles, steps).geometry.coordinates[0].slice().reverse()
+  const outer = [
+    [-180, -85],
+    [180, -85],
+    [180, 85],
+    [-180, 85],
+    [-180, -85],
+  ]
+  return {
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [outer, inner] },
+  }
+}
+
+export function circleBounds(center, radiusMiles, steps = 64) {
+  const ring = createCirclePolygon(center, radiusMiles, steps).geometry.coordinates[0]
+  const lngs = ring.map(c => c[0])
+  const lats = ring.map(c => c[1])
+  return [
+    [Math.min(...lngs), Math.min(...lats)],
+    [Math.max(...lngs), Math.max(...lats)],
+  ]
+}
+
+/** [[swLng, swLat], [neLng, neLat]] for map.fitBounds from [minLon, minLat, maxLon, maxLat]. */
+export function bboxToBounds(bbox) {
+  if (!bbox || bbox.length !== 4) return null
+  const [minLon, minLat, maxLon, maxLat] = bbox
+  return [
+    [minLon, minLat],
+    [maxLon, maxLat],
+  ]
+}
+
+/** [[swLng, swLat], [neLng, neLat]] for map.fitBounds from event points. */
+export function eventsBounds(events, paddingDeg = 0.75) {
+  let minLng = Infinity
+  let minLat = Infinity
+  let maxLng = -Infinity
+  let maxLat = -Infinity
+
+  for (const event of events) {
+    if (!Number.isFinite(event.lat) || !Number.isFinite(event.lng)) continue
+    minLng = Math.min(minLng, event.lng)
+    minLat = Math.min(minLat, event.lat)
+    maxLng = Math.max(maxLng, event.lng)
+    maxLat = Math.max(maxLat, event.lat)
+  }
+
+  if (!Number.isFinite(minLng)) return null
+
+  return [
+    [minLng - paddingDeg, minLat - paddingDeg],
+    [maxLng + paddingDeg, maxLat + paddingDeg],
+  ]
+}
+
+export function createRingPolygon(center, innerMiles, outerMiles, steps = 64) {
+  const outer = createCirclePolygon(center, outerMiles, steps).geometry.coordinates[0]
+  const inner = createCirclePolygon(center, innerMiles, steps).geometry.coordinates[0].slice().reverse()
+  return {
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [outer, inner] },
+  }
+}
+
 export function zoomForRadiusMiles(radiusMiles) {
   if (radiusMiles <= 25) return 8.2
   if (radiusMiles <= 50) return 7.4
   if (radiusMiles <= 75) return 6.9
   if (radiusMiles <= 100) return 6.5
-  return 5.8
+  if (radiusMiles <= 150) return 6.0
+  if (radiusMiles <= 200) return 5.5
+  return 5.2
 }
 
 function ringCentroid(ring) {

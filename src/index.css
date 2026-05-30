@@ -9,6 +9,7 @@
 html {
   scroll-behavior: smooth;
   height: 100%;
+  color-scheme: dark;
 }
 
 body {
@@ -38,26 +39,31 @@ body.home-snap [data-snap-section] {
   color: #080808;
 }
 
+html,
 .sleek-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #4a4a4a #0b0b0b;
+  scrollbar-color: #4a4a4a #080808;
 }
 
+html::-webkit-scrollbar,
 .sleek-scrollbar::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
 
+html::-webkit-scrollbar-track,
 .sleek-scrollbar::-webkit-scrollbar-track {
-  background: #0b0b0b;
+  background: #080808;
 }
 
+html::-webkit-scrollbar-thumb,
 .sleek-scrollbar::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #5a5a5a 0%, #3c3c3c 100%);
   border-radius: 999px;
-  border: 2px solid #0b0b0b;
+  border: 2px solid #080808;
 }
 
+html::-webkit-scrollbar-thumb:hover,
 .sleek-scrollbar::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #6a6a6a 0%, #4a4a4a 100%);
 }
@@ -78,6 +84,21 @@ body.home-snap [data-snap-section] {
   background: #3dd68c;
   border: 2px solid #fff;
   box-shadow: 0 0 16px rgba(61, 214, 140, 0.75);
+}
+
+@keyframes telemetry-cursor-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.telemetry-cursor {
+  animation: telemetry-cursor-blink 1s step-end infinite;
 }
 
 .command-map-marker__dot {
@@ -250,9 +271,112 @@ body.home-snap [data-snap-section] {
     crosshair !important;
 }
 
-.maplibregl-ctrl-bottom-left {
-  bottom: 4.5rem !important;
+.command-map-host .maplibregl-ctrl-bottom-left {
+  bottom: 0.75rem !important;
   left: 0.75rem !important;
+}
+
+/* Satellite toggle inside the scale bar box (earthquake analysis map) */
+.analysis-satellite-toggle {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  border-radius: 9999px;
+  border: 2px solid #3a3a3a;
+  box-shadow: none;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.analysis-satellite-toggle:not([aria-pressed='true']) {
+  opacity: 0.72;
+}
+
+.analysis-satellite-toggle[aria-pressed='true'] {
+  opacity: 1;
+}
+
+.analysis-satellite-toggle:hover {
+  border-color: #555;
+}
+
+.analysis-satellite-toggle[aria-pressed='true'] {
+  border-color: #666;
+  box-shadow: none;
+}
+
+.analysis-satellite-toggle:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 2px;
+}
+
+/* Fault lines toggle — red line vector only, no chrome */
+.analysis-fault-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #e05252;
+  box-shadow: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.analysis-fault-toggle__icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.analysis-fault-toggle:hover {
+  opacity: 1;
+}
+
+.analysis-fault-toggle:not([aria-pressed='true']) {
+  opacity: 0.5;
+}
+
+.analysis-fault-toggle[aria-pressed='true'] {
+  opacity: 1;
+}
+
+.analysis-fault-toggle--loading {
+  animation: fault-toggle-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes fault-toggle-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.analysis-fault-toggle:focus-visible {
+  outline: 1px solid rgba(224, 82, 82, 0.65);
+  outline-offset: 2px;
+}
+
+.map-corner-controls__map-toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* Separate zoom buttons + dynamic scale bar (bottom-left) */
@@ -311,6 +435,29 @@ body.home-snap [data-snap-section] {
   min-width: var(--map-zoom-width);
   padding: 7px 8px 6px;
   box-sizing: border-box;
+}
+
+.map-corner-controls__scale--with-map-toggles {
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  padding: 6px 8px;
+}
+
+.map-corner-controls__scale-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.map-corner-controls__scale-divider {
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 1px;
+  margin: 2px 8px;
+  background: #333;
 }
 
 .map-corner-controls__scale-bar {
@@ -397,4 +544,512 @@ body.home-snap [data-snap-section] {
       0 4px 24px rgba(0, 0, 0, 0.45),
       inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
+}
+
+/* Recharts — suppress default white focus / hover chrome on dark charts */
+.eq-chart .recharts-wrapper,
+.eq-chart .recharts-surface,
+.eq-chart .recharts-wrapper:focus,
+.eq-chart .recharts-surface:focus {
+  outline: none;
+}
+
+.eq-chart .recharts-bar-rectangle,
+.eq-chart .recharts-bar-rectangle:focus,
+.eq-chart .recharts-bar-rectangle:focus-visible {
+  outline: none;
+  stroke: none !important;
+}
+
+.eq-chart .recharts-bar-background,
+.eq-chart .recharts-bar-background rect {
+  fill: transparent !important;
+  stroke: none !important;
+}
+
+.eq-chart .recharts-active-bar,
+.eq-chart .recharts-active-bar rect {
+  fill: rgba(255, 147, 72, 0.47) !important;
+  stroke: none !important;
+}
+
+.eq-chart .recharts-tooltip-cursor,
+.eq-chart .recharts-tooltip-cursor rect,
+.eq-chart .recharts-cursor,
+.eq-chart .recharts-cursor rect,
+.eq-chart .recharts-rectangle.recharts-tooltip-cursor {
+  fill: transparent !important;
+  stroke: none !important;
+  display: none;
+}
+
+.eq-chart .recharts-tooltip-wrapper {
+  outline: none;
+  z-index: 40;
+  transition: none !important;
+}
+
+.eq-chart-tip {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  width: max-content;
+  max-width: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 10, 10, 0.88);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.eq-chart-tip__label {
+  color: #6e6e6e;
+}
+
+.eq-chart-tip__sep {
+  margin: 0 3px;
+  color: #444;
+}
+
+.eq-chart-tip__value {
+  color: #b8b8b8;
+}
+
+.eq-chart--bars {
+  overflow: visible;
+}
+
+.eq-chart--bars .recharts-wrapper {
+  overflow: visible;
+}
+
+.eq-sidebar-meta {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.eq-sidebar-meta::-webkit-scrollbar {
+  display: none;
+}
+
+.eq-chart-y-caption {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+/* Earthquake analysis — map button stack + statistical digestion panel */
+.eq-map-btn-stack {
+  pointer-events: none;
+}
+
+.eq-map-btn-stack > button {
+  pointer-events: auto;
+}
+
+.eq-stat-digest {
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.eq-stat-digest__body {
+  height: clamp(220px, 32vh, 280px);
+  max-height: clamp(220px, 32vh, 280px);
+}
+
+.eq-stat-digest__split {
+  display: grid;
+  grid-template-columns: minmax(200px, 38%) minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.eq-stat-digest__controls {
+  background: #070707;
+}
+
+.eq-stat-digest__guide {
+  background: #0a0a0a;
+}
+
+.eq-loading-dots span {
+  animation: eq-dot-pulse 1.2s ease-in-out infinite;
+}
+
+.eq-loading-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.eq-loading-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes eq-dot-pulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .eq-stat-digest__split {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 42%) minmax(0, 1fr);
+  }
+
+  .eq-stat-digest__controls {
+    border-right: none;
+    border-bottom: 1px solid #222;
+  }
+}
+
+.section-label {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #ff9348;
+}
+
+.section-label-sm {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #ff9348;
+}
+
+.eq-report-chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.eq-report-chart .eq-chart {
+  height: 100%;
+  min-height: 220px;
+}
+
+.eq-report-viewer {
+  background: #050505;
+}
+
+.eq-report-doc {
+  max-width: 720px;
+  margin: 0 auto;
+  color: #f0f0f0;
+}
+
+/* ── Report document structure ── */
+.eq-report-hero {
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.eq-report-hero__brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.eq-report-hero__eyebrow {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ff9348;
+}
+
+.eq-report-hero__badge {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c4c4c4;
+  border: 1px solid #333;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  background: #111;
+}
+
+.eq-report-hero__title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #fff;
+  margin: 0 0 0.65rem;
+}
+
+.eq-report-hero__location {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #c4c4c4;
+  margin: 0 0 0.85rem;
+}
+
+.eq-report-hero__filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.eq-report-hero__filter-pill {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #ff9348;
+  background: rgba(255, 147, 72, 0.1);
+  border: 1px solid rgba(255, 147, 72, 0.35);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+}
+
+.eq-report-hero__date {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: #6e6e6e;
+  margin: 0;
+}
+
+.eq-report-block {
+  margin-bottom: 1.25rem;
+  border-radius: 12px;
+  border: 1px solid #2a2a2a;
+  background: #0a0a0a;
+  padding: 1.25rem 1.35rem;
+}
+
+.eq-report-block__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #222;
+}
+
+.eq-report-block__title {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ff9348;
+  margin: 0;
+}
+
+.eq-report-block__subtitle {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1.55;
+  color: #6e6e6e;
+  margin: -0.35rem 0 1rem;
+}
+
+.eq-report-block__body {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.65;
+  color: #c4c4c4;
+}
+
+.eq-report-block__body--bright {
+  color: #f0f0f0;
+  font-size: 12px;
+}
+
+.eq-report-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+@media (min-width: 640px) {
+  .eq-report-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.eq-report-metric {
+  border-radius: 8px;
+  border: 1px solid #2a2a2a;
+  background: #111;
+  padding: 0.75rem 0.85rem;
+}
+
+.eq-report-metric__label {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6e6e6e;
+  margin: 0 0 0.35rem;
+}
+
+.eq-report-metric__value {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  margin: 0;
+}
+
+.eq-report-metric__value--accent {
+  color: #ff9348;
+}
+
+.eq-report-bullets {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.eq-report-bullets li {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #c4c4c4;
+}
+
+.eq-report-bullets li::before {
+  content: '▸';
+  flex-shrink: 0;
+  color: #ff9348;
+}
+
+.eq-report-activity-badge {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid;
+}
+
+.eq-report-activity-badge--stable {
+  color: #3dd68c;
+  border-color: rgba(61, 214, 140, 0.4);
+  background: rgba(61, 214, 140, 0.1);
+}
+
+.eq-report-activity-badge--watch {
+  color: #e8a838;
+  border-color: rgba(232, 168, 56, 0.4);
+  background: rgba(232, 168, 56, 0.1);
+}
+
+.eq-report-activity-badge--seismic {
+  color: #ff9348;
+  border-color: rgba(255, 147, 72, 0.4);
+  background: rgba(255, 147, 72, 0.1);
+}
+
+.eq-report-chart-frame {
+  margin-top: 0.25rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #222;
+  background: #080808;
+  height: 240px;
+  min-height: 220px;
+}
+
+.eq-report-footer {
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #222;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1.65;
+  color: #6e6e6e;
+}
+
+.eq-report-footer p {
+  margin: 0 0 0.5rem;
+}
+
+.eq-report-section {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* PDF export capture (applied in html2canvas clone) */
+.eq-report-pdf-export {
+  box-sizing: border-box;
+  width: 680px !important;
+  max-width: 680px !important;
+  margin: 0 !important;
+  padding: 28px 26px 32px !important;
+  background: #050505 !important;
+  color: #f0f0f0 !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.eq-report-pdf-export *,
+.eq-report-pdf-export *::before,
+.eq-report-pdf-export *::after {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.eq-report-pdf-export .eq-report-hero {
+  border-bottom: 2px solid rgba(255, 147, 72, 0.45);
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+}
+
+.eq-report-pdf-export .eq-report-block {
+  margin-bottom: 18px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.eq-report-pdf-export .eq-report-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.eq-report-pdf-export .eq-report-chart-frame {
+  height: 200px;
+  min-height: 200px;
+  page-break-inside: avoid;
+}
+
+.eq-report-pdf-export .eq-report-chart,
+.eq-report-pdf-export .eq-chart {
+  height: 100% !important;
+  min-height: 180px !important;
+}
+
+.eq-report-pdf-export .recharts-tooltip-wrapper,
+.eq-report-pdf-export .recharts-active-dot {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+.eq-report-pdf-export .eq-report-page-break {
+  page-break-before: always;
+  break-before: page;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
 }

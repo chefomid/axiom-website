@@ -38,6 +38,10 @@ export default function DataSourcePanel({ activeDataSources, onToggle }) {
 
                   label={source.label}
 
+                  iconSrc={source.logo}
+
+                  iconAlt={source.label}
+
                   onClick={() => onToggle(source.id)}
 
                 />

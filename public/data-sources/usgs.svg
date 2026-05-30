@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="USGS">
+  <rect width="32" height="32" rx="4" fill="#00703C"/>
+  <path fill="#fff" d="M6 20c2.5-1.2 4.8-3.6 7-3.6 2.2 0 3.5 1.8 5.5 1.8 2 0 3.8-1.4 5.5-2.8v2.2c-1.8 1.2-3.6 2.4-5.5 2.4-2.2 0-3.5-1.6-5.5-1.6-2 0-4.2 1.2-7 2.2V20z"/>
+  <path fill="#fff" d="M6 14.5c2.5-1.2 4.8-3.6 7-3.6 2.2 0 3.5 1.8 5.5 1.8 2 0 3.8-1.4 5.5-2.8v2.2c-1.8 1.2-3.6 2.4-5.5 2.4-2.2 0-3.5-1.6-5.5-1.6-2 0-4.2 1.2-7 2.2v-1.6z"/>
+  <text x="16" y="11" text-anchor="middle" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="700">USGS</text>
+</svg>

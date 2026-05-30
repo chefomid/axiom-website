@@ -4,19 +4,19 @@ import { motion, AnimatePresence } from 'framer-motion'
 const PLATFORM_SECTIONS = [
   {
     title: 'Portfolio & Intake',
-    body: 'Policy PDFs in, structured JSON in: one portfolio session per workspace. Exposure workbooks and BOR letters from the same book.',
+    body: 'PDFs in, structured JSON out. Workbooks and BOR letters from one book.',
   },
   {
     title: 'Assistant',
-    body: 'Embedded coverage intelligence: model choice including offline mode, session-grounded chat, and contract compliance review with broker-ready reports.',
+    body: 'Coverage chat and contract compliance — cloud or offline models.',
   },
   {
     title: 'Broker Connect',
-    body: 'Endorsements, COI requests, and applications stack into one broker transaction. Edit in context, review stacked changes, confirm once, and send with a numbered outbound record (COI-1 · END-1).',
+    body: 'Endorsements, COIs, and applications in one numbered outbound flow.',
   },
   {
     title: 'Mailman',
-    body: 'Outlook via Nylas keeps certificate and broker threads beside your portfolio. Inbox, compose, tag threads, and outbound tracking without leaving the command center.',
+    body: 'Outlook via Nylas — inbox and compose beside your portfolio.',
   },
 ]
 
@@ -27,25 +27,22 @@ const DOSSIER = [
     title: 'Insurance Operations Workspace',
     eyebrow: 'AXIOM Enterprise Risk Platform',
     description:
-      'AXIOM Insurance Manager is the insurance operations workspace inside AXIOM\u2019s enterprise risk platform. Teams maintain one portfolio view as the program changes, run compliance and broker workflows from that same environment, and produce structured digital assets (normalized program data, exposure outputs, compliance results, request history) that other AXIOM tools can consume. It also takes inputs from across the ecosystem, so insurance-side reasoning stays connected to wider operational and risk data. For holistic ERM, it is where the insurance book lives, where change is tracked, and where insurance intelligence flows into the rest of the stack, alongside your existing broker and carrier relationships, not in place of them.',
+      'One workspace for your insurance program inside AXIOM. Intake, compliance, and broker workflows share a single portfolio view — outputs feed the rest of the risk stack, alongside your existing broker and carrier relationships.',
   },
   {
     id: 1,
     src: '/insurance-manager/booklet/02-portfolio-overview-manual-import.png',
     title: 'All Coverages in One View',
     description:
-      'Portfolio Overview surfaces GL, Auto, Property, Workers Compensation (WC), and Umbrella on one screen in your AXIOM workspace: effective dates, carriers, limits, exposure counts, and premiums without spreadsheet archaeology.',
+      'GL, Auto, Property, WC, and Umbrella on one screen — dates, carriers, limits, exposures, and premiums.',
     primary: [
-      'GL, Auto, Property, WC, and Umbrella on one screen',
-      'AI extraction or schema-guided manual import per line of coverage',
-      'Download per-LOB instructions, run your agent on policy PDFs, upload .txt or .json',
+      'AI extraction or guided manual import per line',
       'One-click exposure workbooks and BOR letters',
+      'MODE toggle: AI or manual, same outputs',
     ],
     callouts: [
-      'Once data is in the workspace, executives and risk teams see the whole program in minutes',
-      'MODE toggle: AI or Manual, same overview and deliverables',
-      'Hybrid automation: speed when you want it, auditability when you need it',
-      'Three-step manual sidebar: download, run agent, upload JSON',
+      'Whole program visible in minutes',
+      'Hybrid automation: speed or auditability',
     ],
   },
   {
@@ -59,21 +56,20 @@ const DOSSIER = [
     quadCallout: {
       logo: '/insurance-manager/nhtsa-logo.png',
       title: 'NHTSA VIN Check',
-      body: 'Each VIN is decoded through NHTSA\u2019s vPIC database. Official make, model, and vehicle type are compared to your schedule.',
+      body: 'VINs decoded via NHTSA vPIC — make, model, and type compared to your schedule.',
     },
     screenshotLayout: 'quad',
     title: 'Detailed Exposure Views',
     description:
-      'Exposures by coverage line give underwriter-ready schedules in one place: GL locations and ISO class exposures, Auto fleet with NHTSA VIN validation, and WC class codes with grand-total payroll, all tied to the same session as Assistant and Broker Connect.',
+      'Underwriter-ready schedules by line — GL locations, Auto fleet with NHTSA VIN check, WC payroll totals.',
     primary: [
-      'GL locations and ISO class exposures in sortable tables with session export and Excel workbooks',
-      'Auto vehicles with NHTSA VIN Check and one-click accept corrections',
-      'WC class codes, basis, and amounts by state with grand total payroll',
+      'Sortable GL and Auto tables with Excel export',
+      'NHTSA VIN validation with one-click corrections',
+      'WC class codes with grand-total payroll',
     ],
     callouts: [
-      'One normalized model across Portfolio, Assistant, and Broker Connect',
-      'Raw JSON tab for technical review on every line',
-      'Fewer re-keying errors before renewal and endorsement season',
+      'One model across Portfolio, Assistant, and Broker Connect',
+      'Raw JSON tab on every line',
     ],
   },
   {
@@ -85,17 +81,15 @@ const DOSSIER = [
     screenshotLayout: 'stack',
     title: 'Broker Connect',
     description:
-      'Endorsements and COI requests in one traceable flow, plus application intake for renewal season. Stack portfolio-wide endorsement changes into one broker email with a PDF slip and numbered tracker (COI-1 · END-1).',
+      'Endorsements, COIs, and renewal applications in one traceable flow with numbered outbound records.',
     primary: [
-      'Session rail lists GL, Auto, Property, WC, Umbrella, and Account: start one transaction, stack every change',
-      'Endorsements tab: edit coverages across the portfolio, review change summary before send, confirm once',
-      'Applications tab: upload carrier forms (PDF, Word, Excel) and optional prior-year reference files; financials for prep (fill workflow connecting)',
-      'COI requests and outbound tracker (COI-1 · END-1) in the same workspace',
+      'Stack portfolio-wide changes into one broker email',
+      'Upload carrier forms and stage renewal docs',
+      'COI requests with COI-1 · END-1 tracker',
     ],
     callouts: [
-      'One endorsement transaction across the portfolio, not version-7 spreadsheets',
-      'Stop re-hunting last year\'s app: stage forms and supporting docs for renewal',
-      'Endorsements · COI · Applications: formal request and numbered request history without leaving the app',
+      'One transaction across the portfolio',
+      'Request history without leaving the app',
     ],
   },
   {
@@ -108,19 +102,14 @@ const DOSSIER = [
     screenshotLayout: 'gallery',
     title: 'Insurance Email Inside the Workflow',
     description:
-      'Mailman is powered by Nylas · Outlook: Inbox, Sent, and Spam beside your portfolio imports. Reply to COI threads in context or compose a new message with To, CC, Subject, and attachments. Attach, tag, and send without switching to Outlook.',
+      'Outlook via Nylas — Inbox, Sent, and compose beside your portfolio imports.',
     primary: [
-      'Inbox, Sent, Spam with search and unread filter, with COI threads beside portfolio imports',
-      'Reply in-thread with Send, Attach file, and Tag threads to COI/endorsement requests',
-      'Compose new email: To, CC, Subject, message, and optional attachments',
-      'Integrated with Broker Connect outbound (COI-1 · END-1 tracker)',
-      'Powered by Nylas · Outlook sync',
+      'Reply or compose with attachments and thread tagging',
+      'COI threads tied to workspace context',
+      'Integrated with Broker Connect outbound tracker',
     ],
     callouts: [
-      'Communication is part of operations, not a separate Outlook tab',
-      'Certificate threads tied to workspace context',
-      'New email or reply: same Mailman panel, same outbound tracker',
-      'Compose without leaving AXIOM: discard, tag, and send in one place',
+      'Email stays inside operations',
       'API keys stay server-side',
     ],
   },
@@ -135,43 +124,39 @@ const DOSSIER = [
       {
         src: '/insurance-manager/booklet/15-assistant-03-compliance-upload.png',
         title: 'Add contracts and analyze',
-        body: 'Drop or browse contract files in Compliance (.txt and .md work best). Batch several files, review the list, then click Analyze. Requirements are extracted from your contracts and checked against coverages already in Portfolio.',
+        body: 'Upload contracts (.txt or .md), batch if needed, then Analyze. Requirements are checked against coverages in Portfolio.',
       },
       {
         src: '/insurance-manager/booklet/16-assistant-04-compliance-reading.png',
         title: 'Reading your contract',
-        body: 'Assistant processes uploaded files against policy data from your portfolio imports. Your API key runs the checks; large files may be truncated per model limits.',
+        body: 'Files are processed against policy data from your portfolio imports.',
       },
       {
         src: '/insurance-manager/booklet/17-assistant-05-compliance-review-gaps.png',
         title: 'Gap identification',
-        body: 'The review table maps each contract requirement to your program. Non-compliant rows flag missing coverage with explanations and citations back to declarations, forms schedules, and policy files in your workspace.',
+        body: 'Each requirement mapped to your program. Non-compliant rows flag gaps with citations to policy files.',
       },
       {
         src: '/insurance-manager/booklet/18-assistant-06-compliance-review-partial.png',
         title: 'Partial matches',
-        body: 'Partial status when limits or wording almost align but endorsements, additional insured status, waivers, or duration requirements still need broker follow-up. Each row cites the closest proof found in your book.',
+        body: 'Partial when limits almost align but endorsements or waivers still need broker follow-up.',
       },
       {
         src: '/insurance-manager/booklet/19-assistant-07-compliance-review-compliant.png',
         title: 'Compliant requirements',
-        body: 'Compliant rows confirm umbrella, WC, GL, auto, and other limits meet contract language with source references. Download Excel, save to workspace, tag the request, and send the report to your broker from the page.',
+        body: 'Compliant rows confirm limits meet contract language. Export Excel and send to your broker.',
       },
     ],
     title: 'Assistant',
     description:
-      'Assistant is an embedded logic layer in the same workspace as your portfolio. Choose the AI model that fits your policy, including offline mode when you want local computation (slower, but stays on your machine). Two primary workflows: General Chat for coverage questions grounded in your session, and Compliance for contract review against the book you have imported.',
+      'Coverage intelligence in the same workspace — General Chat grounded in your session, Compliance for contract review.',
     primary: [
-      'Model selector: cloud models or offline AI mode (local compute, slower throughput)',
-      'General Chat: ask coverage questions with evidence tables tied to your portfolio session',
-      'Compliance: upload contracts, map requirements to your program, and surface coverage gaps',
-      'Compliance report: Download Excel, save to workspace, tag, and send to your broker from the page',
+      'Cloud or offline AI model choice',
+      'Compliance: upload contracts, map gaps, export to broker',
     ],
     callouts: [
-      'Same normalized session as Portfolio, Exposures, Broker Connect, and Mailman',
-      'Tool-grounded on vault facts in your workspace, not invented limits or carriers',
-      'Compliance can communicate on your behalf to close gaps and handle broker redlines',
-      'Offline mode when data residency or air-gapped review matters',
+      'Grounded on vault facts, not invented limits',
+      'Offline mode for data residency',
     ],
   },
 ]
@@ -656,7 +641,7 @@ export default function InsuranceManagerModal({ open, onClose }) {
                     Your program in one workspace.
                   </h2>
                   <p className="text-xs text-ink-secondary leading-snug mt-2">
-                    Faster intake. One portfolio view per workspace. Broker-ready communication: a command center for the insured.
+                    One portfolio view. Faster intake. Broker-ready communication.
                   </p>
                 </div>
 

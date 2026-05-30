@@ -37,6 +37,14 @@ function featureBbox(geometry) {
   return { west, south, east, north }
 }
 
+function nwsOfficialLink(props) {
+  const ugc = props?.geocode?.UGC?.[0] ?? props?.geocode?.ugc?.[0]
+  if (ugc) {
+    return `https://forecast.weather.gov/MapClick.php?zone=${encodeURIComponent(ugc)}`
+  }
+  return 'https://www.weather.gov/warnings'
+}
+
 function featureToRiskEvent(feature, userLocation) {
   const props = feature.properties ?? {}
   const geometry = feature.geometry
@@ -76,7 +84,7 @@ function featureToRiskEvent(feature, userLocation) {
       .join(' · '),
     dataSources: ['nws'],
     raw: props,
-    links: { official: props['@id'] ?? props.id },
+    links: { official: nwsOfficialLink(props) },
   }
 }
 
@@ -137,6 +145,7 @@ export function nwsToSignals(zoneMarkers, limit = 6) {
       confidence: marker.confidence,
       action: marker.action,
       markerId: marker.id,
+      timestamp: marker.timestamp ?? null,
       live: true,
     }))
 }

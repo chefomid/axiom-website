@@ -24,7 +24,7 @@ export default function useMapPins({ pushEvent } = {}) {
       const next = !prev
       if (!next) setSelectedPinId(null)
       pushEvent?.({
-        text: next ? 'Pin measure mode enabled' : 'Pin measure mode disabled',
+        text: next ? 'Measure mode on — tap the map to place pins' : 'Measure mode off',
         type: next ? 'live' : 'stable',
         source: 'Map',
       })
@@ -36,7 +36,7 @@ export default function useMapPins({ pushEvent } = {}) {
     setPins([])
     setSegments([])
     setSelectedPinId(null)
-    pushEvent?.({ text: 'All measure pins cleared', type: 'stable', source: 'Map' })
+    pushEvent?.({ text: 'Measure pins cleared', type: 'stable', source: 'Map' })
   }, [pushEvent])
 
   const addPin = useCallback(
@@ -46,7 +46,7 @@ export default function useMapPins({ pushEvent } = {}) {
       setPins(prev => {
         if (prev.length >= MAX_USER_PINS) {
           pushEvent?.({
-            text: `Pin limit reached (${MAX_USER_PINS})`,
+            text: `You can place up to ${MAX_USER_PINS} pins`,
             type: 'watch',
             source: 'Map',
           })
@@ -89,7 +89,7 @@ export default function useMapPins({ pushEvent } = {}) {
           }
           const seg = createSegment(from, to)
           pushEvent?.({
-            text: `Measure · ${formatDistance(seg.distanceMiles)} between ${from.label} and ${to.label}`,
+            text: `${formatDistance(seg.distanceMiles)} between ${from.label} and ${to.label}`,
             type: 'stable',
             source: 'Map',
           })
@@ -134,6 +134,24 @@ export default function useMapPins({ pushEvent } = {}) {
     [pushEvent],
   )
 
+  const movePin = useCallback((id, lat, lng) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+
+    setPins(prev => {
+      const nextPins = prev.map(p => (p.id === id ? { ...p, lat, lng } : p))
+      const pinById = new Map(nextPins.map(p => [p.id, p]))
+      setSegments(segs =>
+        segs.map(seg => {
+          const from = pinById.get(seg.fromId)
+          const to = pinById.get(seg.toId)
+          if (!from || !to) return seg
+          return createSegment(from, to)
+        }),
+      )
+      return nextPins
+    })
+  }, [])
+
   return {
     pinMode,
     pins,
@@ -144,6 +162,7 @@ export default function useMapPins({ pushEvent } = {}) {
     addPin,
     selectPin,
     removePin,
+    movePin,
     clearPins,
   }
 }

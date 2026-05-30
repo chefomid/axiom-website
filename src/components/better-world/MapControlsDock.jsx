@@ -36,6 +36,10 @@ export default function MapControlsDock({
 
   usgsEnabled,
 
+  analysisOpen = false,
+
+  onOpenAnalysis,
+
   pinMode = false,
 
   onTogglePinMode,
@@ -43,6 +47,12 @@ export default function MapControlsDock({
   pinCount = 0,
 
   onClearPins,
+
+  onAnalyzeAtPin,
+
+  pins = [],
+
+  selectedPinId = null,
 
 }) {
 
@@ -184,6 +194,12 @@ export default function MapControlsDock({
 
                     accent="stable"
 
+                    iconSrc={source.logo}
+
+                    iconAlt={source.label}
+
+                    showDot={false}
+
                     onClick={() => onToggleSource(source.id)}
 
                   >
@@ -215,19 +231,33 @@ export default function MapControlsDock({
               <p className="font-mono text-[11px] leading-relaxed text-ink-faint">
                 {pinMode ? (
                   <>
-                    Crosshair cursor on the map — click to place a pin (max 10). Click one pin,
-                    then another to measure distance. Connect three pins into a triangle and hover
-                    inside it for surface area. Right-click a pin to remove it. Amber rings are
-                    your annotations, not live hazard data.
+                    Crosshair cursor on the map — click to place a pin (max 10). Drag a pin to
+                    reposition it. Click one pin, then another to measure distance. Double-click a
+                    pin to run earthquake analysis centered on it. Right-click a pin to remove it.
                   </>
                 ) : (
                   <>Enable Pin mode from the dock to place measure pins on the map.</>
                 )}
               </p>
               {pinCount > 0 && (
-                <p className="mt-2 font-mono text-[10px] tabular-nums text-command-watch">
-                  {pinCount} pin{pinCount === 1 ? '' : 's'} placed
-                </p>
+                <>
+                  <p className="mt-2 font-mono text-[10px] tabular-nums text-command-watch">
+                    {pinCount} pin{pinCount === 1 ? '' : 's'} placed
+                  </p>
+                  {onAnalyzeAtPin && usgsEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pin =
+                          pins.find(p => p.id === selectedPinId) ?? pins[pins.length - 1]
+                        if (pin) onAnalyzeAtPin(pin)
+                      }}
+                      className="mt-3 w-full rounded-lg border border-command-watch/40 bg-command-watch/10 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-command-watch transition hover:border-command-watch/60 hover:bg-command-watch/15"
+                    >
+                      Analyze at {selectedPinId ? 'selected pin' : 'latest pin'}
+                    </button>
+                  )}
+                </>
               )}
             </>
           )}
@@ -351,11 +381,21 @@ export default function MapControlsDock({
 
             </DockTab>
 
+            <span className="h-4 w-px bg-[#333]" aria-hidden />
+
+            <DockTab active={analysisOpen} accent="watch" onClick={() => onOpenAnalysis?.()}>
+
+              Analysis
+
+            </DockTab>
+
           </>
 
         )}
 
-        <span className="h-4 w-px bg-[#333]" aria-hidden />
+        {!showEarthquakeControls ? (
+          <span className="h-4 w-px bg-[#333]" aria-hidden />
+        ) : null}
 
         <span className="px-2 py-1 font-mono text-[10px] tabular-nums text-ink-faint">
 
