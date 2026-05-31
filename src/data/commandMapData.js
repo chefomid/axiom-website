@@ -79,7 +79,7 @@ export const SEISMIC_ANALYSIS_COUNTRIES = [
   bbox: SEISMIC_COUNTRY_BBOX[country.id],
   addressPlaceholder:
     country.id === 'US'
-      ? '825 NE Multnomah St, Portland OR'
+      ? '123 Poetland St'
       : country.id === 'CA'
         ? '100 Queen St W, Toronto ON'
         : country.id === 'MX'

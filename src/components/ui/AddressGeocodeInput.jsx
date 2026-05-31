@@ -53,7 +53,7 @@ export default function AddressGeocodeInput({
       setSuggestions([])
       setLoading(false)
       setOpen(false)
-      setHint('Include a street name — e.g. 825 NE Multnomah St')
+      setHint('Include a street name — e.g. 123 Poetland St')
       return undefined
     }
 
