@@ -16,7 +16,6 @@ function PropertyIntelligenceComingSoon() {
             <p className="font-display text-2xl uppercase tracking-[0.2em] text-ink-muted md:text-3xl">
               Coming Soon
             </p>
-            <p className="mt-4 font-display text-sm tracking-wide text-white">Property Intelligence</p>
           </header>
           <div className="mx-auto mt-10 h-px w-14 bg-[#333]" aria-hidden />
           <p className="mt-10 text-left text-sm leading-relaxed text-ink-muted md:text-[15px]">
