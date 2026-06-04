@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTelemetry } from '../context/TelemetryContext'
 import { fetchNasaFirms } from '../services/nasaFirms'
-import { FEED_RETRY_DELAY_MS, isTransientFeedError } from '../utils/feedErrors'
+import { getStaleRiskCache, riskCacheKey } from '../utils/riskCache'
+import useFeedRetry from './useFeedRetry'
 import {
   feedFailedMessage,
   feedLoadedMessage,
@@ -10,62 +11,78 @@ import {
 } from '../utils/userTelemetry'
 import { riskEventsToPoints } from '../utils/riskNormalize'
 
+const FIRMS_DAY_RANGE = 1
+
 const EMPTY_META = {
   sourceName: 'NASA FIRMS',
   lastFetchedAt: null,
   recordCount: 0,
   requestUrl: null,
+  stale: false,
+}
+
+function firmsCacheKey(scopeConfig) {
+  const mapKey = import.meta.env.VITE_NASA_FIRMS_MAP_KEY?.trim()
+  const provider = mapKey ? 'firms' : 'eonet'
+  return riskCacheKey([
+    provider,
+    scopeConfig.scope,
+    scopeConfig.countryId,
+    scopeConfig.userLocation?.lat,
+    scopeConfig.radiusMiles,
+    FIRMS_DAY_RANGE,
+  ])
+}
+
+function applyFirmsResult(result, { fetchedAt, stale = false }) {
+  const points = riskEventsToPoints(result.events)
+  return {
+    points,
+    meta: {
+      sourceName: 'NASA FIRMS',
+      lastFetchedAt: fetchedAt,
+      recordCount: points.length,
+      requestUrl: result.requestUrl ?? null,
+      stale,
+    },
+  }
 }
 
 export default function useNasaFirms({ scope, userLocation, radiusMiles, countryId, enabled }) {
   const { pushEvent } = useTelemetry()
+  const { retryAt, scheduleRetry, clearRetry } = useFeedRetry()
   const [markers, setMarkers] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [errorRetryAt, setErrorRetryAt] = useState(null)
   const [meta, setMeta] = useState(EMPTY_META)
-  const retryTimerRef = useRef(null)
 
   useEffect(() => {
     if (!enabled) {
       setMarkers([])
       setError(null)
-      setErrorRetryAt(null)
       setLoading(false)
       setMeta(EMPTY_META)
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current)
-        retryTimerRef.current = null
-      }
+      clearRetry()
       return undefined
     }
 
     let cancelled = false
     const controller = new AbortController()
     const scopeConfig = { scope, userLocation, radiusMiles, countryId }
+    const cacheKey = firmsCacheKey(scopeConfig)
 
     async function load() {
       setLoading(true)
       setError(null)
-      setErrorRetryAt(null)
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current)
-        retryTimerRef.current = null
-      }
+      clearRetry()
 
       try {
         const result = await fetchNasaFirms(scopeConfig, { signal: controller.signal })
         if (cancelled) return
 
-        const points = riskEventsToPoints(result.events)
-        const fetchedAt = new Date()
+        const { points, meta: nextMeta } = applyFirmsResult(result, { fetchedAt: new Date() })
         setMarkers(points)
-        setMeta({
-          sourceName: 'NASA FIRMS',
-          lastFetchedAt: fetchedAt,
-          recordCount: points.length,
-          requestUrl: result.requestUrl,
-        })
+        setMeta(nextMeta)
 
         if (shouldAnnounceFeedLoad(result.fromCache)) {
           pushEvent({
@@ -77,23 +94,29 @@ export default function useNasaFirms({ scope, userLocation, radiusMiles, country
       } catch (err) {
         if (cancelled || err.name === 'AbortError') return
         const message = err.message ?? 'Failed to load NASA FIRMS data'
+        const staleEntry = getStaleRiskCache('firms', cacheKey)
+
+        if (staleEntry?.data) {
+          const { points, meta: staleMeta } = applyFirmsResult(staleEntry.data, {
+            fetchedAt: new Date(staleEntry.fetchedAt),
+            stale: true,
+          })
+          setMarkers(points)
+          setMeta(staleMeta)
+        } else {
+          setMarkers([])
+          setMeta(EMPTY_META)
+        }
+
         setError(message)
-        setMarkers([])
-        setMeta(EMPTY_META)
+        scheduleRetry(() => {
+          if (!cancelled) load()
+        })
         pushEvent({
-          text: feedFailedMessage('NASA FIRMS', message),
-          type: 'critical',
+          text: feedFailedMessage('NASA FIRMS', message, { stale: !!staleEntry?.data }),
+          type: staleEntry?.data ? 'watch' : 'critical',
           source: telemetrySourceForLayer('wildfire'),
         })
-
-        if (isTransientFeedError(message) && !retryTimerRef.current) {
-          const retryAt = Date.now() + FEED_RETRY_DELAY_MS
-          setErrorRetryAt(retryAt)
-          retryTimerRef.current = setTimeout(() => {
-            retryTimerRef.current = null
-            if (!cancelled) load()
-          }, FEED_RETRY_DELAY_MS)
-        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -106,12 +129,9 @@ export default function useNasaFirms({ scope, userLocation, radiusMiles, country
       cancelled = true
       controller.abort()
       clearInterval(interval)
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current)
-        retryTimerRef.current = null
-      }
+      clearRetry()
     }
-  }, [scope, userLocation?.lat, userLocation?.lng, radiusMiles, countryId, enabled, pushEvent])
+  }, [scope, userLocation?.lat, userLocation?.lng, radiusMiles, countryId, enabled, pushEvent, clearRetry, scheduleRetry])
 
-  return { markers, loading, error, errorRetryAt, meta }
+  return { markers, loading, error, errorRetryAt: retryAt, meta }
 }

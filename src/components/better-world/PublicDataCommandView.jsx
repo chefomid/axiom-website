@@ -21,6 +21,7 @@ import {
   filterMarkersByScope,
   filterZones,
 } from '../../utils/filterMapData'
+import { getFeedDataRangeLabel } from '../../utils/feedDataRange'
 import {
   dataSourceToggleMessage,
   layerToggleMessage,
@@ -110,6 +111,7 @@ function PublicDataCommandViewInner() {
     markers: usgsMarkers,
     loading: usgsLoading,
     error: usgsError,
+    errorRetryAt: usgsErrorRetryAt,
     meta: usgsMeta,
   } = useUsgsEarthquakes({
     ...scopeConfig,
@@ -122,6 +124,7 @@ function PublicDataCommandViewInner() {
     zones: nwsZones,
     loading: nwsLoading,
     error: nwsError,
+    errorRetryAt: nwsErrorRetryAt,
     meta: nwsMeta,
   } = useNwsAlerts({ ...scopeConfig, enabled: nwsEnabled })
 
@@ -139,6 +142,7 @@ function PublicDataCommandViewInner() {
     zones: nfhlZones,
     loading: femaLoading,
     error: femaError,
+    errorRetryAt: femaErrorRetryAt,
     meta: femaMeta,
   } = useFemaNfhl({ ...scopeConfig, enabled: femaEnabled })
 
@@ -405,14 +409,61 @@ function PublicDataCommandViewInner() {
 
   const liveFeedErrors = useMemo(() => {
     const errors = []
-    if (usgsError) errors.push({ source: 'USGS', message: usgsError })
-    if (nwsError) errors.push({ source: 'NWS', message: nwsError })
-    if (firmsError) {
-      errors.push({ source: 'NASA FIRMS', message: firmsError, retryAt: firmsErrorRetryAt })
+    if (usgsError) {
+      errors.push({
+        source: 'USGS',
+        message: usgsError,
+        retryAt: usgsErrorRetryAt,
+        stale: usgsMeta.stale,
+        lastFetchedAt: usgsMeta.lastFetchedAt,
+      })
     }
-    if (femaError) errors.push({ source: 'FEMA NFHL', message: femaError })
+    if (nwsError) {
+      errors.push({
+        source: 'NWS',
+        message: nwsError,
+        retryAt: nwsErrorRetryAt,
+        stale: nwsMeta.stale,
+        lastFetchedAt: nwsMeta.lastFetchedAt,
+      })
+    }
+    if (firmsError) {
+      errors.push({
+        source: 'NASA FIRMS',
+        message: firmsError,
+        retryAt: firmsErrorRetryAt,
+        stale: firmsMeta.stale,
+        lastFetchedAt: firmsMeta.lastFetchedAt,
+      })
+    }
+    if (femaError) {
+      errors.push({
+        source: 'FEMA NFHL',
+        message: femaError,
+        retryAt: femaErrorRetryAt,
+        stale: femaMeta.stale,
+        lastFetchedAt: femaMeta.lastFetchedAt,
+      })
+    }
     return errors
-  }, [usgsError, nwsError, firmsError, firmsErrorRetryAt, femaError])
+  }, [
+    usgsError,
+    usgsErrorRetryAt,
+    usgsMeta.stale,
+    usgsMeta.lastFetchedAt,
+    nwsError,
+    nwsErrorRetryAt,
+    nwsMeta.stale,
+    nwsMeta.lastFetchedAt,
+    firmsError,
+    firmsErrorRetryAt,
+    firmsMeta.stale,
+    firmsMeta.lastFetchedAt,
+    femaError,
+    femaErrorRetryAt,
+    femaMeta.stale,
+    femaMeta.lastFetchedAt,
+  ])
 
   const feedStatus = useMemo(
     () => [
@@ -421,36 +472,44 @@ function PublicDataCommandViewInner() {
         enabled: activeDataSources.has('usgs'),
         loading: usgsLoading,
         error: usgsError,
+        stale: usgsMeta.stale,
         recordCount: usgsMeta.recordCount,
         lastFetchedAt: usgsMeta.lastFetchedAt,
         requestUrl: usgsMeta.requestUrl,
+        dataRange: getFeedDataRangeLabel('USGS', { minMagnitude: minEarthquakeMag }),
       },
       {
         sourceName: 'NWS',
         enabled: activeDataSources.has('nws'),
         loading: nwsLoading,
         error: nwsError,
+        stale: nwsMeta.stale,
         recordCount: nwsMeta.recordCount,
         lastFetchedAt: nwsMeta.lastFetchedAt,
         requestUrl: nwsMeta.requestUrl,
+        dataRange: getFeedDataRangeLabel('NWS'),
       },
       {
         sourceName: 'NASA FIRMS',
         enabled: activeDataSources.has('nasa'),
         loading: firmsLoading,
         error: firmsError,
+        stale: firmsMeta.stale,
         recordCount: firmsMeta.recordCount,
         lastFetchedAt: firmsMeta.lastFetchedAt,
         requestUrl: firmsMeta.requestUrl,
+        dataRange: getFeedDataRangeLabel('NASA FIRMS'),
       },
       {
         sourceName: 'FEMA NFHL',
         enabled: activeDataSources.has('fema'),
         loading: femaLoading,
         error: femaError,
+        stale: femaMeta.stale,
         recordCount: femaMeta.recordCount,
         lastFetchedAt: femaMeta.lastFetchedAt,
         requestUrl: femaMeta.requestUrl,
+        dataRange: getFeedDataRangeLabel('FEMA NFHL'),
       },
     ],
     [
@@ -467,6 +526,7 @@ function PublicDataCommandViewInner() {
       femaLoading,
       femaError,
       femaMeta,
+      minEarthquakeMag,
     ],
   )
 

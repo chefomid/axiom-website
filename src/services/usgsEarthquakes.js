@@ -1,6 +1,7 @@
 import { fetchAllUsgsFeatures } from '../utils/fetchPaginated'
 import { COUNTRIES } from '../data/commandMapData'
 import { distanceMiles } from '../utils/geo'
+import { getMarkerReportUrl } from '../utils/markerReportUrl'
 import { COUNTRY_BBOX, pointInBbox } from '../utils/scopeBbox'
 
 const USGS_ENDPOINT = 'https://earthquake.usgs.gov/fdsnws/event/1/query'
@@ -511,6 +512,7 @@ export function earthquakesToSignals(markers, limit = 6) {
       dataSources: ['usgs'],
       confidence: 100,
       action: marker.action,
+      actionUrl: getMarkerReportUrl(marker),
       markerId: marker.id,
       timestamp: marker.timestamp ?? marker.time ?? null,
       live: true,

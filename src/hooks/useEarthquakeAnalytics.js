@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   ANALYTICS_RADIUS_BREAKPOINTS,
@@ -26,6 +26,35 @@ const EMPTY_ANALYTICS = {
   summary: null,
   cumulative: [],
   annular: [],
+}
+
+function buildHistoryCacheKey({
+  globalAnalysis,
+  countryOverview,
+  analysisCountryId,
+  center,
+  minMagnitude,
+  maxRadiusMiles,
+  yearPresetId,
+  startDate,
+  endDate,
+}) {
+  return riskCacheKey([
+    'stratified-history-v4',
+    globalAnalysis
+      ? 'global-worldwide-v4'
+      : countryOverview
+        ? `national-bbox-${analysisCountryId}`
+        : 'local',
+    analysisCountryId,
+    center.lat,
+    center.lng,
+    minMagnitude,
+    maxRadiusMiles,
+    yearPresetId,
+    startDate.toISOString().slice(0, 10),
+    endDate.toISOString().slice(0, 10),
+  ])
 }
 
 /**
@@ -57,7 +86,10 @@ export default function useEarthquakeAnalytics({
   const [error, setError] = useState(null)
   const [truncated, setTruncated] = useState(false)
   const [requestUrl, setRequestUrl] = useState(null)
+  const [loadedQueryKey, setLoadedQueryKey] = useState(null)
   const [fetchTick, setFetchTick] = useState(0)
+  const stableAnalyticsRef = useRef(EMPTY_ANALYTICS)
+  const stableTemporalRef = useRef(EMPTY_ANALYTICS)
 
   const nationalAnalysis = isNationalUsOverview(analysisCountryId, centerOverride)
   const countryOverview = isCountryOverview(analysisCountryId, centerOverride)
@@ -114,6 +146,33 @@ export default function useEarthquakeAnalytics({
 
   const refetch = useCallback(() => setFetchTick(t => t + 1), [])
 
+  const queryKey = useMemo(() => {
+    const { center } = resolved
+    if (!center?.lat || !center?.lng) return null
+    return buildHistoryCacheKey({
+      globalAnalysis,
+      countryOverview,
+      analysisCountryId,
+      center,
+      minMagnitude,
+      maxRadiusMiles,
+      yearPresetId,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
+    })
+  }, [
+    resolved.center,
+    globalAnalysis,
+    countryOverview,
+    analysisCountryId,
+    minMagnitude,
+    maxRadiusMiles,
+    yearPresetId,
+    historyRangeKey,
+  ])
+
+  const refreshing = Boolean(queryKey && loadedQueryKey !== queryKey)
+
   useEffect(() => {
     if (!enabled) {
       setEvents([])
@@ -121,6 +180,7 @@ export default function useEarthquakeAnalytics({
       setLoading(false)
       setTruncated(false)
       setRequestUrl(null)
+      setLoadedQueryKey(null)
       return undefined
     }
 
@@ -137,22 +197,17 @@ export default function useEarthquakeAnalytics({
     async function load() {
       setError(null)
 
-      const cacheKey = riskCacheKey([
-        'stratified-history-v4',
-        globalAnalysis
-          ? 'global-worldwide-v4'
-          : countryOverview
-            ? `national-bbox-${analysisCountryId}`
-            : 'local',
+      const cacheKey = buildHistoryCacheKey({
+        globalAnalysis,
+        countryOverview,
         analysisCountryId,
-        center.lat,
-        center.lng,
+        center,
         minMagnitude,
         maxRadiusMiles,
         yearPresetId,
-        startDate.toISOString().slice(0, 10),
-        endDate.toISOString().slice(0, 10),
-      ])
+        startDate,
+        endDate,
+      })
 
       const cached = getRiskCache('usgs-history', cacheKey)
       if (cached) {
@@ -160,6 +215,7 @@ export default function useEarthquakeAnalytics({
         setEvents(cached.events)
         setTruncated(cached.truncated)
         setRequestUrl(cached.requestUrl)
+        setLoadedQueryKey(cacheKey)
         setLoading(false)
         return
       }
@@ -190,6 +246,7 @@ export default function useEarthquakeAnalytics({
         setEvents(result.events)
         setTruncated(result.truncated)
         setRequestUrl(result.requestUrl)
+        setLoadedQueryKey(cacheKey)
         if (globalAnalysis && result.events.length === 0) {
           setError('Global catalog returned no events. Check your connection and use Retry in the sidebar.')
         } else if (globalAnalysis && result.events.length > 0) {
@@ -229,42 +286,76 @@ export default function useEarthquakeAnalytics({
   ])
 
   const analytics = useMemo(() => {
-    if (globalAnalysis) {
-      if (!events.length) {
-        if (loading || error) return EMPTY_ANALYTICS
-        return computeGlobalEarthquakeAnalytics([], dateRange.yearsInRange)
-      }
-      return computeGlobalEarthquakeAnalytics(events, dateRange.yearsInRange)
+    if (refreshing) {
+      return loadedQueryKey === null ? EMPTY_ANALYTICS : stableAnalyticsRef.current
     }
 
-    if (!events.length) {
-      if (loading || error) return EMPTY_ANALYTICS
-      return computeEarthquakeAnalytics([], resolved.center, activeBreakpoints, dateRange.yearsInRange)
+    let next = EMPTY_ANALYTICS
+
+    if (globalAnalysis) {
+      if (!events.length) {
+        if (loading || error) next = EMPTY_ANALYTICS
+        else next = computeGlobalEarthquakeAnalytics([], dateRange.yearsInRange)
+      } else {
+        next = computeGlobalEarthquakeAnalytics(events, dateRange.yearsInRange)
+      }
+    } else if (!events.length) {
+      if (loading || error) next = EMPTY_ANALYTICS
+      else next = computeEarthquakeAnalytics([], resolved.center, activeBreakpoints, dateRange.yearsInRange)
+    } else {
+      next = computeEarthquakeAnalytics(
+        events,
+        resolved.center,
+        activeBreakpoints,
+        dateRange.yearsInRange,
+      )
     }
-    return computeEarthquakeAnalytics(
-      events,
-      resolved.center,
-      activeBreakpoints,
-      dateRange.yearsInRange,
-    )
-  }, [globalAnalysis, events, resolved.center, activeBreakpoints, dateRange.yearsInRange, loading, error])
+
+    stableAnalyticsRef.current = next
+    return next
+  }, [
+    refreshing,
+    loadedQueryKey,
+    globalAnalysis,
+    events,
+    resolved.center,
+    activeBreakpoints,
+    dateRange.yearsInRange,
+    loading,
+    error,
+  ])
 
   const canAnalyzeByTime = isSpecificAnalysisLocation(centerOverride, countryOverview)
   const hasTemporalAnalytics = supportsTemporalAnalytics(centerOverride, globalAnalysis)
 
   const temporalAnalytics = useMemo(() => {
     if (!hasTemporalAnalytics) return EMPTY_ANALYTICS
+    if (refreshing) {
+      return loadedQueryKey === null ? EMPTY_ANALYTICS : stableTemporalRef.current
+    }
+
     const { startDate, endDate } = dateRange
-    return computeTemporalEarthquakeAnalytics(
+    const next = computeTemporalEarthquakeAnalytics(
       events,
       resolved.center,
       maxRadiusMiles,
       startDate,
       endDate,
     )
-  }, [hasTemporalAnalytics, events, resolved.center, maxRadiusMiles, dateRange])
+    stableTemporalRef.current = next
+    return next
+  }, [
+    hasTemporalAnalytics,
+    refreshing,
+    loadedQueryKey,
+    events,
+    resolved.center,
+    maxRadiusMiles,
+    dateRange,
+  ])
 
   const dataQuality = useMemo(() => {
+    if (refreshing) return null
     const overviewCountryLabel =
       SEISMIC_ANALYSIS_COUNTRIES.find(c => c.id === analysisCountryId)?.label ?? 'this region'
     return assessSeismicDataQuality(analytics.summary, yearPreset, minMagnitude, {
@@ -281,10 +372,12 @@ export default function useEarthquakeAnalytics({
     countryOverview,
     globalAnalysis,
     analysisCountryId,
+    refreshing,
   ])
 
   return {
     loading,
+    refreshing,
     error,
     truncated,
     requestUrl,

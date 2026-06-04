@@ -1,4 +1,5 @@
 import { firmsApiUrl } from '../utils/apiBase'
+import { getMarkerReportUrl } from '../utils/markerReportUrl'
 import { getScopeBbox, bboxToFirmsArea, pointInBbox } from '../utils/scopeBbox'
 import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
 
@@ -196,6 +197,7 @@ export function firmsToSignals(markers, limit = 6) {
       dataSources: ['nasa'],
       confidence: marker.confidence,
       action: marker.action,
+      actionUrl: getMarkerReportUrl(marker),
       markerId: marker.id,
       timestamp: marker.timestamp ?? null,
       live: true,

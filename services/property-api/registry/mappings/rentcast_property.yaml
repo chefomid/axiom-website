@@ -1,0 +1,13 @@
+square_footage:
+  path: squareFootage
+  type: integer
+  unit: sqft
+  confidence: high
+year_built:
+  path: yearBuilt
+  type: year
+  confidence: high
+property_type:
+  path: propertyType
+  type: string
+  confidence: high

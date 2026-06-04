@@ -1,5 +1,6 @@
 import { defaultFetchHeaders, nwsApiUrl } from '../utils/apiBase'
 import { geometryCentroid, pointInPolygon } from '../utils/geo'
+import { getMarkerReportUrl } from '../utils/markerReportUrl'
 import { getScopeBbox, bboxIntersects } from '../utils/scopeBbox'
 import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
 
@@ -144,6 +145,7 @@ export function nwsToSignals(zoneMarkers, limit = 6) {
       dataSources: ['nws'],
       confidence: marker.confidence,
       action: marker.action,
+      actionUrl: getMarkerReportUrl(marker),
       markerId: marker.id,
       timestamp: marker.timestamp ?? null,
       live: true,

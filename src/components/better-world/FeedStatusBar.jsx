@@ -3,6 +3,11 @@ function formatRefreshTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
+function DataRangeSuffix({ dataRange }) {
+  if (!dataRange) return null
+  return <span className="text-ink-faint"> · {dataRange}</span>
+}
+
 function FeedStatusChip({ feed }) {
   if (!feed.enabled) {
     return (
@@ -16,6 +21,17 @@ function FeedStatusChip({ feed }) {
     return (
       <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-command-watch">
         {feed.sourceName}: syncing…
+        <DataRangeSuffix dataRange={feed.dataRange} />
+      </span>
+    )
+  }
+
+  if (feed.error && feed.stale) {
+    return (
+      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-command-watch">
+        {feed.sourceName}: stale · {feed.recordCount} record{feed.recordCount === 1 ? '' : 's'}
+        <DataRangeSuffix dataRange={feed.dataRange} />
+        <span className="text-ink-faint"> · synced {formatRefreshTime(feed.lastFetchedAt)}</span>
       </span>
     )
   }
@@ -23,7 +39,8 @@ function FeedStatusChip({ feed }) {
   if (feed.error) {
     return (
       <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-command-critical">
-        {feed.sourceName}: error
+        {feed.sourceName}: unavailable
+        <DataRangeSuffix dataRange={feed.dataRange} />
       </span>
     )
   }
@@ -33,7 +50,8 @@ function FeedStatusChip({ feed }) {
       <span className="text-command-live">{feed.sourceName}</span>
       {': '}
       {feed.recordCount} record{feed.recordCount === 1 ? '' : 's'}
-      <span className="text-ink-faint"> · {formatRefreshTime(feed.lastFetchedAt)}</span>
+      <DataRangeSuffix dataRange={feed.dataRange} />
+      <span className="text-ink-faint"> · synced {formatRefreshTime(feed.lastFetchedAt)}</span>
     </span>
   )
 }

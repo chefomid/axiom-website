@@ -11,3 +11,5 @@ dist
 services/property-api/.venv
 services/property-api/__pycache__
 services/property-api/.crawl4ai
+services/property-api/data/
+outreach/

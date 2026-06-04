@@ -49,6 +49,7 @@ export default function EarthquakeAnalysisSidebar({
                 key={preset.id}
                 className="!min-h-[36px] !flex-none px-4"
                 active={timelineProps.activeId === preset.id}
+                disabled={timelineProps.disabled}
                 onClick={() => timelineProps.onChange(preset.id)}
               >
                 {preset.label}
@@ -56,7 +57,7 @@ export default function EarthquakeAnalysisSidebar({
             ))}
           </div>
           <p className="mt-3 font-mono text-[10px] leading-relaxed text-ink-faint">
-            USGS catalog lookback for the map stain layer and charts.
+            USGS catalog window for the frequency map and charts.
           </p>
         </section>
 
@@ -102,7 +103,7 @@ export default function EarthquakeAnalysisSidebar({
                 key={opt.value}
                 active={magnitudeProps.activeValue === opt.value}
                 accent="cyber"
-                loading={magnitudeProps.loading && magnitudeProps.activeValue === opt.value}
+                disabled={magnitudeProps.disabled}
                 onClick={() => magnitudeProps.onChange(opt.value)}
               >
                 {opt.label}
@@ -121,7 +122,7 @@ export default function EarthquakeAnalysisSidebar({
             onClick={onOpenReport}
             className="w-full rounded-lg border border-[#ff9348]/40 bg-[#ff9348]/10 px-4 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[#ff9348] transition hover:border-[#ff9348]/60 hover:bg-[#ff9348]/15"
           >
-            Report
+            Generate Report
           </button>
         </section>
 

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import AppErrorBoundary from './components/AppErrorBoundary'
 import Home from './pages/Home'
 import BetterWorld from './pages/BetterWorld'
@@ -12,22 +12,22 @@ import {
   REPORT_PRINT_PATH,
 } from './constants/routes'
 
+const router = createBrowserRouter([
+  { path: '/', element: <Home /> },
+  { path: '/a-better-world', element: <BetterWorld /> },
+  { path: PUBLIC_DATA_COMMAND_PATH, element: <PublicDataCommand /> },
+  { path: PROPERTY_INTELLIGENCE_PATH, element: <PropertyIntelligence /> },
+  { path: REPORT_PRINT_PATH, element: <ReportPrint /> },
+  {
+    path: LEGACY_IMPACT_MAP_PATH,
+    element: <Navigate to={PUBLIC_DATA_COMMAND_PATH} replace />,
+  },
+])
+
 export default function App() {
   return (
     <AppErrorBoundary>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/a-better-world" element={<BetterWorld />} />
-          <Route path={PUBLIC_DATA_COMMAND_PATH} element={<PublicDataCommand />} />
-          <Route path={PROPERTY_INTELLIGENCE_PATH} element={<PropertyIntelligence />} />
-          <Route path={REPORT_PRINT_PATH} element={<ReportPrint />} />
-          <Route
-            path={LEGACY_IMPACT_MAP_PATH}
-            element={<Navigate to={PUBLIC_DATA_COMMAND_PATH} replace />}
-          />
-        </Routes>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </AppErrorBoundary>
   )
 }

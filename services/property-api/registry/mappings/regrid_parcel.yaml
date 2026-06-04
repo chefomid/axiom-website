@@ -1,0 +1,21 @@
+parcel_number:
+  path: parcelNumber
+  type: string
+  confidence: high
+owner_name:
+  path: ownerName
+  type: string
+  confidence: high
+zoning:
+  path: zoning
+  type: string
+  confidence: high
+assessed_value:
+  path: assessedValue
+  type: integer
+  confidence: high
+square_footage:
+  path: squareFootage
+  type: integer
+  unit: sqft
+  confidence: medium

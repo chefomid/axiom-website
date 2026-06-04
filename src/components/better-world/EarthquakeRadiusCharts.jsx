@@ -15,7 +15,7 @@ export const ANNULAR_VIEW_OPTIONS = [
     dataKey: 'densityPer1000SqMiPerYear',
     yAxisLabel: 'Events / yr / 1k sq mi',
     subtitle:
-      'Normalized by ring area — outer rings cover more ground, so raw counts alone can mislead.',
+      'Earthquake concentration per square mile in each distance ring from your center.',
     formatTooltip: (value, row) =>
       `Density: ${Number(value).toFixed(2)} / yr / 1k sq mi · Count: ${row.count} in ${Number(row.areaSqMi).toFixed(0)} sq mi`,
   },

@@ -80,8 +80,8 @@ export function commandPulseMessage({ scope, radiusMiles, countryLabel, signalCo
   return `${signalCount} active alert${signalCount === 1 ? '' : 's'} · ${feedCount} source${feedCount === 1 ? '' : 's'} · ${scopeLabel}`
 }
 
-export function feedFailedMessage(source, message) {
-  return formatFeedError(source, message).title
+export function feedFailedMessage(source, message, options = {}) {
+  return formatFeedError(source, message, options).title
 }
 
 export function telemetrySourceForLayer(layer) {

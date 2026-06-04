@@ -38,21 +38,6 @@ function resolveInitialCountry(countryId) {
   )
 }
 
-function CatalogLoadingIndicator({ className = '' }) {
-  return (
-    <p
-      className={`flex items-center gap-1 font-mono text-[11px] text-command-watch ${className}`.trim()}
-    >
-      <span>Loading USGS historical catalog</span>
-      <span className="eq-loading-dots inline-flex w-[1.25rem]" aria-hidden>
-        <span>.</span>
-        <span>.</span>
-        <span>.</span>
-      </span>
-    </p>
-  )
-}
-
 function resolveAnalysisLandingState({ countryId, initialCenterOverride }) {
   if (initialCenterOverride) {
     return {
@@ -212,6 +197,7 @@ export default function EarthquakeAnalysisModal({
 
   const {
     loading,
+    refreshing,
     error,
     truncated,
     resolved,
@@ -304,7 +290,7 @@ export default function EarthquakeAnalysisModal({
       </div>,
     )
   }
-  if (!loading && !error && dataQuality?.level !== 'ok' && dataQuality?.level !== 'none' && dataQuality?.message) {
+  if (!refreshing && !loading && !error && dataQuality?.level !== 'ok' && dataQuality?.level !== 'none' && dataQuality?.message) {
     alertNodes.push(
       <p
         key="quality"
@@ -315,9 +301,9 @@ export default function EarthquakeAnalysisModal({
     )
   }
 
-  const showCharts = !loading || summary
-  const chartsReady = showCharts && dataQuality?.level !== 'none' && !globalAnalysis
-  const summaryReady = showCharts && dataQuality?.level !== 'none'
+  const dataReady = !refreshing && Boolean(summary)
+  const chartsReady = dataReady && dataQuality?.level !== 'none' && !globalAnalysis
+  const summaryReady = dataReady && dataQuality?.level !== 'none'
 
   const handleReportGenerate = async draft => {
     setReportBuilderOpen(false)
@@ -369,12 +355,13 @@ export default function EarthquakeAnalysisModal({
               onAddressChange: setAddressQuery,
               onLocationSelect: handleLocationSelect,
               mapUserLocation: userLocation,
-              disabled: loading,
+              disabled: refreshing,
             }}
             timelineProps={{
               presets: ANALYTICS_YEAR_PRESETS,
               activeId: yearPresetId,
               onChange: setYearPresetId,
+              disabled: refreshing,
             }}
             distanceProps={{
               options: distanceOptions,
@@ -386,7 +373,7 @@ export default function EarthquakeAnalysisModal({
             magnitudeProps={{
               options: EARTHQUAKE_MAGNITUDE_OPTIONS,
               activeValue: minMagnitude,
-              loading,
+              disabled: refreshing,
               onChange: setMinMagnitude,
             }}
             alerts={alertNodes}
@@ -396,18 +383,14 @@ export default function EarthquakeAnalysisModal({
             <main className="flex min-h-0 min-w-0 flex-1 flex-col p-6">
               <div className="relative flex min-h-0 flex-1 flex-col">
                 {!resolved.center ? (
-                  <CatalogLoadingIndicator className="flex flex-1 items-center justify-center" />
+                  <div className="flex flex-1 items-center justify-center px-6">
+                    <p className="max-w-sm text-center font-mono text-[11px] leading-relaxed text-ink-faint">
+                      Select a location in the sidebar to load the USGS earthquake catalog.
+                    </p>
+                  </div>
                 ) : (
                   <div className="flex min-h-0 flex-1 flex-col">
                     <div className="relative min-h-0 flex-1 [&_.command-map-host]:min-h-0 [&_.command-map-host]:h-full">
-                      {loading && !summary && events.length === 0 ? (
-                        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-[#050505]/35 backdrop-blur-[1px]">
-                          <div className="rounded-lg border border-command-watch/40 bg-[#0a0a0a]/90 px-4 py-2">
-                            <CatalogLoadingIndicator />
-                          </div>
-                        </div>
-                      ) : null}
-
                       <div
                         className={`flex h-full min-h-0 flex-col transition-[filter,opacity] duration-300 ${
                           dataQuality?.level === 'none' ? 'opacity-45 saturate-[0.35]' : ''
@@ -506,7 +489,7 @@ export default function EarthquakeAnalysisModal({
                       onExpandedChange={setDigestExpanded}
                       onClose={() => setDigestOpen(false)}
                       center={resolved.center}
-                      loading={loading}
+                      loading={refreshing}
                       truncated={truncated}
                       yearPreset={yearPreset}
                       globalAnalysis={globalAnalysis}
@@ -534,7 +517,7 @@ export default function EarthquakeAnalysisModal({
               <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3">
                 {!summaryReady && !chartsReady ? (
                   <p className="py-8 text-center font-mono text-[10px] text-ink-faint">
-                    {loading ? 'Loading charts…' : 'No chart data for this location.'}
+                    {refreshing ? 'Loading charts for this selection…' : 'No chart data for this location.'}
                   </p>
                 ) : (
                   <>

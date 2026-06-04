@@ -1,4 +1,5 @@
 import { defaultFetchHeaders, femaArcgisUrl } from '../utils/apiBase'
+import { getMarkerReportUrl } from '../utils/markerReportUrl'
 import { getScopeBbox, bboxToEsriEnvelope } from '../utils/scopeBbox'
 import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
 import { geometryCentroid } from '../utils/geo'
@@ -145,6 +146,7 @@ export function nfhlToSignals(zoneMarkers, limit = 6) {
       dataSources: ['fema'],
       confidence: marker.confidence,
       action: marker.action,
+      actionUrl: getMarkerReportUrl(marker),
       markerId: marker.id,
       timestamp: marker.timestamp ?? null,
       live: true,

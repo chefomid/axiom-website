@@ -41,6 +41,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: path => path.replace(/^\/api\/reports/, '/reports'),
       },
+      '/api/census': {
+        target: 'https://geocoding.geo.census.gov',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api\/census/, ''),
+      },
       '/api/photon': {
         target: 'https://photon.komoot.io',
         changeOrigin: true,

@@ -2,7 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl from '../../lib/maplibre'
 import { MapCornerControls } from '../../lib/mapCornerControls'
 import { ANALYTICS_RADIUS_BREAKPOINTS, LAYER_COLORS, SEVERITY_HEX } from '../../data/commandMapData'
-import { getAllFaultLineDots, preloadFaultLineDots } from '../../services/faultLines'
+import {
+  getAllFaultLineDots,
+  getFaultInfoAtLocation,
+  preloadFaultLineDots,
+} from '../../services/faultLines'
 import {
   bboxToBounds,
   circleBounds,
@@ -19,7 +23,6 @@ import {
   setAnalysisSatelliteImagery,
   ensureAnalysisSatelliteImagery,
 } from '../../utils/mapBasemaps'
-
 const MAP_VIEW_PADDING = { top: 64, bottom: 72, left: 120, right: 44 }
 
 function viewportKey(center, maxRadiusMiles, recenterKey = 0) {
@@ -124,11 +127,6 @@ const SATELLITE_HEATMAP_COLOR = [
   1,
   'rgba(255, 147, 72, 0.55)',
 ]
-
-function truncateLabel(text, max = 48) {
-  if (!text) return ''
-  return text.length <= max ? text : `${text.slice(0, max - 1)}…`
-}
 
 function magToColor(mag) {
   if (mag == null) return SEVERITY_HEX.stable
@@ -527,6 +525,83 @@ function syncFaultLineSource(map) {
   source.setData(getAllFaultLineDots())
 }
 
+const FAULT_HIT_PAD_PX = 10
+
+function bindFaultLineInteractions(map, refs) {
+  if (!map || refs.bound) return
+  refs.bound = true
+
+  const clearFaultHover = () => {
+    refs.setHoverTip(null)
+    if (map.getCanvas()) map.getCanvas().style.cursor = ''
+  }
+
+  const pickFaultFeature = point => {
+    const pad = FAULT_HIT_PAD_PX
+    const bbox = [
+      [point.x - pad, point.y - pad],
+      [point.x + pad, point.y + pad],
+    ]
+    const features = map.queryRenderedFeatures(bbox, { layers: ['fault-zones'] })
+    return features[0] ?? null
+  }
+
+  const faultInfoFromFeature = (feature, lngLat) => {
+    const [lng, lat] = feature?.geometry?.coordinates ?? []
+    const location = {
+      lat: Number.isFinite(lngLat?.lat) ? lngLat.lat : lat,
+      lng: Number.isFinite(lngLat?.lng) ? lngLat.lng : lng,
+    }
+    return getFaultInfoAtLocation(location, feature?.properties?.name ?? '')
+  }
+
+  map.on('mousemove', 'fault-zones', e => {
+    if (!refs.showFaultLines) {
+      clearFaultHover()
+      return
+    }
+
+    const feature = e.features?.[0] ?? pickFaultFeature(e.point)
+    if (!feature) {
+      clearFaultHover()
+      return
+    }
+
+    const info = faultInfoFromFeature(feature, e.lngLat)
+    if (!info) {
+      clearFaultHover()
+      return
+    }
+
+    refs.setHoverTip({
+      x: e.point.x,
+      y: e.point.y,
+      displayName: info.displayName,
+      referenceUrl: info.referenceUrl,
+      referenceSource: info.referenceSource,
+    })
+    map.getCanvas().style.cursor = 'pointer'
+  })
+
+  map.on('mouseleave', 'fault-zones', () => {
+    if (!refs.showFaultLines) return
+    clearFaultHover()
+  })
+
+  map.on('click', 'fault-zones', e => {
+    if (!refs.showFaultLines) return
+
+    const feature = e.features?.[0] ?? pickFaultFeature(e.point)
+    if (!feature) return
+
+    const info = faultInfoFromFeature(feature, e.lngLat)
+    if (!info?.referenceUrl) return
+
+    e.preventDefault()
+    window.open(info.referenceUrl, '_blank', 'noopener,noreferrer')
+  })
+}
+
 const SATELLITE_BEFORE_LAYER = 'analysis-radius-sweet-fill'
 
 function applyTopographyModeInstant(map, modeId) {
@@ -564,6 +639,8 @@ export default function EarthquakeAnalysisMap({
   const onSatelliteToggleRef = useRef(() => {})
   const onFaultLinesToggleRef = useRef(() => {})
   const showFaultLinesRef = useRef(showFaultLines)
+  const faultLineEventsRef = useRef({ bound: false, showFaultLines: false, setHoverTip: () => {} })
+  const [faultHoverTip, setFaultHoverTip] = useState(null)
   const activeModeRef = useRef(topographyMode === 'satellite' ? 'satellite' : 'road')
   const suppressStyleFlyRef = useRef(false)
   const prevCenterRef = useRef(null)
@@ -609,6 +686,8 @@ export default function EarthquakeAnalysisMap({
   }
 
   showFaultLinesRef.current = showFaultLines
+  faultLineEventsRef.current.showFaultLines = showFaultLines
+  faultLineEventsRef.current.setHoverTip = setFaultHoverTip
 
   const ensureFaultLineData = useCallback(map => {
     if (!map?.getSource('fault-lines')) return
@@ -782,6 +861,7 @@ export default function EarthquakeAnalysisMap({
       applyFrequencyDisplayMode(map, activeModeRef.current)
       ensureFaultLineData(map)
       setFaultLinesVisibility(map, showFaultLinesRef.current)
+      bindFaultLineInteractions(map, faultLineEventsRef.current)
       syncMapDataRef.current()
       return true
     } catch (err) {
@@ -940,6 +1020,7 @@ export default function EarthquakeAnalysisMap({
 
   useEffect(() => {
     cornerControlsRef.current?.setFaultLinesActive(showFaultLines)
+    if (!showFaultLines) setFaultHoverTip(null)
   }, [showFaultLines, mapReady])
 
   useEffect(() => {
@@ -1089,6 +1170,14 @@ export default function EarthquakeAnalysisMap({
     return () => map.off('idle', onIdle)
   }, [mapReady, events])
 
+  const mapSummaryLine = globalAnalysis
+    ? `Worldwide catalog · ${yearPresetLabel || '—'} · ${events.length} pts across all regions`
+    : nationalAnalysis
+      ? `National US catalog · ${yearPresetLabel || '—'} · ${events.length} pts`
+      : countryOverviewAnalysis
+        ? `National catalog · ${yearPresetLabel || '—'} · ${events.length} pts`
+        : `${yearPresetLabel || '—'} window · ${maxRadiusMiles} mi · ${events.length} pts`
+
   return (
     <div className="relative flex h-full min-h-[340px] w-full flex-col">
       <div className="command-map-host relative min-h-[340px] flex-1 overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#050505]">
@@ -1099,21 +1188,39 @@ export default function EarthquakeAnalysisMap({
           </p>
         ) : null}
 
-        <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(100%-1.5rem,260px)] rounded-lg border border-[#444] bg-[#0a0a0a] px-3 py-2 shadow-lg">
+        {faultHoverTip && showFaultLines ? (
+          <div
+            className="map-point-tooltip map-fault-tooltip"
+            style={{ left: faultHoverTip.x, top: faultHoverTip.y }}
+            role="tooltip"
+          >
+            <span className="map-point-tooltip__meta">
+              <span className="map-point-tooltip__dot map-point-tooltip__dot--critical" aria-hidden />
+              {faultHoverTip.referenceSource}
+            </span>
+            <span className="map-point-tooltip__title">{faultHoverTip.displayName}</span>
+            <span className="map-fault-tooltip__hint">Click for official source</span>
+          </div>
+        ) : null}
+
+        <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(100%-1.5rem,280px)] rounded-lg border border-[#444] bg-[#0a0a0a] px-3 py-2 shadow-lg">
           <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#a3a3a3]">Analysis center</p>
-          <p className="mt-1 font-mono text-[11px] font-medium leading-snug text-white">{truncateLabel(label)}</p>
+          {label ? (
+            <p className="mt-1 break-words font-mono text-[11px] font-medium leading-snug text-white">{label}</p>
+          ) : null}
+          <p className="mt-1 font-mono text-[9px] leading-snug text-[#a3a3a3]">
+            {globalAnalysis
+              ? `${yearPresetLabel || '—'} · worldwide`
+              : nationalAnalysis
+                ? `${yearPresetLabel || '—'} · national US`
+                : countryOverviewAnalysis
+                  ? `${yearPresetLabel || '—'} · national`
+                  : `${yearPresetLabel || '—'} · ${maxRadiusMiles} mi`}
+          </p>
         </div>
       </div>
 
-      <p className="mt-2 text-center font-mono text-[9px] leading-relaxed text-ink-faint">
-        {globalAnalysis
-          ? `Worldwide catalog · ${yearPresetLabel || '—'} · ${events.length} pts across all regions`
-          : nationalAnalysis
-            ? `National US catalog · ${yearPresetLabel || '—'} · ${events.length} pts`
-            : countryOverviewAnalysis
-              ? `National catalog · ${yearPresetLabel || '—'} · ${events.length} pts`
-              : `${yearPresetLabel || '—'} window · ${maxRadiusMiles} mi · ${events.length} pts`}
-      </p>
+      <p className="mt-2 text-center font-mono text-[9px] leading-relaxed text-ink-faint">{mapSummaryLine}</p>
     </div>
   )
 }

@@ -1,0 +1,55 @@
+{
+  "sections": [
+    {
+      "id": "construction",
+      "label": "Construction",
+      "cope_letter": "C",
+      "fields": [
+        { "id": "year_built", "label": "Year built", "type": "year", "precedence": ["attom", "melissa", "rentcast", "assessor_crawl", "crawl4ai_heuristic"] },
+        { "id": "square_footage", "label": "Building sq ft", "type": "integer", "unit": "sqft", "tolerance_pct": 5, "precedence": ["attom", "corelogic", "melissa", "rentcast", "assessor_crawl"] },
+        { "id": "stories", "label": "Number of stories", "type": "stories", "precedence": ["attom", "corelogic", "osm", "assessor_crawl"] },
+        { "id": "construction_type", "label": "Construction type", "type": "string", "precedence": ["attom", "corelogic", "melissa", "assessor_crawl"] },
+        { "id": "roof_type", "label": "Roof type", "type": "string", "precedence": ["attom", "corelogic", "permit_crawl", "assessor_crawl"] },
+        { "id": "property_type", "label": "Property type", "type": "string", "precedence": ["attom", "rentcast", "melissa", "assessor_crawl"] },
+        { "id": "parcel_number", "label": "Parcel / APN", "type": "string", "precedence": ["regrid", "county_parcel", "assessor_crawl", "melissa"] }
+      ]
+    },
+    {
+      "id": "occupancy",
+      "label": "Occupancy",
+      "cope_letter": "O",
+      "fields": [
+        { "id": "owner_name", "label": "Owner of record", "type": "string", "precedence": ["attom", "corelogic", "melissa", "assessor_crawl"] },
+        { "id": "zoning", "label": "Zoning / land use", "type": "string", "precedence": ["county_parcel", "assessor_crawl", "attom"] },
+        { "id": "occupancy_use", "label": "Occupancy / use code", "type": "string", "precedence": ["attom", "corelogic", "google_places", "assessor_crawl"] },
+        { "id": "assessed_value", "label": "Assessed value", "type": "integer", "tolerance_pct": 3, "precedence": ["melissa", "assessor_crawl", "attom"] }
+      ]
+    },
+    {
+      "id": "protection",
+      "label": "Protection",
+      "cope_letter": "P",
+      "fields": [
+        { "id": "sprinkler_status", "label": "Sprinklered", "type": "string", "precedence": ["permit_crawl", "attom", "corelogic"] },
+        { "id": "fire_alarm", "label": "Fire alarm", "type": "string", "precedence": ["permit_crawl", "attom"] },
+        { "id": "fire_station_distance", "label": "Nearest fire station", "type": "string", "precedence": ["fire_station_gis", "corelogic_spatial"] },
+        { "id": "hydrant_proximity", "label": "Hydrant proximity", "type": "string", "precedence": ["hydrant_gis", "corelogic_spatial"] }
+      ]
+    },
+    {
+      "id": "exposure",
+      "label": "Exposure",
+      "cope_letter": "E",
+      "fields": [
+        { "id": "flood_zone", "label": "Flood zone", "type": "string", "precedence": ["fema_nfhl", "corelogic_spatial", "attom_hazard"] },
+        { "id": "flood_summary", "label": "Flood hazard summary", "type": "string", "precedence": ["fema_nfhl", "firststreet", "attom_hazard"] },
+        { "id": "seismic_summary", "label": "Seismic activity", "type": "string", "precedence": ["usgs", "attom_hazard"] },
+        { "id": "wildfire_summary", "label": "Wildfire proximity", "type": "string", "precedence": ["nasa_eonet", "firststreet", "attom_hazard"] },
+        { "id": "nws_alerts", "label": "Active weather alerts", "type": "string", "precedence": ["nws"] },
+        { "id": "air_quality", "label": "Air quality", "type": "string", "precedence": ["open_meteo", "airnow"] },
+        { "id": "adjacent_exposure", "label": "Adjacent uses / POI", "type": "string", "precedence": ["poi_exposure", "adjacent_parcel"] },
+        { "id": "environmental_facilities", "label": "EPA regulated facilities", "type": "string", "precedence": ["epa_echo"] }
+      ]
+    }
+  ]
+}

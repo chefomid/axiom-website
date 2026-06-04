@@ -11,6 +11,6 @@ Install or update: `npm run install:superpowers`
 | Route | Purpose |
 |-------|---------|
 | `/public-data-command` | Live government hazard feeds |
-| `/property-intelligence` | Address enrichment + optional Crawl4AI crawl |
+| `/property-intelligence` | À la carte property dossiers + live receipt pricing |
 
 Property API lives in `services/property-api/`. See `docs/PROPERTY-INTELLIGENCE.md`.

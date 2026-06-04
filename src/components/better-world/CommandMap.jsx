@@ -1000,8 +1000,15 @@ export default function CommandMap({
 
       {liveFeedErrors.length > 0 && (
         <div className="absolute left-3 top-16 z-20 flex max-w-xs flex-col gap-1.5">
-          {liveFeedErrors.map(({ source, message, retryAt }) => (
-            <FeedErrorBanner key={source} source={source} message={message} retryAt={retryAt} />
+          {liveFeedErrors.map(({ source, message, retryAt, stale, lastFetchedAt }) => (
+            <FeedErrorBanner
+              key={source}
+              source={source}
+              message={message}
+              retryAt={retryAt}
+              stale={stale}
+              lastFetchedAt={lastFetchedAt}
+            />
           ))}
         </div>
       )}

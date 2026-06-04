@@ -22,25 +22,47 @@ export function getFeedLabel(source) {
   return FEED_LABELS[source] ?? source
 }
 
-export function formatFeedError(source, message, retryAt) {
+export function formatFeedAge(date) {
+  if (!date) return null
+  const d = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+export function formatFeedError(source, message, options = {}) {
+  const { retryAt = null, stale = false, lastFetchedAt = null } = options
   const label = getFeedLabel(source)
   const transient = isTransientFeedError(message)
+  const age = formatFeedAge(lastFetchedAt)
+
+  if (stale) {
+    return {
+      title: `${label} couldn't update`,
+      detail: age
+        ? `Showing data from ${age}. Your other hazard layers are unaffected.`
+        : 'Showing your last loaded data. Your other hazard layers are unaffected.',
+      retryAt,
+      transient: true,
+      severity: 'watch',
+    }
+  }
 
   if (transient) {
     return {
-      title: `${label} temporarily unavailable`,
-      detail:
-        'The service is busy — too many requests in a short time. Please wait; we will refresh automatically.',
-      retryAt: retryAt ?? null,
+      title: `${label} is busy right now`,
+      detail: 'The official feed is responding slowly. Retrying automatically.',
+      retryAt,
       transient: true,
+      severity: 'watch',
     }
   }
 
   return {
-    title: `${label} could not load`,
-    detail: 'Something went wrong while fetching live data. We will try again on the next refresh.',
-    retryAt: retryAt ?? null,
+    title: `${label} isn't available`,
+    detail: "We couldn't reach the official feed. Other hazard layers are still active.",
+    retryAt,
     transient: false,
+    severity: 'critical',
   }
 }
 

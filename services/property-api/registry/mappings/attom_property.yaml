@@ -1,0 +1,37 @@
+square_footage:
+  path: squareFootage
+  type: integer
+  unit: sqft
+  confidence: high
+year_built:
+  path: yearBuilt
+  type: year
+  confidence: high
+stories:
+  path: stories
+  type: stories
+  confidence: high
+construction_type:
+  path: constructionType
+  type: string
+  confidence: high
+roof_type:
+  path: roofType
+  type: string
+  confidence: high
+property_type:
+  path: propertyType
+  type: string
+  confidence: high
+owner_name:
+  path: ownerName
+  type: string
+  confidence: high
+occupancy_use:
+  path: occupancyUse
+  type: string
+  confidence: high
+parcel_number:
+  path: parcelNumber
+  type: string
+  confidence: high

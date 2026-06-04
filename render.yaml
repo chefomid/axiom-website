@@ -4,10 +4,18 @@ services:
     runtime: docker
     rootDir: services/property-api
     dockerfilePath: Dockerfile
-    plan: free
-    healthCheckPath: /reports/health
+    plan: starter
+    healthCheckPath: /health
     envVars:
       - key: FRONTEND_URL
         value: https://www.axiompropertycasualty.com
       - key: REPORT_SESSION_TTL_SECONDS
         value: "900"
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false

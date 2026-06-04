@@ -4,10 +4,10 @@ import {
   formatRetryCountdown,
 } from '../../utils/feedErrors'
 
-export default function FeedErrorBanner({ source, message, retryAt }) {
+export default function FeedErrorBanner({ source, message, retryAt, stale = false, lastFetchedAt = null }) {
   const formatted = useMemo(
-    () => formatFeedError(source, message, retryAt),
-    [source, message, retryAt],
+    () => formatFeedError(source, message, { retryAt, stale, lastFetchedAt }),
+    [source, message, retryAt, stale, lastFetchedAt],
   )
 
   const [now, setNow] = useState(() => Date.now())
@@ -21,10 +21,21 @@ export default function FeedErrorBanner({ source, message, retryAt }) {
   const countdown =
     formatted.retryAt != null ? formatRetryCountdown(formatted.retryAt, now) : null
   const retryReady = formatted.retryAt != null && formatted.retryAt <= now
+  const isWatch = formatted.severity === 'watch'
 
   return (
-    <div className="rounded border border-command-critical/40 bg-[#0d0d0d]/90 px-2.5 py-2 backdrop-blur-sm">
-      <p className="font-mono text-[10px] font-medium text-command-critical">{formatted.title}</p>
+    <div
+      className={`rounded border bg-[#0d0d0d]/90 px-2.5 py-2 backdrop-blur-sm ${
+        isWatch ? 'border-command-watch/40' : 'border-command-critical/40'
+      }`}
+    >
+      <p
+        className={`font-mono text-[10px] font-medium ${
+          isWatch ? 'text-command-watch' : 'text-command-critical'
+        }`}
+      >
+        {formatted.title}
+      </p>
       <p className="mt-1 font-mono text-[9px] leading-relaxed text-ink-muted">{formatted.detail}</p>
       {formatted.retryAt != null && (
         <p className="mt-1.5 font-mono text-[9px] text-command-watch">

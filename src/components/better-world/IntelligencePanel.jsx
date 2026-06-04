@@ -86,11 +86,8 @@ export default function IntelligencePanel({ signals, selectedMarkerId, onSelectS
 
               return (
                 <li key={signal.id}>
-                  <button
-                    type="button"
-                    data-marker-id={signal.markerId}
-                    onClick={() => onSelectSignal(signal.markerId)}
-                    className={`w-full rounded border bg-panel-surface/80 px-3 py-3 text-left transition-colors hover:border-[#444] ${
+                  <div
+                    className={`rounded border bg-panel-surface/80 transition-colors hover:border-[#444] ${
                       selected
                         ? 'border-[#666] bg-[#181818] ring-1 ring-offset-1 ring-offset-[#0a0a0a]'
                         : 'border-panel-border'
@@ -101,54 +98,72 @@ export default function IntelligencePanel({ signals, selectedMarkerId, onSelectS
                       ...(selected ? { boxShadow: `0 0 0 1px ${accent.hex}55` } : {}),
                     }}
                   >
-                    <div className="flex gap-3">
-                      <div className="flex flex-col items-center gap-1.5 pt-0.5">
-                        <span
-                          className="inline-block h-3 w-3 shrink-0 rounded-full ring-2 ring-white/10"
-                          style={{ backgroundColor: accent.hex }}
-                          title={`${accent.label} severity`}
-                          aria-hidden
-                        />
-                        <span className="font-mono text-[10px] tabular-nums text-ink-faint">
-                          {String(index + 1).padStart(2, '0')}
-                        </span>
-                      </div>
-                      <motion.div
-                        layout
-                        className="min-w-0 flex-1"
-                        whileHover={{ x: 2 }}
-                        transition={{ duration: 0.15 }}
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          {layer && (
-                            <span
-                              className="rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[#0a0a0a]"
-                              style={{ backgroundColor: layerColor }}
-                            >
-                              {layer.shortLabel}
-                            </span>
-                          )}
+                    <button
+                      type="button"
+                      data-marker-id={signal.markerId}
+                      onClick={() => onSelectSignal(signal.markerId)}
+                      className="w-full px-3 py-3 text-left"
+                    >
+                      <div className="flex gap-3">
+                        <div className="flex flex-col items-center gap-1.5 pt-0.5">
                           <span
-                            className={`font-mono text-[9px] uppercase tracking-[0.14em] ${accent.text}`}
-                          >
-                            {accent.label}
+                            className="inline-block h-3 w-3 shrink-0 rounded-full ring-2 ring-white/10"
+                            style={{ backgroundColor: accent.hex }}
+                            title={`${accent.label} severity`}
+                            aria-hidden
+                          />
+                          <span className="font-mono text-[10px] tabular-nums text-ink-faint">
+                            {String(index + 1).padStart(2, '0')}
                           </span>
                         </div>
-                        <p className="mt-1.5 text-sm leading-snug text-white">{signal.title}</p>
-                        {occurredAt && (
-                          <p className="mt-1 font-mono text-[10px] tabular-nums text-ink-faint">
-                            {occurredAt}
+                        <motion.div
+                          layout
+                          className="min-w-0 flex-1"
+                          whileHover={{ x: 2 }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            {layer && (
+                              <span
+                                className="rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[#0a0a0a]"
+                                style={{ backgroundColor: layerColor }}
+                              >
+                                {layer.shortLabel}
+                              </span>
+                            )}
+                            <span
+                              className={`font-mono text-[9px] uppercase tracking-[0.14em] ${accent.text}`}
+                            >
+                              {accent.label}
+                            </span>
+                          </div>
+                          <p className="mt-1.5 text-sm leading-snug text-white">{signal.title}</p>
+                          {occurredAt && (
+                            <p className="mt-1 font-mono text-[10px] tabular-nums text-ink-faint">
+                              {occurredAt}
+                            </p>
+                          )}
+                          <p className="mt-1.5 font-mono text-[10px] text-ink-muted">
+                            Source: {signal.source} · Confidence: {signal.confidence}%
                           </p>
-                        )}
-                        <p className="mt-1.5 font-mono text-[10px] text-ink-muted">
-                          Source: {signal.source} · Confidence: {signal.confidence}%
-                        </p>
-                        <p className={`mt-2 font-mono text-[10px] ${accent.text}`}>
-                          → {signal.action}
-                        </p>
-                      </motion.div>
-                    </div>
-                  </button>
+                        </motion.div>
+                      </div>
+                    </button>
+                    {signal.actionUrl ? (
+                      <a
+                        href={signal.actionUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`block px-3 pb-3 font-mono text-[10px] transition-colors hover:text-white ${accent.text}`}
+                      >
+                        → {signal.action}
+                      </a>
+                    ) : (
+                      <p className={`px-3 pb-3 font-mono text-[10px] ${accent.text}`}>
+                        → {signal.action}
+                      </p>
+                    )}
+                  </div>
                 </li>
               )
             })}

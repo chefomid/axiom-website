@@ -1,0 +1,94 @@
+{
+
+  "presets": [
+
+    {
+
+      "id": "publicly_available",
+
+      "label": "Publicly available",
+
+      "description": "All free OSINT, public records, government hazards, and COPE mapper — no vendor API fees.",
+
+      "categories": ["osint_free"],
+
+      "source_ids": [
+
+        "hazard_fema",
+
+        "hazard_nws",
+
+        "hazard_usgs",
+
+        "hazard_wildfire",
+
+        "hazard_aqi",
+
+        "hazard_epa",
+
+        "cope_map"
+
+      ]
+
+    },
+
+    {
+
+      "id": "cope_insurance",
+
+      "label": "COPE — insurance grade",
+
+      "description": "ATTOM property + hazard, government hazards, COPE mapper, and dossier export.",
+
+      "source_ids": [
+
+        "attom_property",
+
+        "attom_hazard",
+
+        "hazard_fema",
+
+        "hazard_usgs",
+
+        "hydrant_gis",
+
+        "fire_station_gis",
+
+        "cope_map",
+
+        "llm_conflict_resolve",
+
+        "pdf_dossier"
+
+      ],
+
+      "highlight": "insurance"
+
+    },
+
+    {
+
+      "id": "property_basics",
+
+      "label": "Property basics",
+
+      "description": "RentCast + free hazards + COPE mapper.",
+
+      "source_ids": [
+
+        "rentcast_property",
+
+        "hazard_fema",
+
+        "hazard_usgs",
+
+        "cope_map"
+
+      ]
+
+    }
+
+  ]
+
+}
+

@@ -4,6 +4,9 @@ import { formatPlateBoundaryLabel } from '../utils/earthquakeModeling'
 import { distanceMiles } from '../utils/geo'
 import { densifyLineString, filterPointsByBbox } from '../utils/faultZoneDots'
 
+/** Within this distance, CONUS map hover prefers a named major fault over the plate-boundary dot. */
+const NAMED_FAULT_HOVER_MILES = 25
+
 const ZONE_DOTS_URL = '/data/earthquake-zones.geojson'
 
 const EMPTY_COLLECTION = { type: 'FeatureCollection', features: [] }
@@ -133,4 +136,31 @@ export function findNearestFault(center) {
   }
 
   return named ?? plate
+}
+
+/**
+ * Display label and official reference for a map hover/click at a fault-line dot.
+ * @param {{ lat: number, lng: number }} location
+ * @param {string} [hoveredPlateCode] — `name` from the hovered PB2002 zone dot
+ */
+export function getFaultInfoAtLocation(location, hoveredPlateCode) {
+  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {
+    return null
+  }
+
+  const named = nearestNamedUsFault(location)
+  if (named && named.distanceMiles <= NAMED_FAULT_HOVER_MILES) {
+    return {
+      displayName: named.displayName,
+      referenceUrl: named.referenceUrl,
+      referenceSource: named.referenceSource ?? 'USGS',
+    }
+  }
+
+  const code = hoveredPlateCode ?? ''
+  return {
+    displayName: formatPlateBoundaryLabel(code),
+    referenceUrl: PLATE_BOUNDARY_REFERENCE.referenceUrl,
+    referenceSource: PLATE_BOUNDARY_REFERENCE.referenceSource,
+  }
 }

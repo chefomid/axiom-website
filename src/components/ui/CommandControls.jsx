@@ -194,18 +194,20 @@ export function PanelToggle({ active, onClick, label, meta, accent = 'live', ico
 }
 
 /** Segmented control option — scope modes, radius */
-export function SegmentButton({ active, onClick, children, className = '' }) {
+export function SegmentButton({ active, onClick, children, className = '', loading = false, disabled = false }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-[40px] flex-1 rounded-lg border px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.12em] transition-all duration-200 ${
+      disabled={disabled}
+      className={`min-h-[40px] flex-1 rounded-lg border px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.12em] transition-all duration-200 disabled:cursor-wait disabled:opacity-70 ${
         active
           ? 'border-command-live/50 bg-command-live/10 text-white ring-1 ring-command-live/20'
           : 'border-[#2e2e2e] bg-[#0c0c0c] text-ink-faint hover:border-[#444] hover:text-white'
       } ${className}`}
     >
       {children}
+      {loading ? <span className="ml-1 text-command-watch">…</span> : null}
     </button>
   )
 }
