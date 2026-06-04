@@ -31,10 +31,13 @@ import {
 import CommandHeader from './CommandHeader'
 import FeedStatusBar from './FeedStatusBar'
 import IntelligencePanel from './IntelligencePanel'
-import TelemetryFeed from './TelemetryFeed'
 import MapErrorBoundary from './MapErrorBoundary'
 import CommandMap from './CommandMap'
 import EarthquakeAnalysisModal from './EarthquakeAnalysisModal'
+import PublicDataCommandIntroModal, {
+  ackPublicDataCommandIntro,
+  isPublicDataCommandIntroAcked,
+} from './PublicDataCommandIntroModal'
 
 const SCOPE_STORAGE_KEY = 'axiom-command-scope-configured'
 
@@ -73,6 +76,7 @@ function PublicDataCommandViewInner() {
   const [userLocation, setUserLocation] = useState(
     hasDeepLocation ? { lat: deepLat, lng: deepLng } : null,
   )
+  const [introOpen, setIntroOpen] = useState(() => !isPublicDataCommandIntroAcked())
   const [scopeModalOpen, setScopeModalOpen] = useState(false)
   const [scopeApplyKey, setScopeApplyKey] = useState(0)
   const [analysisOpen, setAnalysisOpen] = useState(false)
@@ -367,12 +371,7 @@ function PublicDataCommandViewInner() {
   const handleOpenAnalysis = useCallback(() => {
     setAnalysisPinCenter(null)
     setAnalysisOpen(true)
-    pushEvent({
-      text: 'Opened earthquake analysis',
-      type: 'live',
-      source: TELEMETRY_SOURCE.earthquake,
-    })
-  }, [pushEvent])
+  }, [])
 
   const handleAnalyzeAtPin = useCallback(
     pin => {
@@ -530,8 +529,14 @@ function PublicDataCommandViewInner() {
     ],
   )
 
+  const handleIntroContinue = useCallback(() => {
+    ackPublicDataCommandIntro()
+    setIntroOpen(false)
+  }, [])
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#050505] text-ink-primary">
+      <PublicDataCommandIntroModal open={introOpen} onContinue={handleIntroContinue} />
       <CommandHeader />
       <FeedStatusBar feeds={feedStatus} />
 
@@ -617,8 +622,6 @@ function PublicDataCommandViewInner() {
           </div>
         </details>
       </div>
-
-      <TelemetryFeed />
 
       <EarthquakeAnalysisModal
         open={analysisOpen && usgsEnabled}

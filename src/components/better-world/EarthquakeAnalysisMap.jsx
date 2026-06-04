@@ -3,9 +3,10 @@ import maplibregl from '../../lib/maplibre'
 import { MapCornerControls } from '../../lib/mapCornerControls'
 import { ANALYTICS_RADIUS_BREAKPOINTS, LAYER_COLORS, SEVERITY_HEX } from '../../data/commandMapData'
 import {
-  getAllFaultLineDots,
-  getFaultInfoAtLocation,
+  getAllFaultLines,
+  getFaultInfoFromFeature,
   preloadFaultLineDots,
+  preloadFaultLines,
 } from '../../services/faultLines'
 import {
   bboxToBounds,
@@ -15,14 +16,8 @@ import {
   distanceMiles,
   eventsBounds,
 } from '../../utils/geo'
-import {
-  COMMAND_MAP_STYLE,
-  SATELLITE_TOPOGRAPHY_MODE,
-  applyTopographyEnvironment,
-  findTopographyMode,
-  setAnalysisSatelliteImagery,
-  ensureAnalysisSatelliteImagery,
-} from '../../utils/mapBasemaps'
+import { COMMAND_MAP_STYLE } from '../../utils/mapBasemaps'
+
 const MAP_VIEW_PADDING = { top: 64, bottom: 72, left: 120, right: 44 }
 
 function viewportKey(center, maxRadiusMiles, recenterKey = 0) {
@@ -113,20 +108,6 @@ const ROAD_STAIN_GLOW_RADIUS = [
 ]
 
 const ROAD_STAIN_GLOW_COLOR = 'rgba(118, 16, 20, 0.42)'
-
-const SATELLITE_HEATMAP_COLOR = [
-  'interpolate',
-  ['linear'],
-  ['heatmap-density'],
-  0,
-  'rgba(0,0,0,0)',
-  0.15,
-  'rgba(224, 82, 82, 0.2)',
-  0.5,
-  'rgba(255, 120, 80, 0.4)',
-  1,
-  'rgba(255, 147, 72, 0.55)',
-]
 
 function magToColor(mag) {
   if (mag == null) return SEVERITY_HEX.stable
@@ -379,14 +360,14 @@ function setupAnalysisLayers(map) {
   if (!map.getLayer('fault-zones-glow')) {
     map.addLayer({
       id: 'fault-zones-glow',
-      type: 'circle',
+      type: 'line',
       source: 'fault-lines',
-      layout: { visibility: 'none' },
+      layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'circle-color': '#e05252',
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 2.4, 4, 3.6, 6, 4.8, 8, 6],
-        'circle-opacity': 0.18,
-        'circle-blur': 0.85,
+        'line-color': '#e05252',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 2, 4, 4, 6, 6, 8, 8, 10],
+        'line-opacity': 0.22,
+        'line-blur': 1.2,
       },
     })
   }
@@ -394,14 +375,13 @@ function setupAnalysisLayers(map) {
   if (!map.getLayer('fault-zones')) {
     map.addLayer({
       id: 'fault-zones',
-      type: 'circle',
+      type: 'line',
       source: 'fault-lines',
-      layout: { visibility: 'none' },
+      layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'circle-color': '#e05252',
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 1.1, 4, 1.8, 6, 2.4, 8, 3],
-        'circle-opacity': 0.94,
-        'circle-stroke-width': 0,
+        'line-color': '#e05252',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1.2, 4, 1.8, 6, 2.4, 8, 3],
+        'line-opacity': 0.94,
       },
     })
   }
@@ -434,47 +414,43 @@ function setupAnalysisLayers(map) {
       },
     })
   }
+
+  if (!map.getLayer('fault-zones-hit')) {
+    map.addLayer({
+      id: 'fault-zones-hit',
+      type: 'line',
+      source: 'fault-lines',
+      layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#e05252',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 2, 10, 4, 14, 6, 18, 8, 22],
+        'line-opacity': 0.01,
+      },
+    })
+  }
+
+  ensureFaultLayersOnTop(map)
 }
 
-function applyFrequencyDisplayMode(map, topographyModeId) {
+/** Keep fault visuals and the wide hit target above quake markers. */
+function ensureFaultLayersOnTop(map) {
+  for (const layerId of ['fault-zones-glow', 'fault-zones', 'fault-zones-hit']) {
+    if (!map.getLayer(layerId)) continue
+    try {
+      map.moveLayer(layerId)
+    } catch {
+      /* layer order may already be correct */
+    }
+  }
+}
+
+/** Crimson density stain under magnitude-colored event markers. */
+function applyFrequencyDisplayMode(map) {
   if (!map?.getLayer('eq-heatmap')) return
 
-  const satellite = topographyModeId === 'satellite'
-
-  if (satellite) {
-    map.setPaintProperty('eq-heatmap', 'heatmap-color', SATELLITE_HEATMAP_COLOR)
-    map.setPaintProperty('eq-heatmap', 'heatmap-weight', ['get', 'weight'])
-    map.setPaintProperty('eq-heatmap', 'heatmap-opacity', 0.5)
-    map.setPaintProperty('eq-heatmap', 'heatmap-intensity', [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      4,
-      0.65,
-      6,
-      1,
-      8,
-      1.4,
-    ])
-    map.setPaintProperty('eq-heatmap', 'heatmap-radius', [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      4,
-      10,
-      6,
-      18,
-      8,
-      32,
-    ])
-    map.setPaintProperty('eq-events-glow', 'circle-color', ['get', 'color'])
-    map.setPaintProperty('eq-events-glow', 'circle-radius', EQ_POINT_RADIUS)
-    map.setPaintProperty('eq-events-glow', 'circle-opacity', 0.2)
-    map.setPaintProperty('eq-events-glow', 'circle-blur', 0.55)
-    map.setLayoutProperty('eq-events', 'visibility', 'visible')
-    map.setPaintProperty('eq-events', 'circle-opacity', 0.9)
-    return
-  }
+  map.setLayoutProperty('eq-heatmap', 'visibility', 'visible')
+  map.setLayoutProperty('eq-events-glow', 'visibility', 'visible')
+  map.setLayoutProperty('eq-events', 'visibility', 'visible')
 
   map.setPaintProperty('eq-heatmap', 'heatmap-color', ROAD_STAIN_HEATMAP_COLOR)
   map.setPaintProperty('eq-heatmap', 'heatmap-weight', ['get', 'stainWeight'])
@@ -505,11 +481,17 @@ function applyFrequencyDisplayMode(map, topographyModeId) {
     8,
     36,
   ])
-  map.setPaintProperty('eq-events-glow', 'circle-color', ROAD_STAIN_GLOW_COLOR)
+
+  map.setPaintProperty('eq-events-glow', 'circle-color', ['get', 'color'])
   map.setPaintProperty('eq-events-glow', 'circle-radius', ROAD_STAIN_GLOW_RADIUS)
-  map.setPaintProperty('eq-events-glow', 'circle-opacity', 0.44)
-  map.setPaintProperty('eq-events-glow', 'circle-blur', 0.85)
-  map.setLayoutProperty('eq-events', 'visibility', 'none')
+  map.setPaintProperty('eq-events-glow', 'circle-opacity', 0.38)
+  map.setPaintProperty('eq-events-glow', 'circle-blur', 0.75)
+
+  map.setPaintProperty('eq-events', 'circle-color', ['get', 'color'])
+  map.setPaintProperty('eq-events', 'circle-radius', EQ_POINT_RADIUS)
+  map.setPaintProperty('eq-events', 'circle-stroke-width', 1.15)
+  map.setPaintProperty('eq-events', 'circle-stroke-color', '#ffffff')
+  map.setPaintProperty('eq-events', 'circle-opacity', 0.92)
 }
 
 function setFaultLinesVisibility(map, visible) {
@@ -517,15 +499,38 @@ function setFaultLinesVisibility(map, visible) {
   const layout = visible ? 'visible' : 'none'
   map.setLayoutProperty('fault-zones-glow', 'visibility', layout)
   map.setLayoutProperty('fault-zones', 'visibility', layout)
+  if (map.getLayer('fault-zones-hit')) {
+    map.setLayoutProperty('fault-zones-hit', 'visibility', layout)
+  }
 }
 
 function syncFaultLineSource(map) {
   const source = map?.getSource('fault-lines')
   if (!source) return
-  source.setData(getAllFaultLineDots())
+  source.setData(getAllFaultLines())
 }
 
-const FAULT_HIT_PAD_PX = 10
+const FAULT_HIT_LAYERS = ['fault-zones-hit', 'fault-zones']
+const FAULT_HIT_PAD_PX = 6
+
+function pickFaultFeatureAtPoint(map, point) {
+  if (!map?.getLayer('fault-zones-hit')) return null
+  const layers = FAULT_HIT_LAYERS.filter(id => map.getLayer(id))
+  if (!layers.length) return null
+
+  let features = map.queryRenderedFeatures(point, { layers })
+  if (!features.length) {
+    const pad = FAULT_HIT_PAD_PX
+    features = map.queryRenderedFeatures(
+      [
+        [point.x - pad, point.y - pad],
+        [point.x + pad, point.y + pad],
+      ],
+      { layers },
+    )
+  }
+  return features[0] ?? null
+}
 
 function bindFaultLineInteractions(map, refs) {
   if (!map || refs.bound) return
@@ -536,82 +541,53 @@ function bindFaultLineInteractions(map, refs) {
     if (map.getCanvas()) map.getCanvas().style.cursor = ''
   }
 
-  const pickFaultFeature = point => {
-    const pad = FAULT_HIT_PAD_PX
-    const bbox = [
-      [point.x - pad, point.y - pad],
-      [point.x + pad, point.y + pad],
-    ]
-    const features = map.queryRenderedFeatures(bbox, { layers: ['fault-zones'] })
-    return features[0] ?? null
-  }
-
-  const faultInfoFromFeature = (feature, lngLat) => {
-    const [lng, lat] = feature?.geometry?.coordinates ?? []
-    const location = {
-      lat: Number.isFinite(lngLat?.lat) ? lngLat.lat : lat,
-      lng: Number.isFinite(lngLat?.lng) ? lngLat.lng : lng,
-    }
-    return getFaultInfoAtLocation(location, feature?.properties?.name ?? '')
-  }
-
-  map.on('mousemove', 'fault-zones', e => {
-    if (!refs.showFaultLines) {
-      clearFaultHover()
-      return
-    }
-
-    const feature = e.features?.[0] ?? pickFaultFeature(e.point)
-    if (!feature) {
-      clearFaultHover()
-      return
-    }
-
-    const info = faultInfoFromFeature(feature, e.lngLat)
-    if (!info) {
+  const showFaultHover = (feature, point, lngLat) => {
+    const info = getFaultInfoFromFeature(feature, lngLat)
+    if (!info?.displayName) {
       clearFaultHover()
       return
     }
 
     refs.setHoverTip({
-      x: e.point.x,
-      y: e.point.y,
+      x: point.x,
+      y: point.y,
       displayName: info.displayName,
       referenceUrl: info.referenceUrl,
       referenceSource: info.referenceSource,
     })
     map.getCanvas().style.cursor = 'pointer'
+  }
+
+  map.on('mousemove', e => {
+    if (!refs.showFaultLines) {
+      clearFaultHover()
+      return
+    }
+
+    const feature = pickFaultFeatureAtPoint(map, e.point)
+    if (!feature) {
+      clearFaultHover()
+      return
+    }
+
+    showFaultHover(feature, e.point, e.lngLat)
   })
 
-  map.on('mouseleave', 'fault-zones', () => {
-    if (!refs.showFaultLines) return
+  map.on('mouseout', () => {
     clearFaultHover()
   })
 
-  map.on('click', 'fault-zones', e => {
+  map.on('click', e => {
     if (!refs.showFaultLines) return
 
-    const feature = e.features?.[0] ?? pickFaultFeature(e.point)
+    const feature = pickFaultFeatureAtPoint(map, e.point)
     if (!feature) return
 
-    const info = faultInfoFromFeature(feature, e.lngLat)
+    const info = getFaultInfoFromFeature(feature, e.lngLat)
     if (!info?.referenceUrl) return
 
-    e.preventDefault()
     window.open(info.referenceUrl, '_blank', 'noopener,noreferrer')
   })
-}
-
-const SATELLITE_BEFORE_LAYER = 'analysis-radius-sweet-fill'
-
-function applyTopographyModeInstant(map, modeId) {
-  if (!map?.isStyleLoaded()) return
-  const mode = findTopographyMode(modeId)
-  applyTopographyEnvironment(map, mode, { enableTerrain: true })
-  setAnalysisSatelliteImagery(map, mode.id === 'satellite', {
-    beforeLayerId: SATELLITE_BEFORE_LAYER,
-  })
-  applyFrequencyDisplayMode(map, mode.id)
 }
 
 export default function EarthquakeAnalysisMap({
@@ -621,8 +597,6 @@ export default function EarthquakeAnalysisMap({
   events = [],
   maxRadiusMiles = ANALYTICS_RADIUS_BREAKPOINTS[ANALYTICS_RADIUS_BREAKPOINTS.length - 1],
   radiusBreakpoints = ANALYTICS_RADIUS_BREAKPOINTS,
-  topographyMode = 'road',
-  onTopographyModeChange,
   showFaultLines = false,
   onFaultLinesChange,
   nationalAnalysis = false,
@@ -636,12 +610,10 @@ export default function EarthquakeAnalysisMap({
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const cornerControlsRef = useRef(null)
-  const onSatelliteToggleRef = useRef(() => {})
   const onFaultLinesToggleRef = useRef(() => {})
   const showFaultLinesRef = useRef(showFaultLines)
   const faultLineEventsRef = useRef({ bound: false, showFaultLines: false, setHoverTip: () => {} })
   const [faultHoverTip, setFaultHoverTip] = useState(null)
-  const activeModeRef = useRef(topographyMode === 'satellite' ? 'satellite' : 'road')
   const suppressStyleFlyRef = useRef(false)
   const prevCenterRef = useRef(null)
   const viewportKeyRef = useRef(null)
@@ -656,23 +628,8 @@ export default function EarthquakeAnalysisMap({
 
   useEffect(() => {
     preloadFaultLineDots()
+    preloadFaultLines()
   }, [])
-
-  const topographyModeId = topographyMode === 'satellite' ? 'satellite' : 'road'
-  activeModeRef.current = topographyModeId
-
-  onSatelliteToggleRef.current = () => {
-    const next = activeModeRef.current === 'satellite' ? 'road' : 'satellite'
-    activeModeRef.current = next
-
-    const map = mapRef.current
-    if (map?.isStyleLoaded()) {
-      applyTopographyModeInstant(map, next)
-    }
-
-    cornerControlsRef.current?.setSatelliteActive(next === 'satellite')
-    onTopographyModeChange?.(next)
-  }
 
   onFaultLinesToggleRef.current = () => {
     const next = !showFaultLinesRef.current
@@ -691,11 +648,11 @@ export default function EarthquakeAnalysisMap({
 
   const ensureFaultLineData = useCallback(map => {
     if (!map?.getSource('fault-lines')) return
-    if (getAllFaultLineDots().features.length > 0) {
+    if (getAllFaultLines().features.length > 0) {
       syncFaultLineSource(map)
       return
     }
-    preloadFaultLineDots().then(() => {
+    preloadFaultLines().then(() => {
       if (!mapRef.current) return
       syncFaultLineSource(mapRef.current)
       if (showFaultLinesRef.current) {
@@ -721,7 +678,6 @@ export default function EarthquakeAnalysisMap({
     ) => {
       if (!map || !nextCenter || !map.isStyleLoaded()) return false
 
-      const mode = findTopographyMode(activeModeRef.current)
       const duration = animate ? flyDurationMs(fromCenter, nextCenter) : 0
 
       if (global) {
@@ -767,13 +723,11 @@ export default function EarthquakeAnalysisMap({
         })
       }
 
-      const targetPitch = mode.terrain ? mode.pitch ?? 55 : 0
-      const targetBearing = mode.terrain ? mode.bearing ?? -18 : 0
-      if (targetPitch !== map.getPitch() || targetBearing !== map.getBearing()) {
+      if (map.getPitch() !== 0 || map.getBearing() !== 0) {
         map.easeTo({
-          pitch: targetPitch,
-          bearing: targetBearing,
-          duration: animate && duration > 0 ? (mode.terrain ? 750 : 600) : 0,
+          pitch: 0,
+          bearing: 0,
+          duration: animate && duration > 0 ? 600 : 0,
         })
       }
 
@@ -858,7 +812,7 @@ export default function EarthquakeAnalysisMap({
 
     try {
       setupAnalysisLayers(map)
-      applyFrequencyDisplayMode(map, activeModeRef.current)
+      applyFrequencyDisplayMode(map)
       ensureFaultLineData(map)
       setFaultLinesVisibility(map, showFaultLinesRef.current)
       bindFaultLineInteractions(map, faultLineEventsRef.current)
@@ -917,8 +871,6 @@ export default function EarthquakeAnalysisMap({
 
       try {
         bindAnalysisLayersRef.current()
-        ensureAnalysisSatelliteImagery(map, { beforeLayerId: SATELLITE_BEFORE_LAYER })
-        applyTopographyModeInstant(map, activeModeRef.current)
         scheduleSyncMapDataRef.current()
 
         const {
@@ -968,17 +920,12 @@ export default function EarthquakeAnalysisMap({
         attributionControl: false,
       })
       mapRef.current = map
-      activeModeRef.current = 'road'
 
       const cornerControls = new MapCornerControls({
         maxWidth: 80,
         unit: 'imperial',
         faultLines: {
           onToggle: () => onFaultLinesToggleRef.current(),
-        },
-        satellite: {
-          previewBackground: SATELLITE_TOPOGRAPHY_MODE.previewBackground,
-          onToggle: () => onSatelliteToggleRef.current(),
         },
       })
       cornerControlsRef.current = cornerControls
@@ -990,10 +937,11 @@ export default function EarthquakeAnalysisMap({
 
       map.on('load', onMapLoad)
       map.on('style.load', () => {
-        bindAnalysisLayersRef.current()
-        ensureAnalysisSatelliteImagery(map, { beforeLayerId: SATELLITE_BEFORE_LAYER })
-        applyTopographyModeInstant(map, activeModeRef.current)
-        scheduleSyncMapDataRef.current()
+        if (!map.getSource('eq-events')) {
+          bindAnalysisLayersRef.current()
+        } else {
+          scheduleSyncMapDataRef.current()
+        }
         scheduleResize()
       })
     }
@@ -1001,7 +949,9 @@ export default function EarthquakeAnalysisMap({
     ro = new ResizeObserver(() => {
       startMap()
       scheduleResize()
-      if (map?.isStyleLoaded()) bindAnalysisLayersRef.current()
+      if (map?.isStyleLoaded() && !map.getSource('eq-events')) {
+        bindAnalysisLayersRef.current()
+      }
     })
     ro.observe(container)
     startMap()
@@ -1042,18 +992,6 @@ export default function EarthquakeAnalysisMap({
 
     return undefined
   }, [showFaultLines, mapReady])
-
-  useEffect(() => {
-    if (!mapReady) return undefined
-
-    const map = mapRef.current
-    if (!map?.isStyleLoaded()) return undefined
-
-    applyTopographyModeInstant(map, topographyModeId)
-    cornerControlsRef.current?.setSatelliteActive(topographyModeId === 'satellite')
-
-    return undefined
-  }, [topographyModeId, mapReady])
 
   useEffect(() => {
     if (!mapReady || recenterKey === 0) return undefined
@@ -1190,8 +1128,12 @@ export default function EarthquakeAnalysisMap({
 
         {faultHoverTip && showFaultLines ? (
           <div
-            className="map-point-tooltip map-fault-tooltip"
-            style={{ left: faultHoverTip.x, top: faultHoverTip.y }}
+            className="map-point-tooltip map-fault-tooltip pointer-events-none"
+            style={{
+              left: faultHoverTip.x,
+              top: faultHoverTip.y,
+              transform: 'translate(-50%, calc(-100% - 10px))',
+            }}
             role="tooltip"
           >
             <span className="map-point-tooltip__meta">

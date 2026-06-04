@@ -20,6 +20,7 @@ import {
   resolveAnalysisCenter,
   supportsTemporalAnalytics,
 } from '../utils/earthquakeAnalytics'
+import { filterEventsByMinMagnitude } from '../utils/earthquakeMagnitude'
 import { getRiskCache, riskCacheKey, setRiskCache } from '../utils/riskCache'
 
 const EMPTY_ANALYTICS = {
@@ -33,23 +34,21 @@ function buildHistoryCacheKey({
   countryOverview,
   analysisCountryId,
   center,
-  minMagnitude,
   maxRadiusMiles,
   yearPresetId,
   startDate,
   endDate,
 }) {
   return riskCacheKey([
-    'stratified-history-v4',
+    'stratified-history-v5',
     globalAnalysis
-      ? 'global-worldwide-v4'
+      ? 'global-worldwide-v5'
       : countryOverview
         ? `national-bbox-${analysisCountryId}`
         : 'local',
     analysisCountryId,
     center.lat,
     center.lng,
-    minMagnitude,
     maxRadiusMiles,
     yearPresetId,
     startDate.toISOString().slice(0, 10),
@@ -81,7 +80,7 @@ export default function useEarthquakeAnalytics({
   maxRadiusMiles = ANALYTICS_RADIUS_BREAKPOINTS[ANALYTICS_RADIUS_BREAKPOINTS.length - 1],
   enabled,
 }) {
-  const [events, setEvents] = useState([])
+  const [catalogEvents, setCatalogEvents] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [truncated, setTruncated] = useState(false)
@@ -154,7 +153,6 @@ export default function useEarthquakeAnalytics({
       countryOverview,
       analysisCountryId,
       center,
-      minMagnitude,
       maxRadiusMiles,
       yearPresetId,
       startDate: dateRange.startDate,
@@ -165,17 +163,21 @@ export default function useEarthquakeAnalytics({
     globalAnalysis,
     countryOverview,
     analysisCountryId,
-    minMagnitude,
     maxRadiusMiles,
     yearPresetId,
     historyRangeKey,
   ])
 
+  const events = useMemo(
+    () => filterEventsByMinMagnitude(catalogEvents, minMagnitude),
+    [catalogEvents, minMagnitude],
+  )
+
   const refreshing = Boolean(queryKey && loadedQueryKey !== queryKey)
 
   useEffect(() => {
     if (!enabled) {
-      setEvents([])
+      setCatalogEvents([])
       setError(null)
       setLoading(false)
       setTruncated(false)
@@ -202,7 +204,6 @@ export default function useEarthquakeAnalytics({
         countryOverview,
         analysisCountryId,
         center,
-        minMagnitude,
         maxRadiusMiles,
         yearPresetId,
         startDate,
@@ -212,7 +213,7 @@ export default function useEarthquakeAnalytics({
       const cached = getRiskCache('usgs-history', cacheKey)
       if (cached) {
         if (cancelled) return
-        setEvents(cached.events)
+        setCatalogEvents(cached.events)
         setTruncated(cached.truncated)
         setRequestUrl(cached.requestUrl)
         setLoadedQueryKey(cacheKey)
@@ -227,7 +228,6 @@ export default function useEarthquakeAnalytics({
           {
             center,
             maxRadiusMiles,
-            minMagnitude,
             startDate,
             endDate,
             national: countryOverview,
@@ -243,7 +243,7 @@ export default function useEarthquakeAnalytics({
           setRiskCache('usgs-history', cacheKey, result)
         }
 
-        setEvents(result.events)
+        setCatalogEvents(result.events)
         setTruncated(result.truncated)
         setRequestUrl(result.requestUrl)
         setLoadedQueryKey(cacheKey)
@@ -255,7 +255,7 @@ export default function useEarthquakeAnalytics({
       } catch (err) {
         if (cancelled || err.name === 'AbortError') return
         setError(err.message ?? 'Failed to load earthquake history')
-        setEvents([])
+        setCatalogEvents([])
         setTruncated(false)
         setRequestUrl(null)
       } finally {
@@ -278,7 +278,6 @@ export default function useEarthquakeAnalytics({
     countryOverview,
     globalAnalysis,
     analysisCountryId,
-    minMagnitude,
     maxRadiusMiles,
     yearPresetId,
     historyRangeKey,

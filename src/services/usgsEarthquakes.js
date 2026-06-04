@@ -1,5 +1,6 @@
 import { fetchAllUsgsFeatures } from '../utils/fetchPaginated'
 import { COUNTRIES } from '../data/commandMapData'
+import { USGS_CATALOG_MIN_MAGNITUDE } from '../utils/earthquakeMagnitude'
 import { distanceMiles } from '../utils/geo'
 import { getMarkerReportUrl } from '../utils/markerReportUrl'
 import { COUNTRY_BBOX, pointInBbox } from '../utils/scopeBbox'
@@ -65,7 +66,7 @@ function buildQueryParams({ scope, userLocation, radiusMiles, countryId, minMagn
     }
   }
 
-  params.minmagnitude = minMagnitude
+  params.minmagnitude = USGS_CATALOG_MIN_MAGNITUDE
 
   return params
 }
@@ -367,7 +368,7 @@ function buildHistoryQueryParams(
     starttime: formatDate(startDate),
     endtime: formatDate(endDate),
     orderby: 'time',
-    minmagnitude: minMagnitude,
+    minmagnitude: USGS_CATALOG_MIN_MAGNITUDE,
   }
 
   if (regionBbox) {

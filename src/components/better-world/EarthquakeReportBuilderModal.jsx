@@ -375,7 +375,9 @@ export default function EarthquakeReportBuilderModal({
                     <ToggleChip
                       key={opt.value}
                       active={minMagnitude === opt.value}
-                      accent="cyber"
+                      layerColor={opt.color}
+                      labelClassName={opt.labelClassName}
+                      title={opt.description}
                       onClick={() => setMinMagnitude(opt.value)}
                     >
                       {opt.label}

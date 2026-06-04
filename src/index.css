@@ -27,6 +27,7 @@ body {
 
 body.home-snap {
   scroll-snap-type: y mandatory;
+  scroll-padding-top: 5.5rem;
 }
 
 body.home-snap [data-snap-section] {
@@ -528,7 +529,9 @@ html::-webkit-scrollbar-thumb:hover,
   cursor: pointer;
   transition:
     border-color 0.2s ease,
-    opacity 0.2s ease;
+    opacity 0.22s ease,
+    transform 0.22s ease,
+    visibility 0.22s ease;
 }
 
 .analysis-satellite-toggle:not([aria-pressed='true']) {
@@ -551,6 +554,13 @@ html::-webkit-scrollbar-thumb:hover,
 .analysis-satellite-toggle:focus-visible {
   outline: 1px solid rgba(255, 255, 255, 0.35);
   outline-offset: 2px;
+}
+
+.analysis-satellite-toggle.analysis-satellite-toggle--hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.72);
 }
 
 /* Fault lines toggle — red line vector only, no chrome */

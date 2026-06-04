@@ -30,12 +30,6 @@ export default function CommandHeader() {
 
         <nav className="flex flex-wrap items-center gap-6 md:gap-8">
           <Link
-            to="/a-better-world"
-            className={`${navLinkClass} ${pathname === '/a-better-world' ? 'text-white' : ''}`}
-          >
-            A Better World
-          </Link>
-          <Link
             to={PUBLIC_DATA_COMMAND_PATH}
             className={`${navLinkClass} ${pathname === PUBLIC_DATA_COMMAND_PATH ? 'text-white' : ''}`}
           >

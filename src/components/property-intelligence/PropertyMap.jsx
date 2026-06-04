@@ -140,7 +140,7 @@ export default function PropertyMap({
 
     const satelliteOn = mapMode === 'satellite'
     ensureAnalysisSatelliteImagery(map)
-    setAnalysisSatelliteImagery(map, satelliteOn)
+    void setAnalysisSatelliteImagery(map, satelliteOn, { animate: false })
 
     if (satelliteOn && !attributionRef.current) {
       attributionRef.current = new maplibregl.AttributionControl({ compact: true })
@@ -184,7 +184,7 @@ export default function PropertyMap({
 
       map.on('load', () => {
         ensureAnalysisSatelliteImagery(map)
-        setAnalysisSatelliteImagery(map, false)
+        void setAnalysisSatelliteImagery(map, false, { animate: false })
         setMapReady(true)
         map.resize()
         onMapReady?.(map)

@@ -8,6 +8,7 @@ import { densifyLineString, filterPointsByBbox } from '../utils/faultZoneDots'
 const NAMED_FAULT_HOVER_MILES = 25
 
 const ZONE_DOTS_URL = '/data/earthquake-zones.geojson'
+const ZONE_LINES_URL = '/data/pb2002-boundaries.json'
 
 const EMPTY_COLLECTION = { type: 'FeatureCollection', features: [] }
 
@@ -18,6 +19,34 @@ const PLATE_BOUNDARY_REFERENCE = {
 
 let zoneDotsCache = null
 let zoneDotsPromise = null
+let zoneLinesCache = null
+let zoneLinesPromise = null
+
+/** Start loading solid fault-line geometry for map display. */
+export function preloadFaultLines() {
+  if (zoneLinesCache) return Promise.resolve(zoneLinesCache)
+  if (zoneLinesPromise) return zoneLinesPromise
+
+  zoneLinesPromise = fetch(ZONE_LINES_URL, { headers: defaultFetchHeaders() })
+    .then(res => {
+      if (!res.ok) throw new Error('Fault line data unavailable')
+      return res.json()
+    })
+    .then(data => {
+      zoneLinesCache = data
+      return data
+    })
+    .finally(() => {
+      zoneLinesPromise = null
+    })
+
+  return zoneLinesPromise
+}
+
+/** Full PB2002 line dataset for map rendering. */
+export function getAllFaultLines() {
+  return zoneLinesCache ?? EMPTY_COLLECTION
+}
 
 /** Start loading fault-line dots as early as possible (e.g. when analysis opens). */
 export function preloadFaultLineDots() {
@@ -136,6 +165,19 @@ export function findNearestFault(center) {
   }
 
   return named ?? plate
+}
+
+/**
+ * Display label and official reference for a hovered/clicked fault line feature.
+ * @param {import('geojson').Feature} feature — PB2002 line or compatible GeoJSON feature
+ * @param {{ lat: number, lng: number }} lngLat — map event lngLat
+ */
+export function getFaultInfoFromFeature(feature, lngLat) {
+  if (!lngLat || !Number.isFinite(lngLat.lat) || !Number.isFinite(lngLat.lng)) {
+    return null
+  }
+  const plateCode = feature?.properties?.Name ?? feature?.properties?.name ?? ''
+  return getFaultInfoAtLocation({ lat: lngLat.lat, lng: lngLat.lng }, plateCode)
 }
 
 /**

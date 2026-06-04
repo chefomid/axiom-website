@@ -11,6 +11,7 @@ export const REPORT_PRINT_PATH = '/reports/print/:sessionId'
 
 /** Legacy URLs (redirect targets) */
 export const LEGACY_IMPACT_MAP_PATH = '/impact-map'
+export const LEGACY_BETTER_WORLD_PATH = '/a-better-world'
 
 /** Deep-link Public Data Command to a lat/lng (local scope). */
 export function publicDataCommandAtLocation(lat, lng) {

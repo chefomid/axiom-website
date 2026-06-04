@@ -143,7 +143,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
     {
       label: '02',
       title: 'Edge AI',
-      body: 'Hardware that captures vision, audio, and environmental data, processes it on-device through proprietary fine-tuned models, and streams to the AXIOM software stack in real time. Engineered to keep perception and inference running if internet access drops, so intelligence holds even when the network does not.',
+      body: "Edge AI solutions are custom to the insured's operations. Hardware that captures vision, audio, and environmental data, processes it on-device through proprietary fine-tuned models, and streams to the AXIOM software stack in real time.",
     },
   ]
 

@@ -1,11 +1,11 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import AppErrorBoundary from './components/AppErrorBoundary'
 import Home from './pages/Home'
-import BetterWorld from './pages/BetterWorld'
 import PublicDataCommand from './pages/PublicDataCommand'
 import PropertyIntelligence from './pages/PropertyIntelligence'
 import ReportPrint from './pages/ReportPrint'
 import {
+  LEGACY_BETTER_WORLD_PATH,
   LEGACY_IMPACT_MAP_PATH,
   PROPERTY_INTELLIGENCE_PATH,
   PUBLIC_DATA_COMMAND_PATH,
@@ -14,7 +14,7 @@ import {
 
 const router = createBrowserRouter([
   { path: '/', element: <Home /> },
-  { path: '/a-better-world', element: <BetterWorld /> },
+  { path: LEGACY_BETTER_WORLD_PATH, element: <Navigate to="/" replace /> },
   { path: PUBLIC_DATA_COMMAND_PATH, element: <PublicDataCommand /> },
   { path: PROPERTY_INTELLIGENCE_PATH, element: <PropertyIntelligence /> },
   { path: REPORT_PRINT_PATH, element: <ReportPrint /> },

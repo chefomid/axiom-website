@@ -189,6 +189,18 @@ export class MapCornerControls {
     this._satelliteBtn.title = on ? 'Hide satellite imagery' : 'Show satellite imagery'
   }
 
+  setSatelliteVisible(visible) {
+    if (!this._satelliteBtn) return
+    const show = Boolean(visible)
+    this._satelliteBtn.classList.toggle('analysis-satellite-toggle--hidden', !show)
+    this._satelliteBtn.setAttribute('aria-hidden', String(!show))
+    if (!show) {
+      this._satelliteBtn.setAttribute('tabindex', '-1')
+    } else {
+      this._satelliteBtn.removeAttribute('tabindex')
+    }
+  }
+
   setFaultLinesActive(active) {
     if (!this._faultBtn) return
     this._faultBtn.setAttribute('aria-pressed', String(Boolean(active)))

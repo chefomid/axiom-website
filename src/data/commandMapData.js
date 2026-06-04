@@ -20,15 +20,6 @@ export const SCOPE_MODES = [
   { id: 'global', label: 'Global' },
 ]
 
-/** USGS minimum magnitude presets (last 30 days) */
-export const EARTHQUAKE_MAGNITUDE_OPTIONS = [
-  { value: 2.5, label: 'All', description: 'M2.5 and above' },
-  { value: 3, label: 'M3+', description: 'Felt regionally' },
-  { value: 4, label: 'M4+', description: 'Light damage possible' },
-  { value: 5, label: 'M5+', description: 'Moderate' },
-  { value: 6, label: 'M6+', description: 'Strong' },
-]
-
 /** Live public-sector feeds on Public Data Command */
 export const DATA_SOURCES = [
   { id: 'usgs', label: 'USGS', logo: '/data-sources/usgs.svg', defaultActive: true },
@@ -144,6 +135,21 @@ export const SEVERITY_HEX = {
   watch: '#e8a838',
   critical: '#e05252',
 }
+
+/** USGS minimum magnitude presets — dot colors match Command Map earthquake palette */
+export const EARTHQUAKE_MAGNITUDE_OPTIONS = [
+  {
+    value: 2.5,
+    label: 'All',
+    labelClassName: 'font-semibold',
+    description: 'All magnitudes M2.5+ (includes M3+, M4+, M5+, M6+)',
+    color: SEVERITY_HEX.stable,
+  },
+  { value: 3, label: 'M3+', description: 'Felt regionally', color: SEVERITY_HEX.live },
+  { value: 4, label: 'M4+', description: 'Light damage possible', color: LAYER_COLORS.earthquake },
+  { value: 5, label: 'M5+', description: 'Moderate', color: SEVERITY_HEX.watch },
+  { value: 6, label: 'M6+', description: 'Strong', color: SEVERITY_HEX.critical },
+]
 
 export const SEVERITY = {
   stable: { label: 'Stable', color: 'command-stable', hex: SEVERITY_HEX.stable },

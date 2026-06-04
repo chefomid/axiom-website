@@ -32,6 +32,7 @@ export function ToggleChip({
   iconSrc,
   iconAlt = '',
   title,
+  labelClassName = '',
 }) {
   const a = ACCENT[accent] ?? ACCENT.cyber
   const useLayerColor = Boolean(layerColor)
@@ -87,7 +88,7 @@ export function ToggleChip({
           />
         )
       )}
-      <span className="min-w-0 truncate">{children}</span>
+      <span className={`min-w-0 truncate font-medium ${labelClassName}`.trim()}>{children}</span>
     </button>
   )
 }

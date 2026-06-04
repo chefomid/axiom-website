@@ -102,14 +102,21 @@ export default function EarthquakeAnalysisSidebar({
               <ToggleChip
                 key={opt.value}
                 active={magnitudeProps.activeValue === opt.value}
-                accent="cyber"
+                layerColor={opt.color}
+                labelClassName={opt.labelClassName}
+                loading={magnitudeProps.loading && magnitudeProps.activeValue === opt.value}
                 disabled={magnitudeProps.disabled}
+                title={opt.description}
                 onClick={() => magnitudeProps.onChange(opt.value)}
               >
                 {opt.label}
               </ToggleChip>
             ))}
           </div>
+          <p className="mt-3 font-mono text-[10px] leading-relaxed text-ink-faint">
+            <span className="text-command-cyber">All</span> shows every event M2.5 and above; M3+, M4+,
+            and higher presets are subsets (each includes stronger events). Each quake is its own map point.
+          </p>
         </section>
 
         <section className="border-t border-[#222] pt-6">

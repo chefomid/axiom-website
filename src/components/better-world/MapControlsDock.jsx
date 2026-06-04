@@ -266,9 +266,9 @@ export default function MapControlsDock({
 
             <>
 
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
+              <p className="section-label-sm">
 
-                Earthquake magnitude
+                Minimum magnitude
 
               </p>
 
@@ -290,9 +290,13 @@ export default function MapControlsDock({
 
                     active={minEarthquakeMag === opt.value}
 
-                    accent="cyber"
+                    layerColor={opt.color}
+
+                    labelClassName={opt.labelClassName}
 
                     loading={layerLoading.earthquake && minEarthquakeMag === opt.value}
+
+                    title={opt.description}
 
                     onClick={() => onMinEarthquakeMagChange(opt.value)}
 
@@ -308,9 +312,9 @@ export default function MapControlsDock({
 
               <p className="mt-3 font-mono text-[10px] leading-relaxed text-ink-faint">
 
-                Choose <span className="text-command-cyber">All</span> for every event M2.5 and above in your
+                <span className="text-command-cyber">All</span> is the full M2.5+ catalog; M3+ and higher only
 
-                scope. Each quake appears as its own point on the map.
+                remove smaller events. Each quake appears as its own point on the map.
 
               </p>
 

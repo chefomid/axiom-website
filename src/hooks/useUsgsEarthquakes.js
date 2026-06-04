@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTelemetry } from '../context/TelemetryContext'
 import { fetchUsgsEarthquakes } from '../services/usgsEarthquakes'
 import { getRiskCache, getStaleRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
+import { filterMarkersByMinMagnitude } from '../utils/earthquakeMagnitude'
 import useFeedRetry from './useFeedRetry'
 import {
   feedFailedMessage,
@@ -19,15 +20,8 @@ const EMPTY_META = {
 }
 
 function usgsCacheKey(scopeConfig) {
-  const { scope, countryId, userLocation, radiusMiles, minMagnitude } = scopeConfig
-  return riskCacheKey([
-    scope,
-    countryId,
-    userLocation?.lat,
-    userLocation?.lng,
-    radiusMiles,
-    minMagnitude,
-  ])
+  const { scope, countryId, userLocation, radiusMiles } = scopeConfig
+  return riskCacheKey(['usgs-feed-v2', scope, countryId, userLocation?.lat, userLocation?.lng, radiusMiles])
 }
 
 export default function useUsgsEarthquakes({
@@ -40,14 +34,19 @@ export default function useUsgsEarthquakes({
 }) {
   const { pushEvent } = useTelemetry()
   const { retryAt, scheduleRetry, clearRetry } = useFeedRetry()
-  const [markers, setMarkers] = useState([])
+  const [catalogMarkers, setCatalogMarkers] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [meta, setMeta] = useState(EMPTY_META)
 
+  const markers = useMemo(
+    () => filterMarkersByMinMagnitude(catalogMarkers, minMagnitude),
+    [catalogMarkers, minMagnitude],
+  )
+
   useEffect(() => {
     if (!enabled || (scope === 'local' && !userLocation)) {
-      setMarkers([])
+      setCatalogMarkers([])
       setError(null)
       setLoading(false)
       setMeta(EMPTY_META)
@@ -57,7 +56,7 @@ export default function useUsgsEarthquakes({
 
     let cancelled = false
     const controller = new AbortController()
-    const scopeConfig = { scope, userLocation, radiusMiles, countryId, minMagnitude }
+    const scopeConfig = { scope, userLocation, radiusMiles, countryId }
     const cacheKey = usgsCacheKey(scopeConfig)
 
     async function load() {
@@ -86,18 +85,19 @@ export default function useUsgsEarthquakes({
 
         if (cancelled) return
 
-        setMarkers(results)
+        setCatalogMarkers(results)
         setMeta({
           sourceName: 'USGS',
           lastFetchedAt: new Date(),
-          recordCount: results.length,
+          recordCount: filterMarkersByMinMagnitude(results, minMagnitude).length,
           requestUrl,
           stale: false,
         })
 
         if (shouldAnnounceFeedLoad(fromCache)) {
+          const visibleCount = filterMarkersByMinMagnitude(results, minMagnitude).length
           pushEvent({
-            text: feedLoadedMessage('earthquake', results.length, { minMagnitude }),
+            text: feedLoadedMessage('earthquake', visibleCount, { minMagnitude }),
             type: results.length > 0 ? 'stable' : 'watch',
             source: telemetrySourceForLayer('earthquake'),
           })
@@ -109,16 +109,16 @@ export default function useUsgsEarthquakes({
 
         if (staleEntry?.data) {
           const { markers: staleMarkers, requestUrl } = staleEntry.data
-          setMarkers(staleMarkers ?? [])
+          setCatalogMarkers(staleMarkers ?? [])
           setMeta({
             sourceName: 'USGS',
             lastFetchedAt: new Date(staleEntry.fetchedAt),
-            recordCount: staleMarkers?.length ?? 0,
+            recordCount: filterMarkersByMinMagnitude(staleMarkers ?? [], minMagnitude).length,
             requestUrl: requestUrl ?? null,
             stale: true,
           })
         } else {
-          setMarkers([])
+          setCatalogMarkers([])
           setMeta(EMPTY_META)
         }
 
@@ -145,7 +145,13 @@ export default function useUsgsEarthquakes({
       clearInterval(interval)
       clearRetry()
     }
-  }, [scope, userLocation?.lat, userLocation?.lng, radiusMiles, countryId, minMagnitude, enabled, pushEvent, clearRetry, scheduleRetry])
+  }, [scope, userLocation?.lat, userLocation?.lng, radiusMiles, countryId, enabled, pushEvent, clearRetry, scheduleRetry])
 
-  return { markers, loading, error, errorRetryAt: retryAt, meta }
+  return {
+    markers,
+    loading,
+    error,
+    errorRetryAt: retryAt,
+    meta: { ...meta, recordCount: markers.length },
+  }
 }

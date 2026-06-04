@@ -12,11 +12,10 @@ import {
   SEISMIC_ANALYSIS_COUNTRIES,
   SEISMIC_COUNTRY_BBOX,
 } from '../../data/commandMapData'
-import { preloadFaultLineDots } from '../../services/faultLines'
+import { preloadFaultLineDots, preloadFaultLines } from '../../services/faultLines'
 import useEarthquakeAnalytics from '../../hooks/useEarthquakeAnalytics'
 import { buildReportConfigFromDraft } from '../../utils/earthquakeReport'
 import { countryCenterLocation, globalCenterLocation } from '../../services/geocode'
-import { SegmentButton } from '../ui/CommandControls'
 import {
   ANNULAR_VIEW_OPTIONS,
   AnnularDensityChart,
@@ -29,6 +28,7 @@ import EarthquakeAnalysisSidebar from './EarthquakeAnalysisSidebar'
 import EarthquakeReportBuilderModal from './EarthquakeReportBuilderModal'
 import EarthquakeReportViewer from './EarthquakeReportViewer'
 import EarthquakeStatDigestPanel from './EarthquakeStatDigestPanel'
+import AnalysisLoadingOverlay from './AnalysisLoadingOverlay'
 
 function resolveInitialCountry(countryId) {
   return (
@@ -96,7 +96,6 @@ export default function EarthquakeAnalysisModal({
   const [centerOverride, setCenterOverride] = useState(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const [annularViewId, setAnnularViewId] = useState('density')
-  const [topographyMode, setTopographyMode] = useState('road')
   const [showFaultLines, setShowFaultLines] = useState(false)
   const [showNoDataNotice, setShowNoDataNotice] = useState(false)
   const [digestOpen, setDigestOpen] = useState(false)
@@ -130,7 +129,6 @@ export default function EarthquakeAnalysisModal({
   useLayoutEffect(() => {
     if (!open || !landing) return undefined
     setMinMagnitude(initialMinMagnitude)
-    setTopographyMode('road')
     setShowFaultLines(false)
     setAddressQuery('')
     setAnalysisCountryId(landing.analysisCountryId)
@@ -165,7 +163,10 @@ export default function EarthquakeAnalysisModal({
 
   useEffect(() => {
     if (!open) return undefined
-    const deferId = window.setTimeout(() => preloadFaultLineDots(), 0)
+    const deferId = window.setTimeout(() => {
+      preloadFaultLineDots()
+      preloadFaultLines()
+    }, 0)
     return () => window.clearTimeout(deferId)
   }, [open])
 
@@ -304,6 +305,7 @@ export default function EarthquakeAnalysisModal({
   const dataReady = !refreshing && Boolean(summary)
   const chartsReady = dataReady && dataQuality?.level !== 'none' && !globalAnalysis
   const summaryReady = dataReady && dataQuality?.level !== 'none'
+  const showLoadingOverlay = (loading || refreshing) && !error
 
   const handleReportGenerate = async draft => {
     setReportBuilderOpen(false)
@@ -374,6 +376,7 @@ export default function EarthquakeAnalysisModal({
               options: EARTHQUAKE_MAGNITUDE_OPTIONS,
               activeValue: minMagnitude,
               disabled: refreshing,
+              loading: refreshing,
               onChange: setMinMagnitude,
             }}
             alerts={alertNodes}
@@ -391,10 +394,11 @@ export default function EarthquakeAnalysisModal({
                 ) : (
                   <div className="flex min-h-0 flex-1 flex-col">
                     <div className="relative min-h-0 flex-1 [&_.command-map-host]:min-h-0 [&_.command-map-host]:h-full">
+                      {showLoadingOverlay ? <AnalysisLoadingOverlay /> : null}
                       <div
                         className={`flex h-full min-h-0 flex-col transition-[filter,opacity] duration-300 ${
                           dataQuality?.level === 'none' ? 'opacity-45 saturate-[0.35]' : ''
-                        }`}
+                        } ${showLoadingOverlay ? 'opacity-50' : ''}`}
                       >
                         <EarthquakeAnalysisMap
                           center={resolved.center}
@@ -402,8 +406,6 @@ export default function EarthquakeAnalysisModal({
                           recenterKey={recenterKey}
                           events={events}
                           maxRadiusMiles={activeMaxRadiusMiles}
-                          topographyMode={topographyMode}
-                          onTopographyModeChange={setTopographyMode}
                           showFaultLines={showFaultLines}
                           onFaultLinesChange={setShowFaultLines}
                           nationalAnalysis={nationalAnalysis}
@@ -577,24 +579,28 @@ export default function EarthquakeAnalysisModal({
                         </section>
 
                         <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-[#2a2a2a] bg-[#0d0d0d] p-3">
-                          <div className="flex shrink-0 flex-wrap items-center justify-between gap-1.5">
+                          <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
                             <p className="section-label">
                               Annular density
                             </p>
-                            <div className="flex shrink-0 flex-wrap gap-1">
+                            <div className="flex shrink-0 flex-wrap items-center gap-4 pl-2">
                               {ANNULAR_VIEW_OPTIONS.map(option => (
-                                <SegmentButton
+                                <button
                                   key={option.id}
-                                  className="!min-h-[24px] !flex-none px-2 text-[9px]"
-                                  active={annularViewId === option.id}
+                                  type="button"
                                   onClick={() => setAnnularViewId(option.id)}
+                                  className={`pl-2.5 font-mono text-[8px] uppercase tracking-[0.1em] transition-colors ${
+                                    annularViewId === option.id
+                                      ? 'text-white'
+                                      : 'text-ink-faint hover:text-ink-secondary'
+                                  }`}
                                 >
                                   {option.label}
-                                </SegmentButton>
+                                </button>
                               ))}
                             </div>
                           </div>
-                          <p className="mt-0.5 shrink-0 font-mono text-[9px] leading-snug text-ink-faint line-clamp-2">
+                          <p className="mt-3 shrink-0 font-mono text-[9px] leading-snug text-ink-faint line-clamp-2">
                             {annularView.subtitle}
                           </p>
                           <div className="mt-1.5 min-h-0 flex-1 overflow-visible">
