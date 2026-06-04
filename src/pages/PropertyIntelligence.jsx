@@ -22,8 +22,10 @@ function PropertyIntelligenceComingSoon() {
             AXIOM Property Intelligence is address-level property and casualty risk analysis for
             insurance and risk management: building and occupancy characteristics, natural hazards,
             crime, and related exposure in one attributed report. Public government data and
-            licensed commercial property sources are used where available and clearly cited. This
-            application is in development and is not yet available on this website.
+            licensed commercial property sources are used where available and clearly cited.
+          </p>
+          <p className="mt-4 text-left text-sm leading-relaxed text-ink-muted md:text-[15px]">
+            This application is in development and is not yet available on this website.
           </p>
         </article>
       </main>
