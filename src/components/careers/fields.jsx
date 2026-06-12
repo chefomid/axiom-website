@@ -353,6 +353,7 @@ function useSpeechDictation(value, onChange) {
     recognition.onend = () => {
       setListening(false)
       recognitionRef.current = null
+      setReadyToOrganize(true)
     }
 
     recognition.onerror = event => {
@@ -508,46 +509,34 @@ function SpeechDictationControl({
   const [polishing, setPolishing] = useState(false)
   const polishRunRef = useRef(0)
 
-  useEffect(() => {
-    if (!readyToOrganize || listening || !String(value ?? '').trim()) return
+  const showOrganize =
+    readyToOrganize && !listening && Boolean(String(value ?? '').trim())
 
-    let cancelled = false
+  function runOrganize() {
+    const trimmed = String(value ?? '').trim()
+    if (!trimmed || polishing) return
 
+    const runId = ++polishRunRef.current
     setPolishing(true)
     onPolishingChange?.(true)
 
-    organizeThoughts(value, { question })
+    organizeThoughts(trimmed, { question })
       .then(result => {
-        if (cancelled) return
-        onOrganized(result?.text ?? String(value ?? '').trim())
+        if (polishRunRef.current !== runId) return
+        onOrganized(result?.text ?? trimmed)
         clearReadyToOrganize()
       })
       .catch(() => {
-        if (cancelled) return
-        onOrganized(String(value ?? '').trim())
+        if (polishRunRef.current !== runId) return
+        onOrganized(trimmed)
         clearReadyToOrganize()
       })
       .finally(() => {
-        if (cancelled) return
+        if (polishRunRef.current !== runId) return
         setPolishing(false)
         onPolishingChange?.(false)
       })
-
-    return () => {
-      cancelled = true
-      polishRunRef.current += 1
-      setPolishing(false)
-      onPolishingChange?.(false)
-    }
-  }, [
-    readyToOrganize,
-    listening,
-    value,
-    question,
-    onOrganized,
-    clearReadyToOrganize,
-    onPolishingChange,
-  ])
+  }
 
   if (!supported) return null
 
@@ -574,26 +563,34 @@ function SpeechDictationControl({
               {listening ? 'Listening\u2026 tap to stop' : 'Dictate instead of typing'}
             </span>
           </button>
-          {polishing ? (
-            <span
-              className="axiom-ai-cpu-btn axiom-ai-cpu-btn--busy inline-flex items-center gap-2"
-              aria-live="polite"
-              aria-label="Organizing your answer"
+          {showOrganize || polishing ? (
+            <button
+              type="button"
+              onClick={runOrganize}
+              disabled={polishing}
+              aria-busy={polishing}
+              aria-label={polishing ? 'Organizing your answer' : 'Organize thoughts'}
+              className={`field-icon-tooltip-btn axiom-ai-cpu-btn ${
+                polishing ? 'axiom-ai-cpu-btn--busy' : ''
+              }`}
             >
-              <AiCpuIcon size={18} strokeWidth={1.75} />
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-amber-200/90 sm:hidden">
-                Organizing
+              <AiCpuIcon size={20} strokeWidth={1.85} />
+              <span className="field-icon-tooltip" role="tooltip">
+                {polishing ? 'Organizing\u2026' : 'Organize thoughts'}
               </span>
-            </span>
+            </button>
           ) : null}
         </div>
         {listening ? (
           <p className="mt-1.5 text-xs text-ink-muted">Words appear as you speak.</p>
         ) : null}
-        {polishing ? (
-          <p className="mt-1.5 text-xs text-ink-muted hidden sm:block">
-            Tidying your wording without adding new details.
+        {showOrganize && !polishing ? (
+          <p className="mt-1.5 text-xs text-ink-muted">
+            Tap the CPU icon to tidy your wording without adding new details.
           </p>
+        ) : null}
+        {polishing ? (
+          <p className="mt-1.5 text-xs text-ink-muted">Organizing your answer\u2026</p>
         ) : null}
         {speechError ? (
           <p className="mt-1.5 text-xs text-command-critical" role="alert">
