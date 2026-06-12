@@ -1,4 +1,6 @@
 import { APPLICATION_STEPS } from '../components/careers/applicationSchema'
+import { isCareersOrganizeLlmEnabled } from '../config/features'
+import { lightOrganizeText, shouldUseLlmOrganize } from '../utils/careersOrganize'
 
 
 
@@ -306,33 +308,32 @@ export async function submitApplication(values, { honeypot = '' } = {}) {
 }
 
 export async function organizeThoughts(text, { question = '' } = {}) {
-  let response
+  const trimmed = String(text ?? '').trim()
+  if (!trimmed) return { text: '' }
+
+  const fallback = () => ({ text: lightOrganizeText(trimmed) })
+
+  if (!isCareersOrganizeLlmEnabled() || !shouldUseLlmOrganize(trimmed)) {
+    return fallback()
+  }
+
   try {
-    response = await fetch('/api/careers/organize', {
+    const response = await fetch('/api/careers/organize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, question }),
+      body: JSON.stringify({ text: trimmed, question }),
     })
-  } catch {
-    if (import.meta.env.DEV) {
-      console.info('[careers] Dev mode: /api/careers/organize unavailable — returning trimmed text.')
-      return { text: String(text).trim() }
-    }
-    throw new Error('Network error while organizing. Check your connection and try again.')
-  }
 
-  if (!response.ok) {
-    let detail = 'Could not organize thoughts. Try again in a moment.'
-    try {
+    if (response.ok) {
       const data = await response.json()
-      if (data?.detail) detail = data.detail
-    } catch {
-      /* non-JSON error body */
+      const organized = typeof data?.text === 'string' ? data.text.trim() : ''
+      if (organized) return { text: organized }
     }
-    throw new Error(detail)
+  } catch {
+    /* silent — applicants should never see organize failures */
   }
 
-  return response.json()
+  return fallback()
 }
 
 function devFallback(payload) {

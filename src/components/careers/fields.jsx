@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { organizeThoughts } from '../../services/careersApi'
+import AiCpuIcon from '../ui/AiCpuIcon'
 
 const INPUT_CLASS =
   'w-full rounded-lg border border-panel-border bg-panel-surface/60 px-4 py-3 text-sm text-ink-primary placeholder:text-ink-faint transition-colors focus:border-command-live/50 focus:outline-none focus:ring-1 focus:ring-command-live/25'
@@ -504,37 +505,38 @@ function SpeechDictationControl({
     cancelRestart,
     clearReadyToOrganize,
   } = dictation
-  const [polishError, setPolishError] = useState(null)
+  const [polishing, setPolishing] = useState(false)
   const polishRunRef = useRef(0)
 
   useEffect(() => {
     if (!readyToOrganize || listening || !String(value ?? '').trim()) return
 
-    const runId = ++polishRunRef.current
     let cancelled = false
 
+    setPolishing(true)
     onPolishingChange?.(true)
-    setPolishError(null)
 
     organizeThoughts(value, { question })
       .then(result => {
         if (cancelled) return
-        onOrganized(result.text)
+        onOrganized(result?.text ?? String(value ?? '').trim())
         clearReadyToOrganize()
       })
-      .catch(err => {
+      .catch(() => {
         if (cancelled) return
-        setPolishError(err?.message ?? 'Could not polish your answer. Try again.')
+        onOrganized(String(value ?? '').trim())
         clearReadyToOrganize()
       })
       .finally(() => {
         if (cancelled) return
+        setPolishing(false)
         onPolishingChange?.(false)
       })
 
     return () => {
       cancelled = true
       polishRunRef.current += 1
+      setPolishing(false)
       onPolishingChange?.(false)
     }
   }, [
@@ -572,13 +574,25 @@ function SpeechDictationControl({
               {listening ? 'Listening\u2026 tap to stop' : 'Dictate instead of typing'}
             </span>
           </button>
+          {polishing ? (
+            <span
+              className="axiom-ai-cpu-btn axiom-ai-cpu-btn--busy inline-flex items-center gap-2"
+              aria-live="polite"
+              aria-label="Organizing your answer"
+            >
+              <AiCpuIcon size={18} strokeWidth={1.75} />
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-amber-200/90 sm:hidden">
+                Organizing
+              </span>
+            </span>
+          ) : null}
         </div>
         {listening ? (
           <p className="mt-1.5 text-xs text-ink-muted">Words appear as you speak.</p>
         ) : null}
-        {polishError ? (
-          <p className="mt-1.5 text-xs text-command-critical" role="alert">
-            {polishError}
+        {polishing ? (
+          <p className="mt-1.5 text-xs text-ink-muted hidden sm:block">
+            Tidying your wording without adding new details.
           </p>
         ) : null}
         {speechError ? (
