@@ -12,6 +12,7 @@ import useNwsAlerts from '../../hooks/useNwsAlerts'
 import useNasaFirms from '../../hooks/useNasaFirms'
 import useFemaNfhl from '../../hooks/useFemaNfhl'
 import useMapPins from '../../hooks/useMapPins'
+import { useIsLgUp } from '../../hooks/useMediaQuery'
 import { earthquakesToSignals } from '../../services/usgsEarthquakes'
 import { nwsToSignals } from '../../services/nwsAlerts'
 import { firmsToSignals } from '../../services/nasaFirms'
@@ -34,6 +35,7 @@ import IntelligencePanel from './IntelligencePanel'
 import MapErrorBoundary from './MapErrorBoundary'
 import CommandMap from './CommandMap'
 import EarthquakeAnalysisModal from './EarthquakeAnalysisModal'
+import PublicDataCommandMobileView from './PublicDataCommandMobileView'
 import PublicDataCommandIntroModal, {
   ackPublicDataCommandIntro,
   isPublicDataCommandIntroAcked,
@@ -51,6 +53,7 @@ export default function PublicDataCommandView() {
 
 function PublicDataCommandViewInner() {
   const { pushEvent } = useTelemetry()
+  const isLgUp = useIsLgUp()
   const [searchParams] = useSearchParams()
   const deepLat = parseFloat(searchParams.get('lat') ?? '')
   const deepLng = parseFloat(searchParams.get('lng') ?? '')
@@ -104,7 +107,11 @@ function PublicDataCommandViewInner() {
     addPin,
     selectPin,
     removePin,
+    removeShape,
     movePin,
+    makeSquareFromLastFour,
+    breakPinChain,
+    breakPinChainBlocked,
     clearPins,
   } = useMapPins({ pushEvent })
 
@@ -193,29 +200,49 @@ function PublicDataCommandViewInner() {
     return counts
   }, [visibleMarkers, visibleZones])
 
-  const visibleSignals = useMemo(() => {
+  const allVisibleSignals = useMemo(() => {
     const pointIds = new Set(visibleMarkers.map(m => m.id))
     const zoneIds = new Set(visibleZones.map(z => z.id))
     const allIds = [...pointIds, ...zoneIds]
+    const signalLimit = 999
 
     const usgsSignals = usgsEnabled
-      ? earthquakesToSignals(visibleMarkers.filter(m => m.layer === 'earthquake'))
+      ? earthquakesToSignals(visibleMarkers.filter(m => m.layer === 'earthquake'), signalLimit)
       : []
 
-    const nwsSignals = nwsEnabled ? nwsToSignals(visibleZones.filter(z => z.layer === 'weather')) : []
+    const nwsSignals = nwsEnabled
+      ? nwsToSignals(visibleZones.filter(z => z.layer === 'weather'), signalLimit)
+      : []
 
     const firmsSignals = firmsEnabled
-      ? firmsToSignals(visibleMarkers.filter(m => m.layer === 'wildfire'))
+      ? firmsToSignals(visibleMarkers.filter(m => m.layer === 'wildfire'), signalLimit)
       : []
 
     const nfhlSignals = femaEnabled
-      ? nfhlToSignals(visibleZones.filter(z => z.layer === 'flood'))
+      ? nfhlToSignals(visibleZones.filter(z => z.layer === 'flood'), signalLimit)
       : []
 
-    return [...usgsSignals, ...nwsSignals, ...firmsSignals, ...nfhlSignals]
-      .filter(s => allIds.includes(s.markerId))
-      .slice(0, 12)
+    return [...usgsSignals, ...nwsSignals, ...firmsSignals, ...nfhlSignals].filter(s =>
+      allIds.includes(s.markerId),
+    )
   }, [visibleMarkers, visibleZones, usgsEnabled, nwsEnabled, firmsEnabled, femaEnabled])
+
+  const visibleSignals = useMemo(
+    () => allVisibleSignals.slice(0, 12),
+    [allVisibleSignals],
+  )
+
+  const mobileSignals = useMemo(
+    () =>
+      [...allVisibleSignals]
+        .sort((a, b) => {
+          const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0
+          const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0
+          return tb - ta
+        })
+        .slice(0, 50),
+    [allVisibleSignals],
+  )
 
   const nfhlRaster = useMemo(() => {
     if (!femaEnabled || !femaMeta.rasterUrl || !femaMeta.bbox) return null
@@ -287,7 +314,7 @@ function PublicDataCommandViewInner() {
       const item =
         allPointMarkers.find(m => m.id === id) ?? allZones.find(z => z.id === id)
       pushEvent({
-        text: `Selected — ${item?.title ?? 'map item'}`,
+        text: `Selected: ${item?.title ?? 'map item'}`,
         type: 'live',
         source: TELEMETRY_SOURCE.map,
       })
@@ -534,6 +561,32 @@ function PublicDataCommandViewInner() {
     setIntroOpen(false)
   }, [])
 
+  if (!isLgUp) {
+    return (
+      <>
+        <PublicDataCommandIntroModal
+          open={introOpen}
+          onContinue={handleIntroContinue}
+          isMobile
+        />
+        <PublicDataCommandMobileView
+          scope={scope}
+          radiusMiles={radiusMiles}
+          countryId={countryId}
+          userLocation={userLocation}
+          onScopeApply={handleScopeApply}
+          activeLayers={activeLayers}
+          activeDataSources={activeDataSources}
+          toggleLayer={toggleLayer}
+          toggleSource={toggleSource}
+          layerLoading={layerLoading}
+          feedStatus={feedStatus}
+          signals={mobileSignals}
+        />
+      </>
+    )
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#050505] text-ink-primary">
       <PublicDataCommandIntroModal open={introOpen} onContinue={handleIntroContinue} />
@@ -588,10 +641,14 @@ function PublicDataCommandViewInner() {
                 onAddPin={addPin}
                 onSelectPin={selectPin}
                 onRemovePin={removePin}
+                onRemoveShape={removeShape}
                 onMovePin={movePin}
                 onAnalyzeAtPin={handleAnalyzeAtPin}
                 onTogglePinMode={togglePinMode}
                 onClearPins={clearPins}
+                onBreakPinChain={breakPinChain}
+                onBreakPinChainBlocked={breakPinChainBlocked}
+                onMakeSquare={makeSquareFromLastFour}
                 pinCount={pinCount}
               />
           </MapErrorBoundary>

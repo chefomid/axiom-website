@@ -12,7 +12,7 @@ export function reportApiUrl(path) {
 
 function networkErrorMessage(err) {
   if (err?.name === 'AbortError') {
-    return 'PDF generation timed out. The report service may be busy — try again.'
+    return 'PDF generation timed out. The report service may be busy, try again.'
   }
   const msg = String(err?.message ?? err ?? '')
   if (
@@ -110,12 +110,12 @@ function slugifyLocation(label) {
     .slice(0, 60)
 }
 
-export function savePdfBlob(blob, locationLabel) {
+export function savePdfBlob(blob, locationLabel, prefix = 'seismic-report') {
   const slug = slugifyLocation(locationLabel) || 'location'
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `seismic-report-${slug}.pdf`
+  anchor.download = `${prefix}-${slug}.pdf`
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
@@ -123,7 +123,7 @@ export function savePdfBlob(blob, locationLabel) {
 }
 
 /** One-shot: send ReportDocument, receive PDF bytes. */
-export async function downloadReportPdf(reportDocument, locationLabel) {
+export async function downloadReportPdf(reportDocument, locationLabel, { prefix = 'seismic-report' } = {}) {
   const res = await fetchWithTimeout(
     reportApiUrl('/pdf'),
     {
@@ -147,7 +147,7 @@ export async function downloadReportPdf(reportDocument, locationLabel) {
   if (!blob.size) {
     throw new Error('PDF service returned an empty file.')
   }
-  savePdfBlob(blob, locationLabel)
+  savePdfBlob(blob, locationLabel, prefix)
 }
 
 export async function checkReportApiHealth() {

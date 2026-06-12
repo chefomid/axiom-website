@@ -59,7 +59,7 @@ function NoEventsGuard({ dataQuality, loading }) {
   return (
     <div className="space-y-2">
       <p className="font-mono text-[11px] leading-relaxed text-ink-secondary">
-        No events match your filters — this analysis needs at least one catalog event.
+        No events match your filters, this analysis needs at least one catalog event.
       </p>
       <p className="font-mono text-[10px] leading-relaxed text-ink-faint">
         Try lowering magnitude, widening radius, or choosing a shorter timeline in the sidebar.
@@ -103,8 +103,7 @@ export function ReturnPeriodsGuide({
         <span className="text-[#ff9348]">M5.0 or above</span>
         {m5?.returnPeriodYears != null ? (
           <>
-            {' '}
-            —{' '}
+            {', '}
             {m5.ratePerYear >= 1 ? (
               <>
                 about <span className="text-[#ff9348]">{formatRatePerYear(m5.ratePerYear)}</span>
@@ -134,7 +133,7 @@ export function ReturnPeriodsGuide({
 
       {(m5?.count ?? 0) < 3 ? (
         <p className="rounded-md border border-[#333] bg-[#111] px-3 py-2 font-mono text-[10px] leading-relaxed text-ink-faint">
-          Few large events in this window — return periods are rough estimates, not forecasts.
+          Few large events in this window, return periods are rough estimates, not forecasts.
           Widen the timeline or radius for a more stable rate.
         </p>
       ) : null}
@@ -199,7 +198,7 @@ export function MagnitudeDistributionGuide({ events = [], minMagnitude, loading,
     <div className="space-y-3">
       <p className="font-mono text-[11px] leading-relaxed text-white">
         Of {distribution.total.toLocaleString()} earthquakes in scope, the most common band is{' '}
-        <span className="text-[#ff9348]">{dominant?.label ?? '—'}</span>
+        <span className="text-[#ff9348]">{dominant?.label ?? '-'}</span>
         {dominant ? (
           <>
             {' '}
@@ -212,12 +211,12 @@ export function MagnitudeDistributionGuide({ events = [], minMagnitude, loading,
         <OutputMetric label="Total events" value={distribution.total.toLocaleString()} />
         <OutputMetric
           label="Dominant band"
-          value={dominant?.label ?? '—'}
+          value={dominant?.label ?? '-'}
           highlight
         />
         <OutputMetric
           label="Largest share"
-          value={dominant ? `${dominant.percent.toFixed(0)}%` : '—'}
+          value={dominant ? `${dominant.percent.toFixed(0)}%` : '-'}
         />
       </div>
 
@@ -275,7 +274,7 @@ export function DepthBreakdownGuide({ events = [], loading, dataQuality }) {
           Depth data is unavailable for events in this scope.
         </p>
         <p className="font-mono text-[10px] leading-relaxed text-ink-faint">
-          The USGS catalog includes depth for most events — try refetching or adjusting filters.
+          The USGS catalog includes depth for most events, try refetching or adjusting filters.
         </p>
       </div>
     )
@@ -287,7 +286,7 @@ export function DepthBreakdownGuide({ events = [], loading, dataQuality }) {
     <div className="space-y-3">
       <p className="font-mono text-[11px] leading-relaxed text-white">
         Among {breakdown.total.toLocaleString()} events with depth reported,{' '}
-        <span className="text-[#ff9348]">{dominant?.label ?? '—'}</span> events dominate
+        <span className="text-[#ff9348]">{dominant?.label ?? '-'}</span> events dominate
         {dominant ? (
           <>
             {' '}
@@ -303,7 +302,7 @@ export function DepthBreakdownGuide({ events = [], loading, dataQuality }) {
         <OutputMetric label="With depth" value={breakdown.total.toLocaleString()} />
         <OutputMetric
           label="Dominant depth"
-          value={dominant?.id === 'shallow' ? 'Shallow' : dominant?.id === 'intermediate' ? 'Intermediate' : dominant?.id === 'deep' ? 'Deep' : '—'}
+          value={dominant?.id === 'shallow' ? 'Shallow' : dominant?.id === 'intermediate' ? 'Intermediate' : dominant?.id === 'deep' ? 'Deep' : '-'}
           highlight
         />
         <OutputMetric
@@ -367,7 +366,7 @@ export function NearestFaultGuide({ center, globalAnalysis, loading, hasTemporal
           Nearest-fault analysis needs a specific location.
         </p>
         <p className="font-mono text-[10px] leading-relaxed text-ink-faint">
-          Enter an address or use current location in the sidebar — global and country overviews
+          Enter an address or use current location in the sidebar, global and country overviews
           skip fault distance.
         </p>
       </div>
@@ -419,7 +418,7 @@ export function NearestFaultGuide({ center, globalAnalysis, loading, hasTemporal
         </p>
       ) : (
         <p className="rounded-md border border-[#333] bg-[#111] px-3 py-2 font-mono text-[10px] leading-relaxed text-ink-faint">
-          No nearby named US fault matched — showing the closest PB2002 plate boundary (
+          No nearby named US fault matched, showing the closest PB2002 plate boundary (
           {nearest.rawCode || 'global'}). Use the link above to explore mapped faults in the{' '}
           <a
             href={nearest.referenceUrl}

@@ -67,7 +67,7 @@ export default function EarthquakeAnalysisSidebar({
           </p>
           {distanceProps.isGlobal ? (
             <p className="font-mono text-[10px] leading-relaxed text-ink-faint">
-              Global catalog — all earthquakes worldwide matching your filters. Select a country for
+              Global catalog, all earthquakes worldwide matching your filters. Select a country for
               radius-based analysis.
             </p>
           ) : (
@@ -86,7 +86,7 @@ export default function EarthquakeAnalysisSidebar({
               </div>
               <p className="mt-3 font-mono text-[10px] leading-relaxed text-ink-faint">
                 {distanceProps.isNational
-                  ? 'National US catalog — bands radiate from the geographic center of the United States.'
+                  ? 'National US catalog, bands radiate from the geographic center of the United States.'
                   : 'Only earthquakes within this radius of the center are shown and analyzed.'}
               </p>
             </>

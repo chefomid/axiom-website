@@ -1,5 +1,5 @@
 /**
- * Human-facing official source pages — never raw API JSON endpoints.
+ * Human-facing official source pages, never raw API JSON endpoints.
  * @param {object | null | undefined} marker
  * @returns {string | null}
  */

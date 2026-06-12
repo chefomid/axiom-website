@@ -11,7 +11,7 @@ export const COUNTRY_BBOX = {
   JP: { west: 122, south: 24, east: 146, north: 46 },
 }
 
-/** Continental US — default for global NWS/FIRMS cap */
+/** Continental US, default for global NWS/FIRMS cap */
 export const CONUS_BBOX = { west: -125, south: 24, east: -66, north: 50 }
 
 /**

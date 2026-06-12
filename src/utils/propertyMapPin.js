@@ -1,4 +1,4 @@
-/** Subject-property map target — amber reticle aligned with Property Intelligence UI. */
+/** Subject-property map target, amber reticle aligned with Property Intelligence UI. */
 export function createPropertyMapPinElement() {
   const el = document.createElement('div')
   el.className = 'property-target-marker property-target-marker--locking'
@@ -22,4 +22,10 @@ export function replayPropertyTargetLockAnimation(el) {
   el.classList.remove('property-target-marker--locking')
   void el.offsetWidth
   el.classList.add('property-target-marker--locking')
+}
+
+/** Dim pin while user edits address after a prior lock. */
+export function setPropertyMapPinPending(el, pending) {
+  if (!el) return
+  el.classList.toggle('property-target-marker--pending', Boolean(pending))
 }

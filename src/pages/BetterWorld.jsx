@@ -8,7 +8,11 @@ export default function BetterWorld() {
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
+    document.title = 'A Better World | AXIOM'
     window.scrollTo(0, 0)
+    return () => {
+      document.title = 'AXIOM'
+    }
   }, [])
 
   const view = searchParams.get('view')

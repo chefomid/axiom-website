@@ -1,5 +1,6 @@
 import { defaultFetchHeaders, femaArcgisUrl } from '../utils/apiBase'
 import { getMarkerReportUrl } from '../utils/markerReportUrl'
+import { headlineForMarker, locationLabelForMarker } from '../utils/signalLocation'
 import { getScopeBbox, bboxToEsriEnvelope } from '../utils/scopeBbox'
 import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
 import { geometryCentroid } from '../utils/geo'
@@ -142,6 +143,8 @@ export function nfhlToSignals(zoneMarkers, limit = 6) {
       severity: marker.severity,
       layer: marker.layer ?? 'flood',
       title: marker.title,
+      headline: headlineForMarker(marker),
+      locationLabel: locationLabelForMarker(marker),
       source: 'FEMA NFHL',
       dataSources: ['fema'],
       confidence: marker.confidence,

@@ -67,7 +67,7 @@ const EQ_POINT_RADIUS = [
   ['*', ['get', 'pointRadius'], 1.45],
 ]
 
-/** Dark-map frequency stain — deep crimson intensity = event density. */
+/** Dark-map frequency stain, deep crimson intensity = event density. */
 const ROAD_STAIN_HEATMAP_COLOR = [
   'interpolate',
   ['linear'],
@@ -92,7 +92,7 @@ const ROAD_STAIN_HEATMAP_COLOR = [
   'rgba(172, 34, 36, 0.75)',
 ]
 
-/** Per-point crimson bleed — stacks into stained clusters. */
+/** Per-point crimson bleed, stacks into stained clusters. */
 const ROAD_STAIN_GLOW_RADIUS = [
   'interpolate',
   ['linear'],
@@ -1109,12 +1109,12 @@ export default function EarthquakeAnalysisMap({
   }, [mapReady, events])
 
   const mapSummaryLine = globalAnalysis
-    ? `Worldwide catalog · ${yearPresetLabel || '—'} · ${events.length} pts across all regions`
+    ? `Worldwide catalog · ${yearPresetLabel || '-'} · ${events.length} pts across all regions`
     : nationalAnalysis
-      ? `National US catalog · ${yearPresetLabel || '—'} · ${events.length} pts`
+      ? `National US catalog · ${yearPresetLabel || '-'} · ${events.length} pts`
       : countryOverviewAnalysis
-        ? `National catalog · ${yearPresetLabel || '—'} · ${events.length} pts`
-        : `${yearPresetLabel || '—'} window · ${maxRadiusMiles} mi · ${events.length} pts`
+        ? `National catalog · ${yearPresetLabel || '-'} · ${events.length} pts`
+        : `${yearPresetLabel || '-'} window · ${maxRadiusMiles} mi · ${events.length} pts`
 
   return (
     <div className="relative flex h-full min-h-[340px] w-full flex-col">
@@ -1152,12 +1152,12 @@ export default function EarthquakeAnalysisMap({
           ) : null}
           <p className="mt-1 font-mono text-[9px] leading-snug text-[#a3a3a3]">
             {globalAnalysis
-              ? `${yearPresetLabel || '—'} · worldwide`
+              ? `${yearPresetLabel || '-'} · worldwide`
               : nationalAnalysis
-                ? `${yearPresetLabel || '—'} · national US`
+                ? `${yearPresetLabel || '-'} · national US`
                 : countryOverviewAnalysis
-                  ? `${yearPresetLabel || '—'} · national`
-                  : `${yearPresetLabel || '—'} · ${maxRadiusMiles} mi`}
+                  ? `${yearPresetLabel || '-'} · national`
+                  : `${yearPresetLabel || '-'} · ${maxRadiusMiles} mi`}
           </p>
         </div>
       </div>

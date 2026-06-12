@@ -9,6 +9,7 @@ import {
 import {
   createPropertyMapPinElement,
   replayPropertyTargetLockAnimation,
+  setPropertyMapPinPending,
 } from '../../utils/propertyMapPin'
 import {
   googleMapsApiKey,
@@ -34,6 +35,42 @@ const MAP_MODES = [
   { id: 'street', label: 'Street' },
 ]
 
+function MapModeBar({ mapMode, setMapMode, streetAvailable, checkingStreet, compact = false }) {
+  return (
+    <div
+      className={`flex rounded border border-panel-border/80 bg-black/90 p-0.5 shadow-lg backdrop-blur-sm ${
+        compact ? '' : 'shadow-lg'
+      }`}
+      role="group"
+      aria-label="Map view mode"
+    >
+      {MAP_MODES.map(mode => {
+        const streetReady = mode.id === 'street' && streetAvailable === true && !checkingStreet
+        return (
+          <button
+            key={mode.id}
+            type="button"
+            onClick={() => setMapMode(mode.id)}
+            className={`relative rounded px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider transition ${
+              mapMode === mode.id
+                ? 'bg-command-live/15 text-command-live'
+                : 'text-ink-secondary hover:text-white'
+            }`}
+          >
+            {mode.label}
+            {streetReady && mapMode !== 'street' ? (
+              <span
+                className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-command-stable ring-1 ring-black"
+                title="Street View available"
+              />
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function coordKey(lat, lng) {
   return `${lat.toFixed(5)}|${lng.toFixed(5)}`
 }
@@ -46,7 +83,7 @@ function moveDistanceDeg(aLat, aLng, bLat, bLng) {
 
 function flyDurationMs(distanceDeg) {
   const kmApprox = distanceDeg * 111
-  return Math.min(3200, Math.max(1800, 1400 + kmApprox * 420))
+  return Math.min(2200, Math.max(1600, 1200 + kmApprox * 380))
 }
 
 function markerElement(marker) {
@@ -62,7 +99,7 @@ export default function PropertyMap({
   flyDelay = 900,
   showPlaceholder = false,
   locationLocked = false,
-  loadingReport = false,
+  locationPhase = 'idle',
   onMapReady,
 }) {
   const pin = useMemo(() => {
@@ -72,7 +109,11 @@ export default function PropertyMap({
     return { lat: la, lng: ln }
   }, [lat, lng])
 
-  const hasPin = locationLocked && pin != null
+  const pinPending = locationPhase === 'composing' || locationPhase === 'searching'
+  const showLocatingOverlay = locationPhase === 'resolving' || locationPhase === 'locating'
+  const hasPin =
+    pin != null &&
+    (locationLocked || pinPending || locationPhase === 'resolving' || locationPhase === 'locating')
 
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
@@ -80,6 +121,7 @@ export default function PropertyMap({
   const attributionRef = useRef(null)
   const lastTargetRef = useRef(null)
   const flyTimerRef = useRef(null)
+  const moveEndHandlerRef = useRef(null)
   const streetFrameRef = useRef(null)
 
   const [mapReady, setMapReady] = useState(false)
@@ -250,7 +292,10 @@ export default function PropertyMap({
     if (!isNewTarget) return undefined
 
     const markerEl = markerElement(markerRef.current)
-    if (markerEl) replayPropertyTargetLockAnimation(markerEl)
+    if (markerEl) {
+      setPropertyMapPinPending(markerEl, pinPending && !locationLocked)
+      if (locationLocked) replayPropertyTargetLockAnimation(markerEl)
+    }
 
     if (flyTimerRef.current) {
       clearTimeout(flyTimerRef.current)
@@ -287,16 +332,33 @@ export default function PropertyMap({
         /* map center unavailable during style swap */
       }
 
+      if (typeof liveMap.stop === 'function') liveMap.stop()
+
+      const onMoveEnd = () => {
+        const el = markerElement(markerRef.current)
+        if (el && !el.classList.contains('property-target-marker--pending')) {
+          replayPropertyTargetLockAnimation(el)
+        }
+        if (moveEndHandlerRef.current) {
+          liveMap.off('moveend', moveEndHandlerRef.current)
+          moveEndHandlerRef.current = null
+        }
+      }
+
+      if (moveEndHandlerRef.current) {
+        liveMap.off('moveend', moveEndHandlerRef.current)
+      }
+      moveEndHandlerRef.current = onMoveEnd
+      liveMap.on('moveend', onMoveEnd)
+
       if (distance < MIN_MOVE_DEG) {
         liveMap.easeTo({
           ...flyOpts,
-          duration: 1200,
+          duration: 1000,
           easing: t => t * (2 - t),
         })
         return
       }
-
-      if (typeof liveMap.stop === 'function') liveMap.stop()
 
       liveMap.flyTo({
         ...flyOpts,
@@ -313,8 +375,18 @@ export default function PropertyMap({
         clearTimeout(flyTimerRef.current)
         flyTimerRef.current = null
       }
+      const liveMap = mapRef.current
+      if (liveMap && moveEndHandlerRef.current) {
+        liveMap.off('moveend', moveEndHandlerRef.current)
+        moveEndHandlerRef.current = null
+      }
     }
-  }, [mapReady, pin, label, flyDelay])
+  }, [mapReady, pin, label, flyDelay, locationLocked, pinPending])
+
+  useEffect(() => {
+    const el = markerElement(markerRef.current)
+    if (el) setPropertyMapPinPending(el, pinPending && !locationLocked)
+  }, [pinPending, locationLocked, hasPin])
 
   const toggleFullscreen = useCallback(() => {
     const el = streetFrameRef.current
@@ -363,43 +435,39 @@ export default function PropertyMap({
     <div className="command-map-host property-map-host relative h-full min-h-[280px] w-full bg-[#050505]">
       <div ref={mapContainerRef} className="absolute inset-0" />
 
-      {hasPin ? (
+      {hasPin && mapMode !== 'street' ? (
         <div
           className="property-map-mode-bar absolute left-3 top-3 z-20 flex max-w-[calc(100%-5rem)] flex-wrap items-center gap-2"
           role="toolbar"
           aria-label="Map view mode"
         >
-          <div className="flex rounded border border-panel-border/80 bg-black/75 p-0.5 shadow-lg backdrop-blur-sm">
-            {MAP_MODES.map(mode => {
-              const streetReady =
-                mode.id === 'street' && streetAvailable === true && !checkingStreet
-              return (
-                <button
-                  key={mode.id}
-                  type="button"
-                  onClick={() => setMapMode(mode.id)}
-                  className={`relative rounded px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider transition ${
-                    mapMode === mode.id
-                      ? 'bg-command-live/15 text-command-live'
-                      : 'text-ink-faint hover:text-ink-secondary'
-                  }`}
-                >
-                  {mode.label}
-                  {streetReady && mapMode !== 'street' ? (
-                    <span
-                      className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-command-stable ring-1 ring-black"
-                      title="Street View available"
-                    />
-                  ) : null}
-                </button>
-              )
-            })}
-          </div>
+          <MapModeBar
+            mapMode={mapMode}
+            setMapMode={setMapMode}
+            streetAvailable={streetAvailable}
+            checkingStreet={checkingStreet}
+          />
         </div>
       ) : null}
 
       {showStreetOverlay ? (
         <div className="absolute inset-0 z-[15] flex flex-col bg-black">
+          {!isFullscreen ? (
+            <div className="street-view-top-bar flex shrink-0 items-center justify-between gap-3 border-b border-panel-border bg-black px-3 py-2">
+              <MapModeBar
+                mapMode={mapMode}
+                setMapMode={setMapMode}
+                streetAvailable={streetAvailable}
+                checkingStreet={checkingStreet}
+                compact
+              />
+              {label ? (
+                <p className="min-w-0 truncate font-mono text-[9px] text-ink-secondary" title={label}>
+                  {label}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <div
             ref={streetFrameRef}
             className={`street-view-frame relative min-h-0 flex-1 ${isFullscreen ? 'street-view-frame--fullscreen' : ''}`}
@@ -430,6 +498,17 @@ export default function PropertyMap({
                   isFullscreen={isFullscreen}
                   mapsUrl={googleMapsStreetViewUrl(pin.lat, pin.lng)}
                 />
+                {isFullscreen ? (
+                  <div className="pointer-events-auto absolute left-3 top-3 z-20">
+                    <MapModeBar
+                      mapMode={mapMode}
+                      setMapMode={setMapMode}
+                      streetAvailable={streetAvailable}
+                      checkingStreet={checkingStreet}
+                      compact
+                    />
+                  </div>
+                ) : null}
               </>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
@@ -467,12 +546,6 @@ export default function PropertyMap({
         </div>
       ) : null}
 
-      {loadingReport ? (
-        <div className="pointer-events-none absolute inset-0 z-[18] flex items-center justify-center bg-black/50 font-mono text-[10px] text-ink-muted">
-          Generating report…
-        </div>
-      ) : null}
-
       {mapInitError ? (
         <p className="absolute inset-x-0 top-4 z-10 px-4 text-center font-mono text-xs text-command-critical">
           {mapInitError}
@@ -485,19 +558,13 @@ export default function PropertyMap({
         </p>
       ) : null}
 
+      <div
+        className={`pi-map-locating-overlay ${showLocatingOverlay ? 'pi-map-locating-overlay--active' : ''}`}
+        aria-hidden
+      />
+
       {showPlaceholder ? (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#050505] px-6">
-          <div className="w-full max-w-md rounded-sm border border-command-watch/60 bg-panel-surface/40 px-6 py-5 shadow-[0_0_0_1px_rgba(232,168,56,0.16),0_10px_40px_rgba(0,0,0,0.72)]">
-            <p className="text-center font-mono text-[11px] uppercase tracking-[0.22em] text-command-watch">
-              LOCATION REQUIRED
-            </p>
-            <div className="my-3 h-px w-full bg-command-watch/30" />
-            <p className="text-center font-mono text-[12px] leading-relaxed text-ink-secondary">
-              Enter an address to locate the property. Use <span className="text-ink-primary">Satellite</span> or{' '}
-              <span className="text-ink-primary">Street</span>.
-            </p>
-          </div>
-        </div>
+        <div className="pointer-events-none absolute inset-0 z-[1] bg-[#050505]" aria-hidden />
       ) : null}
     </div>
   )

@@ -19,7 +19,7 @@ const ACCENT = {
   },
 }
 
-/** Pill toggle chip — layers, sources, magnitude filters */
+/** Pill toggle chip, layers, sources, magnitude filters */
 export function ToggleChip({
   active,
   onClick,
@@ -113,7 +113,7 @@ export function ToggleSwitch({ active, accent = 'cyber', className = '' }) {
   )
 }
 
-/** Map dock tab — Layers, Sources, Pin, Mag */
+/** Map dock tab, Layers, Sources, Pin, Mag */
 export function DockTab({ active, onClick, children, accent = 'cyber' }) {
   const activeClass =
     accent === 'live'
@@ -133,7 +133,7 @@ export function DockTab({ active, onClick, children, accent = 'cyber' }) {
   )
 }
 
-/** Compact text actions — All, Clear, Cancel */
+/** Compact text actions, All, Clear, Cancel */
 export function TextAction({ onClick, children, highlight = false, disabled = false }) {
   return (
     <button
@@ -147,6 +147,66 @@ export function TextAction({ onClick, children, highlight = false, disabled = fa
       }`}
     >
       {children}
+    </button>
+  )
+}
+
+/** Map dock, per-source toggle row with vector icon and text */
+export function SourceToggle({ source, active, onClick }) {
+  const color = source.accent ?? '#3dd68c'
+
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`group relative flex w-full items-center gap-2 rounded-lg py-2 pl-0 pr-1 text-left transition-all duration-200 ${
+        active ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'
+      }`}
+    >
+      {active ? (
+        <span
+          className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full"
+          style={{ backgroundColor: color }}
+          aria-hidden
+        />
+      ) : null}
+      <img
+        src={source.logo}
+        alt=""
+        aria-hidden
+        className={`h-6 w-6 shrink-0 object-contain object-left transition-opacity duration-200 ${
+          active ? 'opacity-100' : 'opacity-50 group-hover:opacity-75'
+        }`}
+      />
+      <div className="min-w-0 flex-1">
+        <span
+          className={`block font-mono text-[11px] font-medium uppercase tracking-[0.08em] ${
+            active ? '' : 'text-ink-muted group-hover:text-ink-secondary'
+          }`}
+          style={active ? { color } : undefined}
+        >
+          {source.label}
+        </span>
+        {source.description ? (
+          <span className="mt-0.5 block truncate font-mono text-[9px] leading-snug text-ink-faint">
+            {source.description}
+          </span>
+        ) : null}
+      </div>
+      <span
+        className={`relative inline-flex h-[18px] w-[30px] shrink-0 rounded-full transition-colors duration-200 ${
+          active ? '' : 'bg-[#2a2a2a]'
+        }`}
+        style={active ? { backgroundColor: `${color}45` } : undefined}
+        aria-hidden
+      >
+        <span
+          className={`absolute top-[3px] left-[3px] h-3 w-3 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            active ? 'translate-x-3' : 'translate-x-0'
+          }`}
+        />
+      </span>
     </button>
   )
 }
@@ -194,7 +254,7 @@ export function PanelToggle({ active, onClick, label, meta, accent = 'live', ico
   )
 }
 
-/** Segmented control option — scope modes, radius */
+/** Segmented control option, scope modes, radius */
 export function SegmentButton({ active, onClick, children, className = '', loading = false, disabled = false }) {
   return (
     <button

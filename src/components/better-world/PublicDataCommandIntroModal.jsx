@@ -19,7 +19,7 @@ export function ackPublicDataCommandIntro() {
   }
 }
 
-export default function PublicDataCommandIntroModal({ open, onContinue }) {
+export default function PublicDataCommandIntroModal({ open, onContinue, isMobile = false }) {
   return (
     <AnimatePresence>
       {open && (
@@ -58,6 +58,19 @@ export default function PublicDataCommandIntroModal({ open, onContinue }) {
               Sources: USGS, NWS, FEMA, NASA
             </p>
 
+            {isMobile && (
+              <div className="mt-5 rounded border border-[#333] bg-[#141414] px-4 py-3">
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-white">
+                  Mobile view
+                </p>
+                <p className="mt-2 text-[11px] leading-relaxed text-ink-secondary">
+                  Browse live hazard signals and filter by region. The interactive map, pin analysis, and
+                  earthquake analytics are available on{' '}
+                  <span className="text-white">desktop</span> (screen width 1024px or larger).
+                </p>
+              </div>
+            )}
+
             <div className="mt-5 rounded border border-amber-900/40 bg-amber-950/20 px-4 py-3">
               <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-amber-200/90">
                 Public data disclaimer
@@ -80,7 +93,9 @@ export default function PublicDataCommandIntroModal({ open, onContinue }) {
             </div>
 
             <div className="mt-6 flex justify-end">
-              <PrimaryButton onClick={onContinue}>Continue to map</PrimaryButton>
+              <PrimaryButton onClick={onContinue}>
+                {isMobile ? 'View live feed' : 'Continue to map'}
+              </PrimaryButton>
             </div>
           </motion.div>
         </motion.div>

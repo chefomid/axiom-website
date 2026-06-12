@@ -108,7 +108,7 @@ export default function ReportPrintDocument({ document: doc }) {
           <PageHeader meta={doc.meta} />
           <SectionTitle
             title="Catalog analysis"
-            subtitle="USGS event counts for this report focus — tables include explicit units."
+            subtitle="USGS event counts for this report focus, tables include explicit units."
           />
           {doc.catalogTables.map(table => (
             <DataTable key={table.id} table={table} />
@@ -116,7 +116,7 @@ export default function ReportPrintDocument({ document: doc }) {
         </div>
       ) : null}
 
-      {/* Analysis sections — split across pages if many */}
+      {/* Analysis sections, split across pages if many */}
       {doc.analysisSections?.length ? (
         <div className="report-print-page">
           <PageHeader meta={doc.meta} />

@@ -1,4 +1,4 @@
-// Activity log — user-facing updates for map actions and live data loads.
+// Activity log, user-facing updates for map actions and live data loads.
 import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTelemetry } from '../../context/TelemetryContext'

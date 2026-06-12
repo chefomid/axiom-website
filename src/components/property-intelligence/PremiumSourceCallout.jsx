@@ -39,7 +39,7 @@ export default function PremiumSourceCallout({
 
       {!keysConfigured ? (
         <p className="mt-3 font-mono text-[9px] leading-relaxed text-command-watch">
-          ATTOM_API_KEY not configured — preset will run free hazards and COPE until the key is added
+          ATTOM_API_KEY not configured, preset will run free hazards and COPE until the key is added
           to the server.
         </p>
       ) : null}
@@ -52,8 +52,8 @@ export default function PremiumSourceCallout({
           className={LOAD_COPE_BTN}
         >
           {keysConfigured
-            ? 'Load COPE — insurance grade preset'
-            : 'Load COPE — free sources from preset'}
+            ? 'Load COPE: insurance grade preset'
+            : 'Load COPE: free sources from preset'}
         </button>
       ) : onApplyPreset ? (
         <p className="mt-4 font-mono text-[9px] leading-relaxed text-ink-faint">

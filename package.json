@@ -16,7 +16,9 @@
     "smoke:billing": "python scripts/smoke_billing.py"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "framer-motion": "^11.0.0",
+    "lucide-react": "^1.17.0",
     "maplibre-gl": "^5.24.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",

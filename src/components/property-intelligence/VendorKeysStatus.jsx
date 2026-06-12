@@ -164,6 +164,20 @@ export default function VendorKeysStatus({ apiOnline }) {
                 </p>
               </div>
             ) : null}
+            <div className="mt-3 rounded-md border border-panel-border/70 bg-panel-surface/30 p-2.5">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">
+                Optional (image analysis)
+              </p>
+              <p className="mt-1 font-mono text-[9px] text-ink-secondary">
+                {status.optional?.google_maps ? (
+                  <span className="text-command-stable">✓ Google Maps, Street View enabled</span>
+                ) : (
+                  <span className="text-ink-faint">
+                    ○ GOOGLE_MAPS_API_KEY, satellite-only without Street View
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
         </div>
       ) : null}

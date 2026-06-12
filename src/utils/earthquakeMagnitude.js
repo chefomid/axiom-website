@@ -1,10 +1,10 @@
-/** Lowest magnitude requested from USGS — matches the "All" preset (catalog completeness floor). */
+/** Lowest magnitude requested from USGS, matches the "All" preset (catalog completeness floor). */
 export const USGS_CATALOG_MIN_MAGNITUDE = 2.5
 
 /**
  * Whether an event/marker passes the selected minimum magnitude (cumulative M3+ ⊃ M4+ …).
  * @param {number | null | undefined} mag
- * @param {number} minMagnitude — UI preset (2.5 = All, 3 = M3+, …)
+ * @param {number} minMagnitude, UI preset (2.5 = All, 3 = M3+, …)
  */
 export function passesMinMagnitude(mag, minMagnitude) {
   const floor =

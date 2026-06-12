@@ -119,7 +119,7 @@ export default function SeismicLocationPicker({
         {country.id === 'GLOBAL' ? (
           <>
             <p className="font-mono text-[10px] leading-relaxed text-ink-secondary">
-              Full USGS worldwide catalog for your magnitude and timeline — every region with
+              Full USGS worldwide catalog for your magnitude and timeline, every region with
               published earthquake data (US, Mexico, Japan, and all other covered areas).
             </p>
             <p className="mt-2 font-mono text-[10px] leading-relaxed text-ink-faint">
@@ -131,7 +131,7 @@ export default function SeismicLocationPicker({
               onClick={() => onLocationSelect(globalCenterLocation())}
               className="mt-3 font-mono text-[10px] text-[#ff9348] transition hover:text-[#ffb366] disabled:opacity-40"
             >
-              Global analysis — worldwide overview
+              Global analysis, worldwide overview
             </button>
           </>
         ) : (
@@ -173,8 +173,8 @@ export default function SeismicLocationPicker({
           className="mt-2 font-mono text-[10px] text-[#ff9348] transition hover:text-[#ffb366] disabled:opacity-40"
         >
           {country.id === 'US'
-            ? 'National analysis — United States overview'
-            : `Skip address — analyze ${country.label} overview`}
+            ? 'National analysis, United States overview'
+            : `Skip address, analyze ${country.label} overview`}
         </button>
         {country.id === 'US' && (
           <p className="mt-2 font-mono text-[10px] leading-relaxed text-ink-faint">

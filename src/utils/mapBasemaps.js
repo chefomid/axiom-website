@@ -1,4 +1,4 @@
-/** Shared basemap styles for MapLibre — used by analysis map and other views. */
+/** Shared basemap styles for MapLibre, used by analysis map and other views. */
 
 /** Same basemap as Public Data Command (`CommandMap`). */
 export const COMMAND_MAP_STYLE =
@@ -33,7 +33,7 @@ export const DEFAULT_TOPOGRAPHY_MODE = {
   id: 'road',
 }
 
-/** Single satellite toggle — preview + imagery style when active. */
+/** Single satellite toggle, preview + imagery style when active. */
 export const SATELLITE_TOPOGRAPHY_MODE = {
   id: 'satellite',
   label: 'Satellite',
@@ -60,7 +60,7 @@ export function getAnalysisBasemapStyle(modeId) {
   return modeId === 'satellite' ? SATELLITE_STYLE : COMMAND_MAP_STYLE
 }
 
-/** Full basemap swap — road Carto vs Esri satellite style; resolves after style + idle. */
+/** Full basemap swap, road Carto vs Esri satellite style; resolves after style + idle. */
 export async function swapAnalysisBasemap(map, modeId, { shouldContinue = () => true } = {}) {
   if (!map || !shouldContinue()) return false
 
@@ -223,7 +223,7 @@ export function waitForMapIdle(map, shouldContinue, timeoutMs = 2200) {
   })
 }
 
-/** Toggle Esri imagery — road off is instant; satellite on can fade in. */
+/** Toggle Esri imagery, road off is instant; satellite on can fade in. */
 export async function setAnalysisSatelliteImagery(
   map,
   enabled,

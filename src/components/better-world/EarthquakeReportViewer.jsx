@@ -407,7 +407,7 @@ export default function EarthquakeReportViewer({
                           <ReportBlock
                             className="eq-report-block--charts"
                             title="Catalog charts"
-                            subtitle="USGS event counts for this report focus — compact views for distance, time, and magnitude."
+                            subtitle="USGS event counts for this report focus, compact views for distance, time, and magnitude."
                           >
                             <div className="eq-report-charts-grid">
                               <ReportChartCell label="Cumulative frequency">

@@ -1,6 +1,6 @@
 /**
- * Full Property Intelligence app — local Vite dev only.
- * Production and preview builds show the coming-soon page unless
+ * Full Property Intelligence app: local dev only (desktop, 1024px+).
+ * Production and preview builds show the overview / coming-soon preview unless
  * VITE_PROPERTY_INTELLIGENCE_ENABLED=true is set on the host (e.g. Vercel).
  */
 export function isPropertyIntelligenceEnabled() {

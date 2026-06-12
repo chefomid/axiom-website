@@ -2,7 +2,7 @@ export const RADIUS_OPTIONS = [25, 50, 75, 100, 150, 200, 250]
 
 export const ANALYTICS_RADIUS_BREAKPOINTS = [25, 50, 75, 100, 150, 200, 250]
 
-/** Continental US national analysis — wider bands from geographic center. */
+/** Continental US national analysis, wider bands from geographic center. */
 export const NATIONAL_US_MAX_RADIUS_MILES = 1600
 export const NATIONAL_US_RADIUS_BREAKPOINTS = [100, 250, 500, 750, 1000, 1250, 1600]
 export const NATIONAL_US_RADIUS_OPTIONS = [500, 750, 1000, 1250, 1600]
@@ -22,10 +22,38 @@ export const SCOPE_MODES = [
 
 /** Live public-sector feeds on Public Data Command */
 export const DATA_SOURCES = [
-  { id: 'usgs', label: 'USGS', logo: '/data-sources/usgs.svg', defaultActive: true },
-  { id: 'nws', label: 'NWS', logo: '/data-sources/nws.svg', defaultActive: true },
-  { id: 'fema', label: 'FEMA', logo: '/data-sources/fema.svg', defaultActive: true },
-  { id: 'nasa', label: 'NASA', logo: '/data-sources/nasa.svg', defaultActive: true },
+  {
+    id: 'usgs',
+    label: 'USGS',
+    logo: '/data-sources/usgs.svg',
+    defaultActive: true,
+    description: 'Earthquake catalog',
+    accent: '#3dd68c',
+  },
+  {
+    id: 'nws',
+    label: 'NWS',
+    logo: '/data-sources/nws.svg',
+    defaultActive: true,
+    description: 'Weather alerts',
+    accent: '#4a9eff',
+  },
+  {
+    id: 'fema',
+    label: 'FEMA',
+    logo: '/data-sources/fema.svg',
+    defaultActive: true,
+    description: 'Flood hazard zones',
+    accent: '#6888c8',
+  },
+  {
+    id: 'nasa',
+    label: 'NASA',
+    logo: '/data-sources/nasa.svg',
+    defaultActive: true,
+    description: 'Active fire detections',
+    accent: '#e85848',
+  },
 ]
 
 export const COUNTRIES = [
@@ -49,7 +77,7 @@ export const SEISMIC_COUNTRY_BBOX = {
   JP: [129.0, 30.0, 146.0, 45.5],
 }
 
-/** Worldwide seismic analysis — full USGS catalog, no regional filter */
+/** Worldwide seismic analysis, full USGS catalog, no regional filter */
 export const GLOBAL_ANALYSIS_COUNTRY = {
   id: 'GLOBAL',
   label: 'Global',
@@ -128,7 +156,7 @@ export const RISK_LAYERS = [
   },
 ]
 
-/** Map point colors — keep in sync with Intelligence Panel signal cards */
+/** Map point colors, keep in sync with Intelligence Panel signal cards */
 export const SEVERITY_HEX = {
   stable: '#3dd68c',
   live: '#4a9eff',
@@ -136,7 +164,7 @@ export const SEVERITY_HEX = {
   critical: '#e05252',
 }
 
-/** USGS minimum magnitude presets — dot colors match Command Map earthquake palette */
+/** USGS minimum magnitude presets, dot colors match Command Map earthquake palette */
 export const EARTHQUAKE_MAGNITUDE_OPTIONS = [
   {
     value: 2.5,
@@ -160,7 +188,7 @@ export const SEVERITY = {
 
 export const LAYER_BY_ID = Object.fromEntries(RISK_LAYERS.map(layer => [layer.id, layer]))
 
-/** No static map markers — all layers use live APIs */
+/** No static map markers, all layers use live APIs */
 export const RISK_MARKERS = []
 
 export const RISK_SIGNALS = []

@@ -359,13 +359,13 @@ export default function EarthquakeReportBuilderModal({
                     </div>
                     <p className="mt-2 font-mono text-[10px] leading-relaxed text-ink-faint">
                       {aboutType === 'country'
-                        ? 'National catalog — bands radiate from the country center.'
+                        ? 'National catalog, bands radiate from the country center.'
                         : 'Only earthquakes within this radius of the focus point.'}
                     </p>
                   </>
                 ) : (
                   <p className="mt-4 font-mono text-[10px] leading-relaxed text-ink-faint">
-                    Global reports use the worldwide catalog — no radius filter.
+                    Global reports use the worldwide catalog, no radius filter.
                   </p>
                 )}
 

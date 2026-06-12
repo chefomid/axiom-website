@@ -18,7 +18,7 @@ const FEED_LOADING_LABELS = {
   flood: 'flood zone data',
 }
 
-/** @deprecated Use feedSyncMessage — kept for callers that gate on cache-only loads. */
+/** @deprecated Use feedSyncMessage, kept for callers that gate on cache-only loads. */
 export function shouldAnnounceFeedLoad(fromCache) {
   return !fromCache
 }

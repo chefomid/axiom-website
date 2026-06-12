@@ -80,7 +80,7 @@ export function setRiskCache(feed, key, data) {
     try {
       sessionStorage.setItem(storageKey(feed, key), JSON.stringify(entry))
     } catch {
-      // quota exceeded — memory cache only
+      // quota exceeded, memory cache only
     }
   }
 }

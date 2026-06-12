@@ -1,35 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { SEISMIC_COUNTRY_BBOX } from '../../data/commandMapData'
 
-import { resolveUsAddressCoords } from '../../services/geocode'
+import { reverseGeocodeUs, inBbox } from '../../services/geocode'
 import { normalizeLatLng } from '../../utils/coords'
-import { sourcesNeedingUrlIds } from '../../services/propertyApi'
+import { sourcesNeedingUrlIds, fetchBillingPacks, sourcesMatchQuote } from '../../services/propertyApi'
 
 import usePropertyReport from '../../hooks/usePropertyReport'
-
-import IntentPackagePicker from './IntentPackagePicker'
-
-import LiveReceipt from './LiveReceipt'
-
-import AdvancedDrawer from './AdvancedDrawer'
+import useGeolocation from '../../hooks/useGeolocation'
 
 import PropertyHeader from './PropertyHeader'
 
 import PropertyMap from './PropertyMap'
 
-import PropertySearchBar from './PropertySearchBar'
-
-import PublicSourcePanel from './PublicSourcePanel'
-
-import MapSourceDiscoveryHud from './MapSourceDiscoveryHud'
+import PropertyWorkflowHud from './PropertyWorkflowHud'
 
 import ReportResultsPanel from './ReportResultsPanel'
-
-import SourceCatalogPanel from './SourceCatalogPanel'
-
-
 
 export default function PropertyIntelligenceView() {
 
@@ -41,14 +28,19 @@ export default function PropertyIntelligenceView() {
   const [mapView, setMapView] = useState(null)
 
   const [resolvingAddress, setResolvingAddress] = useState(false)
-  const resolveControllerRef = useRef(null)
+  const [locationError, setLocationError] = useState('')
+  const [addressSearching, setAddressSearching] = useState(false)
+  const [locateSuccess, setLocateSuccess] = useState(false)
+  const composeTimerRef = useRef(null)
+  const [addressComposing, setAddressComposing] = useState(false)
+  const { locating: locatingMyPosition, error: geoError, clearError: clearGeoError, requestPosition } =
+    useGeolocation()
 
-  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [reportPanelOpen, setReportPanelOpen] = useState(false)
   const [billingNotice, setBillingNotice] = useState(null)
+  const [billingEnabled, setBillingEnabled] = useState(false)
   const [mapInstance, setMapInstance] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
-
-
 
   const {
 
@@ -57,6 +49,8 @@ export default function PropertyIntelligenceView() {
     selectedSources,
 
     toggleSource,
+
+    toggleOptionalSource,
 
     applyPreset,
 
@@ -72,6 +66,8 @@ export default function PropertyIntelligenceView() {
 
     loadingQuote,
 
+    quoteError,
+
     loadingReport,
 
     error,
@@ -84,6 +80,8 @@ export default function PropertyIntelligenceView() {
 
     runReport,
 
+    clearReport,
+
     clear,
 
   } = usePropertyReport()
@@ -91,40 +89,92 @@ export default function PropertyIntelligenceView() {
 
 
   useEffect(() => {
-    scheduleQuote(address, selectedSources)
-  }, [address, selectedSources, scheduleQuote])
+    const quoteAddress = addressDraft.trim() || address.trim()
+    scheduleQuote(quoteAddress, selectedSources)
+  }, [addressDraft, address, selectedSources, scheduleQuote])
+
+  const handleToggleOptionalSource = useCallback(
+    sourceId => {
+      const quoteAddress = addressDraft.trim() || address.trim()
+      toggleOptionalSource(sourceId, quoteAddress)
+    },
+    [addressDraft, address, toggleOptionalSource],
+  )
 
   useEffect(() => {
     const billing = searchParams.get('billing')
     if (billing === 'success') {
-      setBillingNotice('Payment received — credits added. You can run reports now.')
+      setBillingNotice('Payment received, credits added. You can run reports now.')
       window.dispatchEvent(new Event('axiom:billing-refresh'))
       const next = new URLSearchParams(searchParams)
       next.delete('billing')
       setSearchParams(next, { replace: true })
     } else if (billing === 'cancel') {
-      setBillingNotice('Checkout canceled — no credits were added.')
+      setBillingNotice('Checkout canceled, no credits were added.')
       const next = new URLSearchParams(searchParams)
       next.delete('billing')
       setSearchParams(next, { replace: true })
     }
   }, [searchParams, setSearchParams])
 
-  // Server quote includes geocoded coordinates — update map as soon as quote matches address.
   useEffect(() => {
-    if (!address.trim()) return
-    if (quote?.address_input?.trim() !== address.trim()) return
-    const coords = normalizeLatLng(quote)
-    if (!coords) return
-    setMapView(prev => ({
-      lat: coords.lat,
-      lng: coords.lng,
-      label: quote?.display_name ?? address,
-      immediate: false,
+    if (!apiOnline) {
+      setBillingEnabled(false)
+      return undefined
+    }
+    let cancelled = false
+    fetchBillingPacks()
+      .then(data => {
+        if (!cancelled) setBillingEnabled(Boolean(data.billing_enabled))
+      })
+      .catch(() => {
+        if (!cancelled) setBillingEnabled(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [apiOnline])
+
+  const paymentNotice = billingEnabled
+    ? 'Add credits using the Credits button in the header, then try again.'
+    : 'Dry run, wallet billing not configured on the server.'
+
+  const activeAddress = addressDraft.trim() || address.trim()
+
+  const markAddressComposing = useCallback(() => {
+    setAddressComposing(true)
+    if (composeTimerRef.current) clearTimeout(composeTimerRef.current)
+    composeTimerRef.current = setTimeout(() => {
+      setAddressComposing(false)
+    }, 800)
+  }, [])
+
+  const clearAddressComposing = useCallback(() => {
+    if (composeTimerRef.current) clearTimeout(composeTimerRef.current)
+    composeTimerRef.current = null
+    setAddressComposing(false)
+  }, [])
+
+  const applyMapLocation = useCallback((coords, label, { immediate = false } = {}) => {
+    const pair = normalizeLatLng(coords)
+    if (!pair) return false
+    setMapView({
+      lat: pair.lat,
+      lng: pair.lng,
+      label: label ?? activeAddress,
+      immediate,
       locked: true,
-    }))
+    })
     setResolvingAddress(false)
-  }, [address, quote])
+    return true
+  }, [activeAddress])
+
+  useEffect(
+    () => () => {
+      if (composeTimerRef.current) clearTimeout(composeTimerRef.current)
+    },
+    [],
+  )
 
   useEffect(() => {
     const q = addressDraft.trim()
@@ -133,10 +183,9 @@ export default function PropertyIntelligenceView() {
       return undefined
     }
 
-    // Patient commit: only geocode/quote once the user pauses typing.
     const timer = setTimeout(() => {
       setAddress(q)
-    }, 1400)
+    }, 350)
 
     return () => clearTimeout(timer)
   }, [addressDraft, address])
@@ -153,172 +202,197 @@ export default function PropertyIntelligenceView() {
     setMapView(null)
 
     setResolvingAddress(false)
+    setLocationError('')
+    setAddressSearching(false)
+    setLocateSuccess(false)
+    clearGeoError()
+    setReportPanelOpen(false)
+    clearAddressComposing()
 
     clear()
 
-  }, [clear])
+  }, [clear, clearAddressComposing])
 
 
 
   const handleAddressChange = useCallback(value => {
-
     setAddressDraft(value)
-
-    setMapView(prev => (prev?.locked ? { ...prev, locked: false } : prev))
-
-  }, [])
+    setLocationError('')
+    clearGeoError()
+    setLocateSuccess(false)
+    markAddressComposing()
+    setMapView(prev => {
+      const coords = normalizeLatLng(prev)
+      if (coords && prev?.locked) {
+        return {
+          lat: prev.lat,
+          lng: prev.lng,
+          label: prev.label,
+          locked: false,
+          immediate: false,
+        }
+      }
+      return null
+    })
+    setReportPanelOpen(false)
+    clearReport()
+  }, [markAddressComposing, clearReport, clearGeoError])
 
 
 
   const handleAddressSelect = useCallback(selection => {
     const coords = normalizeLatLng(selection)
     if (!coords) return
-    if (selection?.label) {
-      setAddressDraft(selection.label)
-      setAddress(selection.label)
+    clearAddressComposing()
+    clearReport()
+    setReportPanelOpen(false)
+    const label = selection?.label ?? activeAddress
+    if (label) {
+      setAddressDraft(label)
+      setAddress(label)
     }
-    setResolvingAddress(false)
-    setMapView({
-      lat: coords.lat,
-      lng: coords.lng,
-      label: selection?.label ?? address,
-      immediate: true,
-      locked: true,
-    })
-  }, [address])
+    applyMapLocation(coords, label, { immediate: true })
+  }, [activeAddress, clearAddressComposing, clearReport, applyMapLocation])
 
 
 
-  useEffect(() => {
-    const trimmed = address.trim()
-    const mapCoords = normalizeLatLng(mapView)
+  const handleMyLocation = useCallback(async () => {
+    if (locatingMyPosition || loadingReport) return
 
-    if (!trimmed) {
-      resolveControllerRef.current?.abort?.()
-      resolveControllerRef.current = null
-      setResolvingAddress(false)
-      if (!record) setMapView(null)
-      return undefined
-    }
+    setLocationError('')
+    clearGeoError()
+    setLocateSuccess(false)
 
-    // If we already have a locked coordinate for the current address, stop resolving.
-    if (mapView?.locked && mapCoords) {
-      setResolvingAddress(false)
-      return undefined
-    }
+    try {
+      const pos = await requestPosition()
+      const coords = normalizeLatLng(pos)
+      if (!coords) throw new Error('Invalid coordinates')
 
-    // Cancel any in-flight resolve when address changes.
-    resolveControllerRef.current?.abort?.()
-    const controller = new AbortController()
-    resolveControllerRef.current = controller
-
-    // Patient resolve: avoid flicker and only resolve if quote didn't already provide coords.
-    const timer = setTimeout(async () => {
-      if (controller.signal.aborted) return
-
-      if (quote?.address_input?.trim() === trimmed && normalizeLatLng(quote)) {
-        setResolvingAddress(false)
+      if (!inBbox(coords.lat, coords.lng, SEISMIC_COUNTRY_BBOX.US)) {
+        setLocationError('Your location is outside the United States.')
         return
       }
 
       setResolvingAddress(true)
+      const reversed = await reverseGeocodeUs(coords.lat, coords.lng, {
+        bbox: SEISMIC_COUNTRY_BBOX.US,
+      })
+      const finalCoords = normalizeLatLng(reversed) ?? coords
+      const label =
+        reversed?.label ??
+        `Current location (${finalCoords.lat.toFixed(4)}, ${finalCoords.lng.toFixed(4)})`
 
-      try {
-        const resolved = await resolveUsAddressCoords(trimmed, {
-          countryId: 'US',
-          bbox: SEISMIC_COUNTRY_BBOX.US,
-          signal: controller.signal,
-        })
-        const coords = normalizeLatLng(resolved)
-        if (controller.signal.aborted) return
-
-        setResolvingAddress(false)
-        if (!coords) return
-
-        const resolvedLabel = resolved?.label ?? trimmed
-        setMapView({
-          lat: coords.lat,
-          lng: coords.lng,
-          label: resolvedLabel,
-          immediate: false,
-          locked: true,
-        })
-
-        // Snap the input to the resolved canonical label once (prevents repeated re-searching).
-        if (resolvedLabel && resolvedLabel !== addressDraft.trim()) {
-          setAddressDraft(resolvedLabel)
-        }
-        if (resolvedLabel && resolvedLabel !== trimmed) {
-          setAddress(resolvedLabel)
-        }
-      } catch (err) {
-        if (err?.name === 'AbortError') return
-        setResolvingAddress(false)
-      }
-    }, 1200)
-
-    return () => {
-      clearTimeout(timer)
-      controller.abort()
-      if (resolveControllerRef.current === controller) {
-        resolveControllerRef.current = null
-      }
+      setAddressDraft(label)
+      setAddress(label)
+      clearAddressComposing()
+      setMapView({
+        lat: finalCoords.lat,
+        lng: finalCoords.lng,
+        label,
+        immediate: true,
+        locked: true,
+      })
+      setResolvingAddress(false)
+      setLocateSuccess(true)
+      window.setTimeout(() => setLocateSuccess(false), 2400)
+    } catch (err) {
+      setLocationError(
+        err?.message || 'Unable to access your location. Allow browser location access and try again.',
+      )
+      setResolvingAddress(false)
     }
-  }, [address, addressDraft, mapView, quote, record])
-
-
+  }, [locatingMyPosition, loadingReport, clearAddressComposing, requestPosition, clearGeoError])
 
   const handleGenerate = useCallback(async () => {
+    const runAddress = activeAddress
+    if (!runAddress) return
 
-    if (!address.trim()) return
-
+    setReportPanelOpen(true)
     try {
-
-      await runReport({ address, sourceUrls })
-
+      await runReport({ address: runAddress, sourceUrls })
     } catch {
-
       /* surfaced in hook */
-
     }
-
-  }, [address, sourceUrls, runReport])
+  }, [activeAddress, sourceUrls, runReport])
 
 
 
   const recordCoords = normalizeLatLng(record)
   const mapViewCoords = normalizeLatLng(mapView)
-  const hasCoords = Boolean(recordCoords || mapViewCoords)
+  const recordMatchesAddress = Boolean(
+    record &&
+      activeAddress &&
+      [record.address_input, record.display_name]
+        .filter(Boolean)
+        .some(
+          value => value.trim().toLowerCase() === activeAddress.trim().toLowerCase(),
+        ),
+  )
+  const mapCoords = mapViewCoords ?? (recordMatchesAddress ? recordCoords : null)
+  const hasCoords = Boolean(mapCoords)
 
   const locationLocked = Boolean(
-    address.trim() && hasCoords && (mapView?.locked || recordCoords),
+    activeAddress && mapViewCoords && mapView?.locked && !addressComposing,
   )
+
+  const locationPhase = useMemo(() => {
+    if (locationError || geoError) return 'error'
+    if (locationLocked) return 'locked'
+    if (locatingMyPosition) return 'locating'
+    if (resolvingAddress && !addressComposing) return 'resolving'
+    if (addressSearching && addressComposing) return 'searching'
+    if (addressComposing && activeAddress) return 'composing'
+    if (!activeAddress) return 'idle'
+    return 'idle'
+  }, [
+    locationError,
+    geoError,
+    locationLocked,
+    locatingMyPosition,
+    resolvingAddress,
+    addressComposing,
+    addressSearching,
+    activeAddress,
+  ])
+
+  const mapFlyDelay = useMemo(() => {
+    if (mapView?.immediate) return 0
+    if (locationPhase === 'resolving') return 250
+    return 350
+  }, [mapView?.immediate, locationPhase])
 
   const hasReport = Boolean(record)
 
   const requiredUrlIds = sourcesNeedingUrlIds(catalog, selectedSources)
-  const missingRequiredUrls = requiredUrlIds.filter(id => !(sourceUrls?.[id] ?? '').trim())
 
-  const advancedBadges = [
-    missingRequiredUrls.length > 0
-      ? {
-          label: `Needs ${missingRequiredUrls.length} URL${missingRequiredUrls.length === 1 ? '' : 's'}`,
-          tone: 'warning',
-        }
-      : null,
-    selectedSources.length > 0 ? { label: `${selectedSources.length} sources`, tone: 'neutral' } : null,
-    record ? { label: 'Report ready', tone: 'stable' } : null,
-  ].filter(Boolean)
+  const quoteSynced =
+    !quote ||
+    !selectedSources.length ||
+    sourcesMatchQuote(selectedSources, quote.selected_sources)
+
+  const generateBlockReason = useMemo(() => {
+    if (!activeAddress) return 'Add a property address to generate.'
+    if (selectedSources.length === 0) return 'Choose a package or at least one source.'
+    if (loadingQuote) return 'Calculating estimate…'
+    if (!quoteSynced) return 'Updating estimate for selected sources…'
+    if (quoteError) return quoteError
+    if (!locationLocked) return 'Pick an address from suggestions or press Enter to lock the map.'
+    return null
+  }, [
+    activeAddress,
+    selectedSources.length,
+    loadingQuote,
+    quoteSynced,
+    quoteError,
+    locationLocked,
+  ])
 
   useEffect(() => {
-    if (missingRequiredUrls.length === 0) return
-    const wide = window.matchMedia('(min-width: 1024px)')
-    if (!wide.matches) setAdvancedOpen(true)
-  }, [missingRequiredUrls.length])
-
-  useEffect(() => {
-    if (record) setAdvancedOpen(false)
+    if (record) setReportPanelOpen(true)
   }, [record])
+
+
+  const showReportPanel = reportPanelOpen && (loadingReport || Boolean(record) || Boolean(error))
 
 
 
@@ -346,247 +420,92 @@ export default function PropertyIntelligenceView() {
 
 
 
-  const mapCoords = recordCoords ?? mapViewCoords
   const mapLat = mapCoords?.lat ?? null
   const mapLng = mapCoords?.lng ?? null
 
-  const displayLabel = record?.display_name ?? mapView?.label ?? addressDraft
+  const displayLabel =
+    mapView?.label ??
+    (recordMatchesAddress ? record?.display_name : null) ??
+    addressDraft
 
 
 
   return (
 
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-black text-ink-primary">
-
-      <PropertyHeader
-
-        apiOnline={apiOnline}
-
-        enrichStatus={record?.status}
-
-        locationLocked={locationLocked}
-
-        hasReport={hasReport}
-
-        loadingQuote={loadingQuote}
-
-      />
-
-
-
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-
-        <aside className="flex min-h-0 w-full shrink-0 flex-col border-r border-panel-border bg-panel-bg lg:w-[380px] xl:w-[400px]">
-
-          <div className="min-h-0 flex-1 overflow-y-auto sleek-scrollbar">
-
-            <PropertySearchBar
-
-              address={addressDraft}
-
-              loading={loadingReport}
-
-              resolving={resolvingAddress}
-
-              locationLocked={locationLocked}
-
-              onAddressChange={handleAddressChange}
-
-              onAddressSelect={handleAddressSelect}
-
-              onClear={handleClear}
-
-            />
-
-            <IntentPackagePicker
-
-              presets={catalog?.presets}
-
-              catalog={catalog}
-
-              activePresetId={activePresetId}
-
-              onApply={applyPreset}
-
-              disabled={loadingReport || loadingCatalog}
-
-              locationLocked={locationLocked}
-
-            />
-
-            {billingNotice ? (
-              <div className="border-b border-command-stable/30 bg-command-stable/5 px-4 py-2">
-                <p className="font-mono text-[9px] leading-relaxed text-command-stable">{billingNotice}</p>
-                <button
-                  type="button"
-                  onClick={() => setBillingNotice(null)}
-                  className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-faint hover:text-ink-secondary"
-                >
-                  Dismiss
-                </button>
-              </div>
-            ) : null}
-
-            {presetNotice ? (
-
-              <div className="border-b border-command-watch/30 bg-command-watch/5 px-4 py-2">
-
-                <p className="font-mono text-[9px] leading-relaxed text-command-watch">{presetNotice}</p>
-
-                <button
-
-                  type="button"
-
-                  onClick={clearPresetNotice}
-
-                  className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-faint hover:text-ink-secondary"
-
-                >
-
-                  Dismiss
-
-                </button>
-
-              </div>
-
-            ) : null}
-
-            <AdvancedDrawer
-              open={advancedOpen}
-              onToggle={() => setAdvancedOpen(v => !v)}
-              badges={advancedBadges}
-              subtitle={
-                missingRequiredUrls.length > 0
-                  ? 'Finish required inputs to generate'
-                  : record
-                    ? 'Review sources, URLs, and results'
-                    : 'Sources, URLs, and results'
-              }
-            >
-              {requiredUrlIds.length > 0 ? (
-                <div className="lg:hidden">
-                  <PublicSourcePanel
-                    catalog={catalog}
-                    selectedSources={selectedSources}
-                    address={address}
-                    locationLocked={locationLocked}
-                    apiOnline={apiOnline}
-                    disabled={loadingReport}
-                    sourceUrls={sourceUrls}
-                    onSourceUrlsChange={setSourceUrls}
-                    onPaymentRequired={() =>
-                      setBillingNotice('Add credits using the Credits button in the header, then try again.')
-                    }
-                    variant="sidebar"
-                  />
-                </div>
-              ) : null}
-
-              <SourceCatalogPanel
-                catalog={catalog}
-                selectedSources={selectedSources}
-                onToggle={toggleSource}
-                disabled={loadingReport || loadingCatalog}
-                quote={quote}
-                activePresetId={activePresetId}
-                apiOnline={apiOnline}
-              />
-
-              <ReportResultsPanel
-                record={record}
-                error={error}
-                loading={loadingReport}
-                apiOnline={apiOnline}
-              />
-            </AdvancedDrawer>
-
-          </div>
-
-
-
-          <LiveReceipt
-
-            quote={displayQuote}
-
-            loading={loadingQuote}
-
-            loadingReport={loadingReport}
-
-            address={addressDraft}
-
-            selectedCount={selectedSources.length}
-
-            locationLocked={locationLocked}
-
-            generateDisabled={
-              !address.trim() ||
-              selectedSources.length === 0 ||
-              loadingQuote ||
-              missingRequiredUrls.length > 0
-            }
-
-            onGenerate={handleGenerate}
-
-            sticky
-
-          />
-
-        </aside>
-
-
-
-        <main className="relative min-h-[240px] min-w-0 flex-1 lg:min-h-0">
-
+    <div className="flex h-[100dvh] flex-col overflow-hidden">
+
+      <PropertyHeader apiOnline={apiOnline} />
+
+
+
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <PropertyWorkflowHud
+          locationLocked={locationLocked}
+          locationPhase={locationPhase}
+          address={addressDraft}
+          loadingReport={loadingReport}
+          locationError={locationError || geoError}
+          locateSuccess={locateSuccess}
+          onAddressChange={handleAddressChange}
+          onAddressSelect={handleAddressSelect}
+          onMyLocation={handleMyLocation}
+          onClear={handleClear}
+          onSearchingChange={setAddressSearching}
+          presets={catalog?.presets}
+          catalog={catalog}
+          activePresetId={activePresetId}
+          selectedSources={selectedSources}
+          quote={quote}
+          loadingQuote={loadingQuote || (!quoteSynced && Boolean(displayQuote))}
+          onToggleSource={handleToggleOptionalSource}
+          onApply={applyPreset}
+          onToggleCatalogSource={toggleSource}
+          disabled={loadingReport || loadingCatalog}
+          apiOnline={apiOnline}
+          requiredUrlIds={requiredUrlIds}
+          sourceUrls={sourceUrls}
+          onSourceUrlsChange={setSourceUrls}
+          onPaymentRequired={() => setBillingNotice(paymentNotice)}
+          onGenerate={handleGenerate}
+          generateDisabled={Boolean(generateBlockReason)}
+          generateBlockReason={generateBlockReason}
+          hasReport={hasReport}
+          enrichStatus={record?.status}
+          billingNotice={billingNotice}
+          onDismissBillingNotice={() => setBillingNotice(null)}
+          presetNotice={presetNotice}
+          onDismissPresetNotice={clearPresetNotice}
+          quoteSynced={quoteSynced}
+          displayQuote={displayQuote}
+          quoteError={quoteError}
+        />
+
+        <div className={`relative min-h-[45vh] min-w-0 flex-1 lg:min-h-0 ${showReportPanel ? 'lg:flex-1' : ''}`}>
           <PropertyMap
-
             lat={mapLat}
-
             lng={mapLng}
-
             label={displayLabel}
-
-            flyDelay={mapView?.immediate ? 0 : 400}
-
-            showPlaceholder={mapLat == null || mapLng == null}
-
+            flyDelay={mapFlyDelay}
+            showPlaceholder={false}
             locationLocked={locationLocked}
-
-            loadingReport={loadingReport}
-
+            locationPhase={locationPhase}
             onMapReady={setMapInstance}
-
           />
+        </div>
 
-          {requiredUrlIds.length > 0 ? (
-            <div className="absolute inset-0 z-[22] hidden lg:block">
-              <MapSourceDiscoveryHud
-                map={mapInstance}
-                lat={mapLat}
-                lng={mapLng}
-                locationLocked={locationLocked}
-                visible={mapInstance != null && mapLat != null && mapLng != null}
-              >
-                <PublicSourcePanel
-                  catalog={catalog}
-                  selectedSources={selectedSources}
-                  address={address}
-                  locationLocked={locationLocked}
-                  apiOnline={apiOnline}
-                  disabled={loadingReport}
-                  sourceUrls={sourceUrls}
-                  onSourceUrlsChange={setSourceUrls}
-                  onPaymentRequired={() =>
-                    setBillingNotice('Add credits using the Credits button in the header, then try again.')
-                  }
-                  variant="hud"
-                />
-              </MapSourceDiscoveryHud>
-            </div>
-          ) : null}
+        {showReportPanel ? (
+          <aside className="flex min-h-[280px] w-full shrink-0 flex-col border-t border-panel-border bg-panel-bg lg:min-h-0 lg:w-[440px] lg:border-l lg:border-t-0 xl:w-[480px]">
+            <ReportResultsPanel
+              variant="panel"
+              record={record}
+              error={error}
+              loading={loadingReport}
+              apiOnline={apiOnline}
+            />
+          </aside>
+        ) : null}
 
-        </main>
-
-      </div>
+      </main>
 
     </div>
 

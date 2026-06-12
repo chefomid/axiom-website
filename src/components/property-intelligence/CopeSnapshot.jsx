@@ -60,7 +60,7 @@ export default function CopeSnapshot({ cope, conflicts }) {
         {score.unknown > 0 ? (
           <p className="mt-2 font-mono text-[9px] leading-relaxed text-command-watch">
             {hasAttomData
-              ? 'ATTOM is connected — remaining gaps are missing from the ATTOM record, hazard/protection feeds, or failed sources (see receipt).'
+              ? 'ATTOM is connected, remaining gaps are missing from the ATTOM record, hazard/protection feeds, or failed sources (see receipt).'
               : 'Add ATTOM (or assessor crawl) for carrier-grade Construction & Occupancy fields.'}
           </p>
         ) : null}
@@ -70,7 +70,7 @@ export default function CopeSnapshot({ cope, conflicts }) {
         <div key={section.id} className="border-b border-panel-border/60 p-4">
           <div className="mb-3 flex items-baseline justify-between gap-2">
             <p className="font-display text-xs text-white">
-              {section.cope_letter ? `${section.cope_letter} — ` : ''}
+              {section.cope_letter ? `${section.cope_letter}, ` : ''}
               {section.label}
             </p>
             <span className="font-mono text-[9px] tabular-nums text-ink-muted">{section.completeness}</span>
@@ -109,7 +109,7 @@ export default function CopeSnapshot({ cope, conflicts }) {
                   </>
                 ) : (
                   <p className="mt-1 font-mono text-[10px] italic text-ink-faint">
-                    {field.note ?? 'Unknown — not in selected sources'}
+                    {field.note ?? 'Unknown, not in selected sources'}
                   </p>
                 )}
                 {field.alternatives?.length > 0 ? (
@@ -140,7 +140,7 @@ export default function CopeSnapshot({ cope, conflicts }) {
                 <p className="font-mono text-[10px] text-white">{c.field_id.replace(/_/g, ' ')}</p>
                 {c.alternatives?.map((alt, i) => (
                   <p key={i} className="mt-1 font-mono text-[9px] text-ink-secondary">
-                    {alt.value} <span className="text-ink-faint">— {alt.source}</span>
+                    {alt.value} <span className="text-ink-faint">, {alt.source}</span>
                   </p>
                 ))}
               </li>

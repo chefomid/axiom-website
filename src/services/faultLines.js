@@ -73,7 +73,7 @@ export function getCachedFaultLineDots() {
   return zoneDotsCache
 }
 
-/** Synchronous bbox filter — instant once {@link preloadFaultLineDots} has resolved. */
+/** Synchronous bbox filter, instant once {@link preloadFaultLineDots} has resolved. */
 export function getFaultLinesForBbox(bbox) {
   if (!zoneDotsCache) return EMPTY_COLLECTION
   return filterPointsByBbox(zoneDotsCache, bbox)
@@ -169,8 +169,8 @@ export function findNearestFault(center) {
 
 /**
  * Display label and official reference for a hovered/clicked fault line feature.
- * @param {import('geojson').Feature} feature — PB2002 line or compatible GeoJSON feature
- * @param {{ lat: number, lng: number }} lngLat — map event lngLat
+ * @param {import('geojson').Feature} feature, PB2002 line or compatible GeoJSON feature
+ * @param {{ lat: number, lng: number }} lngLat, map event lngLat
  */
 export function getFaultInfoFromFeature(feature, lngLat) {
   if (!lngLat || !Number.isFinite(lngLat.lat) || !Number.isFinite(lngLat.lng)) {
@@ -183,7 +183,7 @@ export function getFaultInfoFromFeature(feature, lngLat) {
 /**
  * Display label and official reference for a map hover/click at a fault-line dot.
  * @param {{ lat: number, lng: number }} location
- * @param {string} [hoveredPlateCode] — `name` from the hovered PB2002 zone dot
+ * @param {string} [hoveredPlateCode], `name` from the hovered PB2002 zone dot
  */
 export function getFaultInfoAtLocation(location, hoveredPlateCode) {
   if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {

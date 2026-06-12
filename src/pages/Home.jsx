@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Nav from '../components/Nav'
+import SiteFooter from '../components/SiteFooter'
 import CoiTrackerModal from '../components/CoiTrackerModal'
 import InsuranceManagerModal from '../components/InsuranceManagerModal'
+import {
+  PROPERTY_INTELLIGENCE_LABEL,
+  PROPERTY_INTELLIGENCE_PATH,
+  PUBLIC_DATA_COMMAND_LABEL,
+  PUBLIC_DATA_COMMAND_PATH,
+} from '../constants/routes'
 
 const fade = {
   hidden: { opacity: 0, y: 24 },
@@ -11,6 +19,27 @@ const fade = {
     y: 0,
     transition: { duration: 0.7, delay: i * 0.15, ease: [0.25, 0.1, 0.25, 1] },
   }),
+}
+
+function CardOpenArrow() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      className="block shrink-0"
+    >
+      <path
+        d="M4.5 9.5L9.5 4.5M9.5 4.5H5.75M9.5 4.5V8.25"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 function AbstractBackground() {
@@ -66,7 +95,7 @@ export default function Home() {
         onOpenInsuranceManager={() => setInsuranceManagerOpen(true)}
       />
       <Thesis />
-      <Footer />
+      <SiteFooter />
       <CoiTrackerModal open={coiOpen} onClose={() => setCoiOpen(false)} />
       <InsuranceManagerModal
         open={insuranceManagerOpen}
@@ -79,7 +108,7 @@ export default function Home() {
 
 function Hero() {
   return (
-    <section data-snap-section className="flex flex-col justify-center min-h-screen px-8 md:px-20 max-w-5xl mx-auto">
+    <section data-snap-section className="flex flex-col justify-center min-h-screen px-8 pt-28 sm:pt-32 md:px-20 max-w-5xl mx-auto">
       <motion.h1
         variants={fade}
         initial="hidden"
@@ -115,6 +144,27 @@ function Hero() {
         initial="hidden"
         animate="show"
         custom={3}
+        className="mt-10 flex flex-col gap-3 md:hidden"
+      >
+        <Link
+          to={PUBLIC_DATA_COMMAND_PATH}
+          className="flex min-h-[44px] items-center justify-center rounded border border-[#3a3a3a] bg-[#141414] px-5 font-display text-sm font-medium text-white transition-colors hover:border-[#5c5c5c] hover:bg-[#1a1a1a]"
+        >
+          {PUBLIC_DATA_COMMAND_LABEL}
+        </Link>
+        <Link
+          to={PROPERTY_INTELLIGENCE_PATH}
+          className="flex min-h-[44px] items-center justify-center rounded border border-[#2d2d2d] bg-transparent px-5 font-display text-sm font-medium text-ink-secondary transition-colors hover:border-[#444] hover:text-white"
+        >
+          {PROPERTY_INTELLIGENCE_LABEL}
+        </Link>
+      </motion.div>
+
+      <motion.div
+        variants={fade}
+        initial="hidden"
+        animate="show"
+        custom={4}
         className="mt-16 w-16 h-px bg-[#333]"
       />
     </section>
@@ -148,7 +198,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
   ]
 
   return (
-    <section data-snap-section id="pillars" className="px-8 md:px-20 py-32 max-w-5xl mx-auto">
+    <section data-snap-section id="pillars" className="px-8 md:px-20 py-20 sm:py-32 max-w-5xl mx-auto">
       <motion.p
         variants={fade}
         initial="hidden"
@@ -180,7 +230,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
             whileInView="show"
             viewport={{ once: true }}
             custom={i}
-            className="bg-[#080808] p-10 flex flex-col gap-6"
+            className="bg-[#080808] p-6 sm:p-10 flex flex-col gap-6"
           >
             <span className="text-xs text-ink-muted font-display">{p.label}</span>
             <h2 className="font-display text-xl font-medium text-white leading-snug">
@@ -208,8 +258,8 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
                         <span className="font-display text-sm font-semibold text-white pb-1.5 border-b border-[#2d2d2d] flex items-center justify-between gap-2">
                           {t.name}
                           {t.onClick && (
-                            <span className="text-ink-faint group-hover:text-white transition-colors text-xs shrink-0">
-                              ↗
+                            <span className="shrink-0 text-ink-faint transition-colors group-hover:text-white">
+                              <CardOpenArrow />
                             </span>
                           )}
                         </span>
@@ -229,7 +279,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
 
 function Thesis() {
   return (
-    <section data-snap-section id="thesis" className="px-8 md:px-20 py-32 max-w-5xl mx-auto border-t border-[#141414]">
+    <section data-snap-section id="thesis" className="px-8 md:px-20 py-20 sm:py-32 max-w-5xl mx-auto border-t border-[#141414]">
       <div className="grid md:grid-cols-2 gap-20 items-center">
         <motion.p
           variants={fade}
@@ -260,11 +310,3 @@ function Thesis() {
   )
 }
 
-function Footer() {
-  return (
-    <footer data-snap-section id="contact" className="px-8 md:px-20 py-12 border-t border-[#141414] flex items-center justify-between">
-      <span className="font-display text-xs tracking-[0.2em] text-ink-faint">AXIOM</span>
-      <span className="text-xs text-ink-faint">© 2026</span>
-    </footer>
-  )
-}

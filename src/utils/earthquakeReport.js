@@ -214,7 +214,7 @@ export const REPORT_ABOUT_OPTIONS = [
   {
     id: 'current-location',
     label: 'Current location',
-    description: 'Your device or map position — radius search from where you are.',
+    description: 'Your device or map position, radius search from where you are.',
   },
   {
     id: 'address',
@@ -321,9 +321,9 @@ export function buildReportNarrative({
   let meaning
   if (globalAnalysis) {
     meaning =
-      'This report summarizes worldwide earthquake catalog activity from the USGS. Counts reflect published historical records for your chosen timeline and magnitude filter — not live shaking or future forecasts.'
+      'This report summarizes worldwide earthquake catalog activity from the USGS. Counts reflect published historical records for your chosen timeline and magnitude filter, not live shaking or future forecasts.'
   } else if (scope === 'country') {
-    meaning = `This report describes historical earthquake frequency around ${locationLabel} using USGS catalog data. It helps compare how often earthquakes of different sizes have been recorded nearby — useful context for regional hazard awareness.`
+    meaning = `This report describes historical earthquake frequency around ${locationLabel} using USGS catalog data. It helps compare how often earthquakes of different sizes have been recorded nearby, useful context for regional hazard awareness.`
   } else {
     meaning = `This report summarizes earthquake activity near ${locationLabel}. The numbers come from the USGS historical catalog within your selected radius and time window. They describe past recorded events, not predictions of when the next earthquake will occur.`
   }
@@ -364,7 +364,7 @@ export function reportPdfFilename(locationLabel) {
 /** Document title while printing (browser uses this for default PDF name). */
 export function reportPrintDocumentTitle(locationLabel) {
   const slug = reportExportSlug(locationLabel) || 'export'
-  return `Seismic Activity Report — ${slug.replace(/-/g, ' ')}`
+  return `Seismic Activity Report | ${slug.replace(/-/g, ' ')}`
 }
 
 export function requestBrowserLocation() {

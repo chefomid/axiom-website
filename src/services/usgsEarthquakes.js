@@ -3,6 +3,7 @@ import { COUNTRIES } from '../data/commandMapData'
 import { USGS_CATALOG_MIN_MAGNITUDE } from '../utils/earthquakeMagnitude'
 import { distanceMiles } from '../utils/geo'
 import { getMarkerReportUrl } from '../utils/markerReportUrl'
+import { headlineForMarker, locationLabelForMarker } from '../utils/signalLocation'
 import { COUNTRY_BBOX, pointInBbox } from '../utils/scopeBbox'
 
 const USGS_ENDPOINT = 'https://earthquake.usgs.gov/fdsnws/event/1/query'
@@ -98,7 +99,8 @@ function featureToMarker(feature) {
     layer: 'earthquake',
     dataSources: ['usgs'],
     severity: magnitudeSeverity(mag),
-    title: mag != null ? `M${mag.toFixed(1)} — ${props.place}` : props.place,
+    title: mag != null ? `M${mag.toFixed(1)} · ${props.place}` : props.place,
+    place: props.place ?? null,
     detail: [
       props.mag != null ? `Magnitude ${mag.toFixed(1)}` : 'Magnitude unavailable',
       `Depth ${depth?.toFixed(1) ?? '?'} km`,
@@ -152,7 +154,7 @@ export async function fetchUsgsEarthquakes(scopeConfig, options = {}) {
 const USGS_MAX_EVENTS = 20000
 const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000
 
-/** Worldwide regions — each gets a share of the catalog budget so all continents appear on Global. */
+/** Worldwide regions, each gets a share of the catalog budget so all continents appear on Global. */
 const GLOBAL_WORLD_REGIONS = [
   { id: 'americas-west', minlongitude: -180, maxlongitude: -90, minlatitude: -60, maxlatitude: 72 },
   { id: 'americas-east', minlongitude: -90, maxlongitude: -30, minlatitude: -60, maxlatitude: 72 },
@@ -234,7 +236,7 @@ function mergeHistoryFeatures(features, seen, mergedFeatures, maxEvents = USGS_M
 }
 
 /**
- * Worldwide USGS catalog — time-stratified unbounded queries so every region with
+ * Worldwide USGS catalog, time-stratified unbounded queries so every region with
  * catalog coverage (US, Mexico, Japan, etc.) can appear in the Global view.
  */
 async function fetchGlobalRegionalHistory(config, options = {}) {
@@ -374,7 +376,7 @@ function buildHistoryQueryParams(
   if (regionBbox) {
     Object.assign(params, regionBbox)
   } else if (global) {
-    // Worldwide catalog — no lat/lng or bbox filter (all USGS-covered regions).
+    // Worldwide catalog, no lat/lng or bbox filter (all USGS-covered regions).
   } else {
     const bbox = national && countryId ? USGS_COUNTRY_BBOX[countryId] : null
     if (bbox) {
@@ -420,7 +422,7 @@ export async function fetchUsgsEarthquakeHistory(config, options = {}) {
 
   const requestUrl = buildUsgsHistoryRequestUrl(config, { limit: 2000 })
 
-  // Single-window fetch first — when under the cap, period counts stay accurate.
+  // Single-window fetch first, when under the cap, period counts stay accurate.
   const singlePage = await fetchHistoryBucket(config, { startDate, endDate }, USGS_MAX_EVENTS, options)
   if (singlePage.length < USGS_MAX_EVENTS) {
     let events = singlePage.map(featureToAnalyticsEvent)
@@ -440,7 +442,7 @@ export async function fetchUsgsEarthquakeHistory(config, options = {}) {
     }
   }
 
-  // Country/national bbox queries routinely hit the 20k cap — return the first page
+  // Country/national bbox queries routinely hit the 20k cap, return the first page
   // instead of 30+ sequential USGS round-trips (sidebar already warns when truncated).
   if (national) {
     let events = singlePage.map(featureToAnalyticsEvent)
@@ -509,6 +511,8 @@ export function earthquakesToSignals(markers, limit = 6) {
       severity: marker.severity,
       layer: marker.layer,
       title: marker.title,
+      headline: headlineForMarker(marker),
+      locationLabel: locationLabelForMarker(marker),
       source: 'USGS FDSNWS',
       dataSources: ['usgs'],
       confidence: 100,

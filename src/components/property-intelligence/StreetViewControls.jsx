@@ -98,12 +98,12 @@ export default function StreetViewControls({
 
   return (
     <div className="street-view-chrome pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-3">
-      <p className="pointer-events-none hidden text-center font-mono text-[8px] uppercase tracking-[0.18em] text-ink-faint/90 sm:block">
+      <p className="street-view-hint pointer-events-none mx-auto hidden max-w-md rounded-md border border-white/10 bg-black/90 px-3 py-1.5 text-center font-mono text-[8px] uppercase tracking-[0.18em] text-white shadow-[0_4px_24px_rgba(0,0,0,0.65)] backdrop-blur-sm sm:block">
         Drag in the view to look around · Compass snaps bearing
       </p>
 
       <div className="pointer-events-auto mx-auto flex w-full max-w-lg flex-wrap items-end justify-center gap-2 sm:gap-3">
-        <div className="street-view-toolbar flex flex-col gap-1 rounded-md border border-panel-border bg-panel-bg/92 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.55)] backdrop-blur-sm">
+        <div className="street-view-toolbar flex flex-col gap-1 rounded-md border border-panel-border bg-black/90 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.75)] backdrop-blur-sm">
           <div className="flex items-center justify-between gap-2 border-b border-panel-border/80 px-1 pb-1">
             <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-ink-muted">Look</span>
             <span className="font-mono text-[8px] tabular-nums text-command-live">{headingLabel}</span>
@@ -137,7 +137,7 @@ export default function StreetViewControls({
           </div>
         </div>
 
-        <div className="street-view-toolbar rounded-md border border-panel-border bg-panel-bg/92 p-2 shadow-[0_8px_32px_rgba(0,0,0,0.55)] backdrop-blur-sm">
+        <div className="street-view-toolbar rounded-md border border-panel-border bg-black/90 p-2 shadow-[0_8px_32px_rgba(0,0,0,0.75)] backdrop-blur-sm">
           <div className="grid grid-cols-3 grid-rows-3 gap-0.5">
             <span className="col-start-2" />
             <ControlButton
@@ -189,7 +189,7 @@ export default function StreetViewControls({
           </div>
         </div>
 
-        <div className="street-view-toolbar flex flex-col gap-1 rounded-md border border-panel-border bg-panel-bg/92 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.55)] backdrop-blur-sm">
+        <div className="street-view-toolbar flex flex-col gap-1 rounded-md border border-panel-border bg-black/90 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.75)] backdrop-blur-sm">
           <ControlButton
             title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
             onClick={onFullscreen}

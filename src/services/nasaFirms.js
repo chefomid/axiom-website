@@ -1,5 +1,6 @@
 import { firmsApiUrl } from '../utils/apiBase'
 import { getMarkerReportUrl } from '../utils/markerReportUrl'
+import { headlineForMarker, locationLabelForMarker } from '../utils/signalLocation'
 import { getScopeBbox, bboxToFirmsArea, pointInBbox } from '../utils/scopeBbox'
 import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
 
@@ -193,6 +194,8 @@ export function firmsToSignals(markers, limit = 6) {
       severity: marker.severity,
       layer: marker.layer ?? 'wildfire',
       title: marker.title,
+      headline: headlineForMarker(marker),
+      locationLabel: locationLabelForMarker(marker),
       source: 'NASA FIRMS',
       dataSources: ['nasa'],
       confidence: marker.confidence,

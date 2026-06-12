@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { DATA_SOURCES, EARTHQUAKE_MAGNITUDE_OPTIONS, RISK_LAYERS } from '../../data/commandMapData'
 
-import { DockTab, TextAction, ToggleChip } from '../ui/CommandControls'
+import { DockTab, SourceToggle, TextAction, ToggleChip } from '../ui/CommandControls'
 
 
 
@@ -47,6 +47,8 @@ export default function MapControlsDock({
   pinCount = 0,
 
   onClearPins,
+
+  onMakeSquare,
 
   onAnalyzeAtPin,
 
@@ -108,9 +110,20 @@ export default function MapControlsDock({
 
     <div ref={dockRef} className="absolute bottom-4 left-1/2 z-20 w-[min(100%,34rem)] -translate-x-1/2 px-3">
 
-      {openPanel && (
+      <div className="cmd-dock-bar overflow-hidden rounded-2xl border border-[#2e2e2e] bg-[#0a0a0a] shadow-lg">
 
-        <div className="mb-2.5 rounded-xl border border-[#2e2e2e] bg-[#0a0a0a]/98 p-4 shadow-xl backdrop-blur-md">
+        {openPanel && (
+
+          <div className="relative px-4 py-4 pr-10">
+
+          <button
+            type="button"
+            aria-label="Close panel"
+            onClick={() => setOpenPanel(null)}
+            className="absolute right-3 top-3 font-mono text-[15px] leading-none text-ink-muted transition hover:text-white"
+          >
+            ×
+          </button>
 
           {openPanel === 'layers' && (
 
@@ -182,31 +195,21 @@ export default function MapControlsDock({
 
               <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Data sources</p>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 gap-2">
 
                 {DATA_SOURCES.map(source => (
 
-                  <ToggleChip
+                  <SourceToggle
 
                     key={source.id}
 
+                    source={source}
+
                     active={activeDataSources.has(source.id)}
-
-                    accent="stable"
-
-                    iconSrc={source.logo}
-
-                    iconAlt={source.label}
-
-                    showDot={false}
 
                     onClick={() => onToggleSource(source.id)}
 
-                  >
-
-                    {source.label}
-
-                  </ToggleChip>
+                  />
 
                 ))}
 
@@ -228,15 +231,15 @@ export default function MapControlsDock({
                   <TextAction onClick={onClearPins}>Clear pins</TextAction>
                 )}
               </div>
-              <p className="font-mono text-[11px] leading-relaxed text-ink-faint">
+              <p className="font-mono text-[11px] leading-relaxed text-ink-secondary">
                 {pinMode ? (
                   <>
-                    Crosshair cursor on the map — click to place a pin (max 10). Drag a pin to
-                    reposition it. Click one pin, then another to measure distance. Double-click a
-                    pin to run earthquake analysis centered on it. Right-click a pin to remove it.
+                    Click the map to place pins, every 4 pins close a region, then the chain
+                    breaks. Right-click empty map to break early. Right-click a pin or shaded
+                    region to remove. Hover a region to analyze.
                   </>
                 ) : (
-                  <>Enable Pin mode from the dock to place measure pins on the map.</>
+                  <>Turn on Pin to measure on the map.</>
                 )}
               </p>
               {pinCount > 0 && (
@@ -244,6 +247,15 @@ export default function MapControlsDock({
                   <p className="mt-2 font-mono text-[10px] tabular-nums text-command-watch">
                     {pinCount} pin{pinCount === 1 ? '' : 's'} placed
                   </p>
+                  {pinCount >= 4 && onMakeSquare && (
+                    <button
+                      type="button"
+                      onClick={onMakeSquare}
+                      className="mt-3 w-full rounded-lg border border-command-live/40 bg-command-live/10 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-command-live transition hover:border-command-live/60 hover:bg-command-live/15"
+                    >
+                      Make square
+                    </button>
+                  )}
                   {onAnalyzeAtPin && usgsEnabled && (
                     <button
                       type="button"
@@ -322,13 +334,17 @@ export default function MapControlsDock({
 
           )}
 
-        </div>
+          </div>
 
-      )}
+        )}
 
 
 
-      <div className="cmd-dock-bar flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-[#2e2e2e] bg-[#0a0a0a]/95 px-2.5 py-2 shadow-lg backdrop-blur-md">
+        <div
+          className={`flex flex-wrap items-center justify-center gap-1.5 px-2.5 py-2${
+            openPanel ? ' border-t border-[#252525]/60' : ''
+          }`}
+        >
 
         <DockTab active={openPanel === 'layers'} onClick={() => togglePanel('layers')}>
 
@@ -408,6 +424,8 @@ export default function MapControlsDock({
           {zoneCount > 0 ? ` · ${zoneCount} zones` : ''}
 
         </span>
+
+      </div>
 
       </div>
 

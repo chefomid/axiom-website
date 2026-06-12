@@ -1,6 +1,7 @@
 import { defaultFetchHeaders, nwsApiUrl } from '../utils/apiBase'
 import { geometryCentroid, pointInPolygon } from '../utils/geo'
 import { getMarkerReportUrl } from '../utils/markerReportUrl'
+import { headlineForMarker, locationLabelForMarker } from '../utils/signalLocation'
 import { getScopeBbox, bboxIntersects } from '../utils/scopeBbox'
 import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
 
@@ -141,6 +142,8 @@ export function nwsToSignals(zoneMarkers, limit = 6) {
       severity: marker.severity,
       layer: marker.layer ?? 'weather',
       title: marker.title,
+      headline: headlineForMarker(marker),
+      locationLabel: locationLabelForMarker(marker),
       source: 'NWS api.weather.gov',
       dataSources: ['nws'],
       confidence: marker.confidence,

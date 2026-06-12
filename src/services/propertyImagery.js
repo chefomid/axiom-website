@@ -66,7 +66,7 @@ export function googleStreetViewEmbedUrl(lat, lng, key, { heading = 0, pitch = 0
   return `https://www.google.com/maps/embed/v1/streetview?${params}`
 }
 
-/** Metadata SKU — unlimited free; used before loading the Embed panorama. */
+/** Metadata SKU, unlimited free; used before loading the Embed panorama. */
 export async function googleStreetViewAvailable(lat, lng, key) {
   if (!key) return false
   const params = new URLSearchParams({ location: `${lat},${lng}`, key })

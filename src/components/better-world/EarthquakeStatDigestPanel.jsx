@@ -139,7 +139,7 @@ export function TemporalActivityGuide({
     return (
       <div className="space-y-2">
         <p className="font-mono text-[11px] leading-relaxed text-ink-secondary">
-          No events match your filters — temporal modeling needs at least one catalog event.
+          No events match your filters, temporal modeling needs at least one catalog event.
         </p>
         <p className="font-mono text-[10px] leading-relaxed text-ink-faint">
           Try lowering magnitude, widening radius, or choosing a shorter timeline in the sidebar.
@@ -182,8 +182,8 @@ export function TemporalActivityGuide({
   return (
     <div className="space-y-3">
       <p className="font-mono text-[11px] leading-relaxed text-white">
-        In the last {yearsText}, at {magPhrase}, within {activeMaxRadiusMiles.toLocaleString()} miles
-        — {total.toLocaleString()} earthquakes recorded.
+        In the last {yearsText}, at {magPhrase}, within {activeMaxRadiusMiles.toLocaleString()} miles,{' '}
+        {total.toLocaleString()} earthquakes recorded.
         {peak ? (
           <>
             {' '}
@@ -218,12 +218,12 @@ export function TemporalActivityGuide({
         <OutputMetric label="Total events" value={total.toLocaleString()} />
         <OutputMetric
           label="Busiest period"
-          value={peak ? `${peak.count.toLocaleString()} evt` : '—'}
+          value={peak ? `${peak.count.toLocaleString()} evt` : '-'}
           highlight
         />
         <OutputMetric
           label="Quietest period"
-          value={quietest ? `${quietest.count.toLocaleString()} evt` : '—'}
+          value={quietest ? `${quietest.count.toLocaleString()} evt` : '-'}
         />
       </div>
 
@@ -265,7 +265,7 @@ export function TemporalActivityGuide({
 
       <p className="font-mono text-[9px] leading-relaxed text-ink-faint">
         Compare periods to spot clusters or quiet stretches. If counts look identical, raise magnitude
-        or shorten the timeline — the USGS catalog cap can equalize dense regions.
+        or shorten the timeline, the USGS catalog cap can equalize dense regions.
       </p>
     </div>
   )

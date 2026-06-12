@@ -122,7 +122,7 @@ export function squareBoundsForHalfSide(center, halfSideMiles) {
   ]
 }
 
-/** World polygon with a circular hole — dims everything outside the analysis radius. */
+/** World polygon with a circular hole, dims everything outside the analysis radius. */
 export function createCircleOutsideMask(center, radiusMiles, steps = 64) {
   const inner = createCirclePolygon(center, radiusMiles, steps).geometry.coordinates[0].slice().reverse()
   const outer = [

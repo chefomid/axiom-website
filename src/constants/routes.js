@@ -1,4 +1,4 @@
-/** Live hazard map — government & open-data feeds */
+/** Live hazard map, government & open-data feeds */
 export const PUBLIC_DATA_COMMAND_PATH = '/public-data-command'
 export const PUBLIC_DATA_COMMAND_LABEL = 'Public Data Command'
 
@@ -8,6 +8,17 @@ export const PROPERTY_INTELLIGENCE_LABEL = 'Property Intelligence'
 
 /** Playwright PDF print preview (no chrome) */
 export const REPORT_PRINT_PATH = '/reports/print/:sessionId'
+
+/** Careers, AXIOM / ATLAS development application */
+export const CAREERS_PATH = '/careers'
+export const CAREERS_LABEL = 'Careers'
+
+/** Legal / privacy */
+export const PRIVACY_POLICY_PATH = '/privacy'
+export const COOKIE_POLICY_PATH = '/cookies'
+
+/** Easter egg: A Better World vision (careers application link only) */
+export const MISSION_PATH = '/mission'
 
 /** Legacy URLs (redirect targets) */
 export const LEGACY_IMPACT_MAP_PATH = '/impact-map'

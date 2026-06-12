@@ -180,8 +180,8 @@ export function buildPresetApplyNotice(catalog, preset, appliedIds) {
       const key = src.env_key ?? 'API key'
       return `${src.label} (add ${key})`
     }
-    if (id === 'llm_conflict_resolve' && src?.requires_api_key && src.configured === false) {
-      return `${src.label} (optional — add OPENAI_API_KEY for semantic merge)`
+    if (id === 'sov_orchestrator' && src?.requires_api_key && src.configured === false) {
+      return `${src.label} (optional, add OPENAI_API_KEY for multi-lane reconciliation)`
     }
     return src.label
   })
@@ -189,7 +189,7 @@ export function buildPresetApplyNotice(catalog, preset, appliedIds) {
 }
 
 export function formatUsd(amount) {
-  if (amount == null || Number.isNaN(amount)) return '—'
+  if (amount == null || Number.isNaN(amount)) return '-'
   if (amount === 0) return '$0.00'
   return `$${Number(amount).toFixed(2)}`
 }
@@ -225,6 +225,37 @@ export function insuranceSourcesConfigured(catalog) {
   )
 }
 
+export function openAiConfigured(catalog) {
+  const src = catalog?.sources?.find(s => s.id === 'web_property_research')
+  if (src) return src.configured !== false
+  return catalog?.sources?.some(s => s.env_key === 'OPENAI_API_KEY' && s.configured !== false)
+}
+
+/** Optional add-ons that can be layered on a preset without breaking preset match. */
+export const PRESET_OPTIONAL_ADDONS = ['web_property_research', 'vision_construction']
+
+export function quoteLineItem(catalog, quote, sourceId) {
+  return quote?.line_items?.find(item => item.source_id === sourceId) ?? null
+}
+
+/** Estimate user-facing price for a catalog source (before minimum-charge bundle adjustment). */
+export function estimateSourceUserPrice(source, catalog) {
+  if (!source) return null
+  if (source.requires_api_key && source.configured === false) return null
+  const multiplier = catalog?.margin_multiplier ?? 2.5
+  const loaded = Number(source.api_cost_usd ?? 0) + Number(source.service_cost_usd ?? 0)
+  if (loaded <= 0) return 0
+  return Math.round(loaded * multiplier * 100) / 100
+}
+
+export function formatLineItemPrice(item) {
+  if (!item) return '-'
+  if (item.user_price_usd != null && item.user_price_usd > 0) return formatUsd(item.user_price_usd)
+  const loaded = Number(item.api_cost_usd ?? 0) + Number(item.service_cost_usd ?? 0)
+  if (loaded <= 0) return 'free'
+  return formatUsd(loaded)
+}
+
 export function groupSourcesByCategory(catalog) {
   if (!catalog?.categories || !catalog?.sources) return []
   const byCategory = Object.fromEntries(catalog.categories.map(c => [c.id, { ...c, sources: [] }]))
@@ -247,11 +278,21 @@ export function presetSourceIds(catalog, preset) {
   return preset.source_ids
 }
 
+export function sourcesMatchQuote(selectedSources, quoteSources) {
+  const normalize = ids =>
+    [...new Set(ids ?? [])]
+      .filter(id => id && id !== 'geocode_census')
+      .sort()
+  return JSON.stringify(normalize(selectedSources)) === JSON.stringify(normalize(quoteSources))
+}
+
 export function sourcesMatchPreset(catalog, presetId, selectedSources) {
   const preset = catalog?.presets?.find(p => p.id === presetId)
   if (!preset) return false
   const expected = [...presetSourceIds(catalog, preset)].sort()
-  const actual = [...(selectedSources ?? [])].sort()
+  const actual = [...(selectedSources ?? [])]
+    .filter(id => !PRESET_OPTIONAL_ADDONS.includes(id))
+    .sort()
   if (expected.length !== actual.length) return false
   return expected.every((id, i) => id === actual[i])
 }

@@ -1,6 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import SourceCatalog from './SourceCatalog'
-import { VendorKeysInline } from './VendorKeysStatus'
+
+const FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'free', label: 'Free' },
+  { id: 'licensed', label: 'Licensed' },
+]
 
 export default function SourceCatalogPanel({
   catalog,
@@ -9,53 +14,78 @@ export default function SourceCatalogPanel({
   disabled,
   quote,
   activePresetId,
-  apiOnline,
+  variant = 'default',
 }) {
-  const [open, setOpen] = useState(false)
+  const isPopover = variant === 'popover'
+  const [filter, setFilter] = useState('all')
   const count = selectedSources?.length ?? 0
   const presetLabel = catalog?.presets?.find(p => p.id === activePresetId)?.label
 
+  const filteredCatalog = useMemo(() => {
+    if (!catalog?.sources || filter === 'all') return catalog
+    const sources = catalog.sources.filter(src => {
+      if (filter === 'free') return !src.requires_api_key && src.tier !== 'insurance'
+      if (filter === 'licensed') return src.requires_api_key || src.tier === 'insurance'
+      return true
+    })
+    return { ...catalog, sources }
+  }, [catalog, filter])
+
+  const selectedInView = useMemo(() => {
+    const ids = new Set((filteredCatalog?.sources ?? []).map(s => s.id))
+    return selectedSources.filter(id => ids.has(id)).length
+  }, [filteredCatalog, selectedSources])
+
   return (
-    <div className="border-b border-panel-border">
-      <div className="px-4 pb-1.5 pt-3">
-        <div className="min-w-0">
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Sources</p>
-          <p className="mt-0.5 font-mono text-[10px] text-ink-secondary">
-            {count} selected{presetLabel ? ` · ${presetLabel}` : count > 0 ? ' · custom mix' : ''}
-          </p>
+    <div
+      className={`flex min-h-0 flex-1 flex-col overflow-hidden ${isPopover ? 'h-full' : ''}`}
+    >
+      <div className="shrink-0 border-b border-panel-border/70 bg-panel-surface/30 px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Data sources</p>
+            <p className="mt-0.5 font-mono text-[10px] text-ink-secondary">
+              {count} active{presetLabel ? ` · ${presetLabel}` : ''}
+            </p>
+          </div>
+          {filter !== 'all' ? (
+            <span className="shrink-0 font-mono text-[9px] text-ink-faint">
+              {selectedInView} in view
+            </span>
+          ) : null}
         </div>
-        {apiOnline ? <VendorKeysInline apiOnline={apiOnline} className="mt-2" /> : null}
+
+        <div className="mt-2.5 flex gap-1" role="group" aria-label="Filter sources">
+          {FILTERS.map(item => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setFilter(item.id)}
+              className={`rounded-md border px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] transition ${
+                filter === item.id
+                  ? 'border-command-watch/40 bg-command-watch/10 text-command-watch'
+                  : 'border-panel-border bg-panel-bg/50 text-ink-faint hover:border-[#333] hover:text-ink-secondary'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className="flex w-full items-center justify-between gap-2 px-4 py-2 text-left transition hover:bg-panel-surface/30"
+
+      <div
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain sleek-scrollbar bg-[#080808]"
+        onWheel={e => e.stopPropagation()}
       >
-        <span>
-          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">
-            Customize sources
-          </span>
-          <span className="mt-0.5 block font-mono text-[10px] text-ink-secondary">
-            {count} selected
-            {presetLabel ? ` · ${presetLabel}` : count > 0 ? ' · custom mix' : ''}
-          </span>
-        </span>
-        <span className="shrink-0 font-mono text-[10px] text-ink-faint" aria-hidden>
-          {open ? '−' : '+'}
-        </span>
-      </button>
-      {open ? (
-        <div className="max-h-[min(42vh,360px)] min-h-0 overflow-hidden">
-          <SourceCatalog
-            catalog={catalog}
-            vendors={catalog?.vendors}
-            selectedSources={selectedSources}
-            onToggle={onToggle}
-            disabled={disabled}
-            quote={quote}
-          />
-        </div>
-      ) : null}
+        <SourceCatalog
+          catalog={filteredCatalog}
+          vendors={catalog?.vendors}
+          selectedSources={selectedSources}
+          onToggle={onToggle}
+          disabled={disabled}
+          quote={quote}
+        />
+      </div>
     </div>
   )
 }

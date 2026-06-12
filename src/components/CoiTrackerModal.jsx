@@ -1,19 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-const PLATFORM_SECTIONS = [
-  {
-    title: 'Portfolio Onboarding',
-    body: 'Rent rolls, leases, and coverage requirements live in one portfolio view. Lease language can inform compliance rules so onboarding moves faster across properties.',
-  },
-  {
-    title: 'Enterprise Email Platform',
-    body: 'Nylas connects landlord email with tenant threads and certificate history in one place. Outbound outreach, replies, and inbound COIs stay tied to each tenant record.',
-  },
-  {
-    title: 'Compliance & Reporting',
-    body: 'Certificates are checked against your requirements, gaps are tracked to close, and portfolio reporting gives leadership and audit teams a current view without rebuilding spreadsheets.',
-  },
-]
+
+const INTRO = {
+  eyebrow: 'AXIOM Certificate Compliance',
+  title: 'Commercial COI compliance on one platform.',
+  description:
+    'Portfolio onboarding, tenant email, certificate validation, and reporting, without switching tools.',
+  highlights: [
+    'Portfolio onboarding from rent rolls and lease language',
+    'Enterprise email tied to tenant threads and COI history',
+    'Compliance checks, gap tracking, and executive reporting',
+  ],
+}
 
 const DOSSIER = [
   {
@@ -130,12 +128,18 @@ const DOSSIER = [
 
 export default function CoiTrackerModal({ open, onClose }) {
   const [activeSection, setActiveSection] = useState(1)
+  const [onIntro, setOnIntro] = useState(true)
   const scrollRef = useRef(null)
+  const introRef = useRef(null)
   const sectionRefs = useRef([])
   const filteredDossier = useMemo(() => DOSSIER, [])
   useEffect(() => {
     if (!open) return
     setActiveSection(DOSSIER[0]?.id || 1)
+    setOnIntro(true)
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ top: 0 })
+    })
   }, [open])
 
   useEffect(() => {
@@ -166,23 +170,32 @@ export default function CoiTrackerModal({ open, onClose }) {
     const updateActive = () => {
       const rootRect = root.getBoundingClientRect()
       const rootCenter = rootRect.top + rootRect.height / 2
+      const snapNodes = [introRef.current, ...sectionRefs.current].filter(Boolean)
 
-      let closestId = null
+      let closestNode = null
       let closestDistance = Infinity
 
-      sectionRefs.current.forEach(node => {
-        if (!node) return
+      snapNodes.forEach(node => {
         const rect = node.getBoundingClientRect()
         const center = rect.top + rect.height / 2
         const distance = Math.abs(center - rootCenter)
         if (distance < closestDistance) {
           closestDistance = distance
-          closestId = Number(node.getAttribute('data-dossier-id'))
+          closestNode = node
         }
       })
 
-      if (closestId) {
-        setActiveSection(prev => (prev === closestId ? prev : closestId))
+      if (!closestNode) return
+
+      if (closestNode === introRef.current) {
+        setOnIntro(true)
+        return
+      }
+
+      setOnIntro(false)
+      const dossierId = Number(closestNode.getAttribute('data-dossier-id'))
+      if (dossierId) {
+        setActiveSection(prev => (prev === dossierId ? prev : dossierId))
       }
     }
 
@@ -200,12 +213,6 @@ export default function CoiTrackerModal({ open, onClose }) {
     }
   }, [open, filteredDossier])
 
-  const progress = useMemo(() => {
-    const idx = filteredDossier.findIndex(item => item.id === activeSection)
-    if (idx < 0) return 0
-    return filteredDossier.length <= 1 ? 1 : idx / (filteredDossier.length - 1)
-  }, [activeSection, filteredDossier])
-
   return (
     <AnimatePresence>
       {open && (
@@ -217,142 +224,183 @@ export default function CoiTrackerModal({ open, onClose }) {
           transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
           className="fixed inset-0 z-50 bg-[#050505]/95 backdrop-blur-xl flex flex-col"
         >
-          <div className="flex items-center justify-between px-8 md:px-14 pt-7 pb-5 relative z-10 border-b border-[#141414]">
-            <div>
-              <p className="font-display text-xl md:text-2xl font-semibold text-white tracking-[0.08em] uppercase">
-                COI Tracker
-              </p>
-              <p className="text-[10px] tracking-[0.24em] text-ink-faint uppercase mt-1">
-                Autonomous Certificate Intelligence Dossier
-              </p>
-            </div>
-            <div className="flex items-center gap-6">
-              <span className="font-display text-[10px] text-ink-faint tabular-nums tracking-[0.3em]">
-                {String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} / {String(filteredDossier.length).padStart(2, '0')}
-              </span>
-              <a
-                href="/coi-tracker/COI-Tracker-Booklet.pdf"
-                target="_blank"
-                rel="noreferrer"
-                className="text-ink-muted hover:text-white transition-colors text-[10px] tracking-[0.3em] uppercase"
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+            className="relative z-10 shrink-0 border-b border-[#9AA0A8]/35 px-6 md:px-10 py-3"
+          >
+            <div className="flex w-full items-center justify-between gap-6">
+              <motion.div
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
+                className="min-w-0 text-left"
               >
-                Open Booklet PDF
-              </a>
-              <button
-                onClick={onClose}
-                className="text-ink-muted hover:text-white transition-colors text-[10px] tracking-[0.3em] uppercase"
+                <p className="font-display text-lg md:text-xl font-semibold text-white tracking-[0.08em] uppercase leading-tight">
+                  COI Tracker
+                </p>
+                <p className="text-[9px] tracking-[0.22em] text-ink-faint uppercase mt-0.5">
+                  Autonomous Certificate Intelligence Dossier
+                </p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
+                className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6"
               >
-                Close
-              </button>
+                <span className="hidden font-display text-[10px] text-ink-faint tabular-nums tracking-[0.3em] sm:inline">
+                  {onIntro
+                    ? 'Overview'
+                    : `${String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} / ${String(filteredDossier.length).padStart(2, '0')}`}
+                </span>
+                <a
+                  href="/coi-tracker/COI-Tracker-Booklet.pdf"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Open booklet PDF"
+                  title="Open Booklet PDF"
+                  className="flex h-11 w-11 items-center justify-center text-ink-muted transition-colors hover:text-white sm:h-auto sm:w-auto sm:text-[10px] sm:tracking-[0.3em] sm:uppercase"
+                >
+                  <span className="sm:hidden" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path
+                        d="M10 2H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7M10 2l5 5M10 2v5h5"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span className="hidden sm:inline">Open Booklet PDF</span>
+                </a>
+                <button
+                  onClick={onClose}
+                  aria-label="Close"
+                  title="Close"
+                  className="im-accent-close flex h-11 w-11 items-center justify-center uppercase sm:h-auto sm:w-auto"
+                >
+                  <span className="sm:hidden" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  <span className="hidden sm:inline">Close</span>
+                </button>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="absolute left-0 right-0 top-[78px] h-px bg-[#131313] z-10">
-            <motion.div
-              className="h-full bg-[#9a9a9a] origin-left"
-              style={{ scaleX: progress }}
-              transition={{ ease: 'linear', duration: 0.05 }}
+          <div className="relative h-0 flex-1 min-h-0">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-0"
+              style={{
+                background: `
+                  radial-gradient(ellipse 90% 60% at 50% 42%, rgba(154, 160, 168, 0.07) 0%, transparent 68%),
+                  linear-gradient(180deg, #050505 0%, #070708 45%, #050505 100%)
+                `,
+              }}
             />
-          </div>
-
-          <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[360px,1fr] gap-0 pt-3">
-            <div className="border-r border-[#2a2a2a] px-5 md:px-8 py-4 bg-[#0f0f0f] h-full flex items-stretch">
-              <div className="rounded-xl border border-[#323232] bg-[#171717] p-4 flex flex-col h-full w-full min-h-0">
-                <div className="shrink-0">
-                  <p className="text-[9px] tracking-[0.22em] text-ink-muted uppercase">COI Tracker</p>
-                  <h2 className="font-display text-lg text-white leading-tight mt-1.5">
-                    Commercial COI compliance on one platform.
-                  </h2>
-                  <p className="text-xs text-ink-secondary leading-snug mt-2">
-                    Portfolio onboarding, tenant email, certificate validation, and reporting without switching tools.
-                  </p>
-                </div>
-
-                <div className="flex-1 flex flex-col justify-evenly py-4 min-h-0">
-                  {PLATFORM_SECTIONS.map(section => (
-                    <div key={section.title}>
-                      <p className="text-[14px] font-medium text-white pb-1.5 mb-2 border-b border-[#2d2d2d]">
-                        {section.title}
-                      </p>
-                      <p className="text-xs text-ink-secondary leading-relaxed">{section.body}</p>
-                    </div>
+            <div ref={scrollRef} className="sleek-scrollbar relative z-10 h-full overflow-y-auto snap-y snap-proximity bg-[#050505]">
+            <motion.section
+              ref={introRef}
+              data-snap-section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: onIntro ? 1 : 0.55, y: 0 }}
+              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+              className="relative flex min-h-[calc(100dvh-3.75rem)] shrink-0 snap-center items-center justify-center px-6 md:px-10 xl:px-16 py-10"
+            >
+              <div className="relative mx-auto max-w-3xl w-full">
+                <p className="text-[9px] tracking-[0.22em] text-[#9AA0A8] uppercase">{INTRO.eyebrow}</p>
+                <h2 className="font-display text-2xl md:text-4xl font-semibold text-white mt-2 mb-4 im-title-rule pb-4">
+                  {INTRO.title}
+                </h2>
+                <p className="text-[14px] md:text-base leading-relaxed text-ink-secondary max-w-2xl">
+                  {INTRO.description}
+                </p>
+                <ul className="mt-6 space-y-2.5">
+                  {INTRO.highlights.map(point => (
+                    <li key={point} className="text-[13px] md:text-sm text-ink-primary leading-relaxed pl-4 relative before:content-[''] before:absolute before:left-0 before:top-[0.55em] before:h-px before:w-2 before:bg-[#9AA0A8]/60">
+                      {point}
+                    </li>
                   ))}
-                </div>
-
+                </ul>
               </div>
-            </div>
+            </motion.section>
 
-            <div ref={scrollRef} className="sleek-scrollbar min-h-0 overflow-y-auto px-5 md:px-8 xl:px-12 pt-4 pb-16">
-              <div className="space-y-8">
-                {filteredDossier.map((item, idx) => (
-                <article
-                  key={item.id}
-                  ref={node => {
-                    sectionRefs.current[idx] = node
-                  }}
-                  data-dossier-id={item.id}
-                  className={`w-full rounded-2xl border overflow-hidden transition ${
-                    activeSection === item.id
-                      ? 'border-[#8d8d8d] bg-[#161616]'
-                      : 'border-[#2d2d2d] bg-[#121212]'
+            {filteredDossier.map((item, idx) => (
+              <motion.article
+                key={item.id}
+                ref={node => {
+                  sectionRefs.current[idx] = node
+                }}
+                data-dossier-id={item.id}
+                data-snap-section
+                animate={{ opacity: !onIntro && activeSection === item.id ? 1 : onIntro ? 0.55 : 0.5 }}
+                transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                className="relative flex min-h-[calc(100dvh-3.75rem)] shrink-0 snap-center items-center justify-center px-6 md:px-10 xl:px-16 py-10"
+              >
+                <div
+                  className={`relative mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 lg:gap-12 xl:gap-16 items-center ${
+                    item.compact ? 'lg:grid-cols-[1.15fr,0.85fr]' : 'lg:grid-cols-[1.32fr,0.68fr]'
                   }`}
                 >
-                  <div className={`grid grid-cols-1 gap-0 ${
-                    item.compact ? '2xl:grid-cols-[0.82fr,1.18fr]' : '2xl:grid-cols-[1.16fr,0.84fr]'
-                  }`}>
-                    <div className={`bg-[#151515] ${item.compact ? 'p-6 md:p-8' : 'p-5 md:p-7'}`}>
-                      <div className={`rounded-lg border border-[#303030] bg-[#111111] p-2 flex items-center justify-center ${
-                        item.compact
-                          ? 'min-h-[260px] w-fit max-w-[360px] mx-auto'
-                          : 'min-h-[390px] w-full'
-                      }`}>
-                        <img
-                          src={item.src}
-                          alt={item.title}
-                          className={`object-contain ${
-                            item.compact ? 'h-[240px] w-auto max-w-full' : 'w-full max-h-[520px]'
-                          }`}
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      </div>
-                    </div>
-                    <div className="border-l border-[#2a2a2a] p-5 md:p-7">
-                      <h3 className="font-display text-xl md:text-2xl font-semibold text-white pb-2 mb-2 border-b border-[#2d2d2d]">
+                  <div className="flex items-center justify-center">
+                    <img
+                      src={item.src}
+                      alt={item.title}
+                      className={`object-contain ${
+                        item.compact ? 'h-[280px] w-auto max-w-full' : 'w-full max-h-[min(720px,68vh)]'
+                      }`}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                  <div className="flex flex-col justify-center gap-5 md:gap-6 mx-auto w-full max-w-md lg:max-w-none lg:mx-0">
+                    <div>
+                      <p className="text-[10px] tracking-[0.24em] text-[#9AA0A8]/80 uppercase tabular-nums mb-2">
+                        {String(idx + 1).padStart(2, '0')} / {String(filteredDossier.length).padStart(2, '0')}
+                      </p>
+                      <h3 className="font-display text-2xl md:text-3xl font-semibold text-white pb-2 mb-3 im-title-rule">
                         {item.title}
                       </h3>
-                      <p className="text-[11px] leading-relaxed text-ink-secondary">{item.description}</p>
+                      <p className="text-[13px] md:text-sm leading-relaxed text-ink-secondary">{item.description}</p>
+                    </div>
 
-                      <div className="mt-5">
-                        <p className="text-xs font-semibold tracking-[0.18em] uppercase text-white pb-1.5 mb-2 border-b border-[#2d2d2d]">
-                          Primary Features
-                        </p>
-                        <ul className="space-y-1.5">
-                          {item.primary.map(point => (
-                            <li key={point} className="text-[11px] text-ink-primary leading-relaxed">
-                              {point}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                    <div>
+                      <p className="text-sm font-semibold tracking-[0.18em] uppercase text-[#9AA0A8]">
+                        Primary Features
+                      </p>
+                      <div className="im-accent-rule mt-2 mb-3" aria-hidden />
+                      <ul className="space-y-2">
+                        {item.primary.map(point => (
+                          <li key={point} className="text-[13px] md:text-sm text-ink-primary leading-relaxed">
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
 
-                      <div className="mt-5 pt-4 border-t border-[#2d2d2d]">
-                        <p className="text-xs font-semibold tracking-[0.18em] uppercase text-white pb-1.5 mb-2 border-b border-[#2d2d2d]">
-                          Operational Callouts
-                        </p>
-                        <ul className="space-y-1.5">
-                          {item.callouts.map(point => (
-                            <li key={point} className="text-[11px] text-ink-secondary leading-relaxed">
-                              {point}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                    <div>
+                      <p className="text-sm font-semibold tracking-[0.18em] uppercase text-[#9AA0A8]">
+                        Operational Callouts
+                      </p>
+                      <div className="im-accent-rule mt-2 mb-3" aria-hidden />
+                      <ul className="space-y-2">
+                        {item.callouts.map(point => (
+                          <li key={point} className="text-[13px] md:text-sm text-ink-secondary leading-relaxed">
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
-                </article>
-                ))}
-              </div>
+                </div>
+              </motion.article>
+            ))}
             </div>
           </div>
         </motion.div>

@@ -5,6 +5,7 @@ import {
   enrichProperty,
   fetchPropertyCatalog,
   isPaymentRequiredError,
+  PRESET_OPTIONAL_ADDONS,
   presetSourceIds,
   quoteProperty,
   sourcesMatchPreset,
@@ -39,6 +40,18 @@ function clearSavedState() {
   }
 }
 
+function resetQuoteToEstimate(quote) {
+  if (!quote) return quote
+  const next = { ...quote, isFinal: false }
+  delete next.report_id
+  delete next.generated_at
+  delete next.note
+  if (Array.isArray(next.line_items)) {
+    next.line_items = next.line_items.map(({ run_status, message, charged, ...item }) => item)
+  }
+  return next
+}
+
 export default function usePropertyReport() {
   const [catalog, setCatalog] = useState(null)
   const [selectedSources, setSelectedSources] = useState([])
@@ -46,12 +59,15 @@ export default function usePropertyReport() {
   const [record, setRecord] = useState(null)
   const [loadingCatalog, setLoadingCatalog] = useState(true)
   const [loadingQuote, setLoadingQuote] = useState(false)
+  const [quoteError, setQuoteError] = useState(null)
   const [loadingReport, setLoadingReport] = useState(false)
   const [error, setError] = useState(null)
   const [presetNotice, setPresetNotice] = useState(null)
   const [activePresetId, setActivePresetId] = useState(null)
   const [apiOnline, setApiOnline] = useState(null)
   const quoteTimer = useRef(null)
+  const quoteRequestSeq = useRef(0)
+  const skipNextScheduleRef = useRef(false)
   const savedStateRef = useRef(null)
 
   useEffect(() => {
@@ -107,8 +123,11 @@ export default function usePropertyReport() {
     setSelectedSources(prev =>
       prev.includes(sourceId) ? prev.filter(id => id !== sourceId) : [...prev, sourceId],
     )
-    setActivePresetId(null)
+    if (!PRESET_OPTIONAL_ADDONS.includes(sourceId)) {
+      setActivePresetId(null)
+    }
     setRecord(null)
+    setQuote(prev => resetQuoteToEstimate(prev))
   }, [])
 
   const applyPreset = useCallback(
@@ -119,6 +138,7 @@ export default function usePropertyReport() {
       setSelectedSources(ids)
       setActivePresetId(presetId)
       setRecord(null)
+      setQuote(prev => resetQuoteToEstimate(prev))
       setPresetNotice(buildPresetApplyNotice(catalog, preset, ids))
     },
     [catalog],
@@ -129,25 +149,71 @@ export default function usePropertyReport() {
       const trimmed = address?.trim() ?? ''
       if (trimmed.length < 3 || !sources?.length) {
         setQuote(null)
+        setQuoteError(null)
+        setLoadingQuote(false)
         return
       }
+      const requestId = ++quoteRequestSeq.current
       setLoadingQuote(true)
+      setQuoteError(null)
       quoteProperty({ address: trimmed, selectedSources: sources })
-        .then(q => setQuote(q))
-        .catch(err => setQuote(null))
-        .finally(() => setLoadingQuote(false))
+        .then(q => {
+          if (requestId !== quoteRequestSeq.current) return
+          setQuote(q)
+          setQuoteError(null)
+        })
+        .catch(err => {
+          if (requestId !== quoteRequestSeq.current) return
+          setQuote(null)
+          setQuoteError(err?.message ?? 'Could not calculate estimate')
+        })
+        .finally(() => {
+          if (requestId === quoteRequestSeq.current) setLoadingQuote(false)
+        })
     },
     [],
   )
 
-  const scheduleQuote = useCallback(
-    (address, sources, delayMs = 400) => {
-      if (quoteTimer.current) clearTimeout(quoteTimer.current)
+  const toggleOptionalSource = useCallback(
+    (sourceId, address) => {
       const trimmed = address?.trim() ?? ''
-      if (trimmed.length < 3) {
+      const nextSources = selectedSources.includes(sourceId)
+        ? selectedSources.filter(id => id !== sourceId)
+        : [...selectedSources, sourceId]
+
+      if (quoteTimer.current) clearTimeout(quoteTimer.current)
+      skipNextScheduleRef.current = true
+      setSelectedSources(nextSources)
+      setRecord(null)
+      setQuote(prev => resetQuoteToEstimate(prev))
+
+      if (trimmed.length >= 3 && nextSources.length > 0) {
+        refreshQuote(trimmed, nextSources)
+      } else {
         setQuote(null)
+        setQuoteError(null)
+        setLoadingQuote(false)
+      }
+    },
+    [selectedSources, refreshQuote],
+  )
+
+  const scheduleQuote = useCallback(
+    (address, sources, delayMs = 250) => {
+      if (skipNextScheduleRef.current) {
+        skipNextScheduleRef.current = false
         return
       }
+      if (quoteTimer.current) clearTimeout(quoteTimer.current)
+      const trimmed = address?.trim() ?? ''
+      if (trimmed.length < 3 || !sources?.length) {
+        setQuote(null)
+        setQuoteError(null)
+        setLoadingQuote(false)
+        return
+      }
+      setLoadingQuote(true)
+      setQuoteError(null)
       quoteTimer.current = setTimeout(() => refreshQuote(trimmed, sources), delayMs)
     },
     [refreshQuote],
@@ -172,7 +238,7 @@ export default function usePropertyReport() {
         return result
       } catch (err) {
         const message = isPaymentRequiredError(err)
-          ? 'Insufficient credits — add credits in the header, then try again.'
+          ? 'Insufficient credits, add credits in the header, then try again.'
           : err.message ?? 'Report failed'
         setError(message)
         setRecord(null)
@@ -184,10 +250,17 @@ export default function usePropertyReport() {
     [selectedSources, quote],
   )
 
+  const clearReport = useCallback(() => {
+    setRecord(null)
+    setError(null)
+    setQuote(prev => resetQuoteToEstimate(prev))
+  }, [])
+
   const clear = useCallback(() => {
     clearSavedState()
     setRecord(null)
     setQuote(null)
+    setQuoteError(null)
     setError(null)
     setActivePresetId(null)
     if (catalog?.default_selected) setSelectedSources(catalog.default_selected)
@@ -203,6 +276,7 @@ export default function usePropertyReport() {
     selectedSources,
     setSelectedSources,
     toggleSource,
+    toggleOptionalSource,
     applyPreset,
     quote,
     scheduleQuote,
@@ -210,6 +284,7 @@ export default function usePropertyReport() {
     record,
     loadingCatalog,
     loadingQuote,
+    quoteError,
     loadingReport,
     loading: loadingReport,
     error,
@@ -218,6 +293,7 @@ export default function usePropertyReport() {
     activePresetId: resolvedPresetId,
     apiOnline,
     runReport,
+    clearReport,
     clear,
   }
 }

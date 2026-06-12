@@ -24,7 +24,7 @@ const SECTION_TITLES = {
 
 const DISCLAIMER =
   'Past earthquake activity does not predict when or where future earthquakes will occur. ' +
-  'This report is for general awareness — not engineering, insurance, or emergency planning decisions.'
+  'This report is for general awareness, not engineering, insurance, or emergency planning decisions.'
 
 function formatYearsLabel(yearPreset) {
   const years = yearPreset?.years ?? 1
@@ -53,7 +53,7 @@ function tableFromRows(title, unit, rows) {
 }
 
 function formatTableValue(value) {
-  if (!Number.isFinite(value)) return '—'
+  if (!Number.isFinite(value)) return '-'
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k`
   if (value >= 100) return String(Math.round(value))
   if (value >= 10) return value.toFixed(1)
@@ -130,8 +130,8 @@ function buildTemporalSection(ctx) {
     narrative,
     metrics: [
       { id: 'total', label: 'Total events', value: total.toLocaleString() },
-      { id: 'peak-period', label: 'Busiest period', value: peak?.label ?? '—' },
-      { id: 'peak-count', label: 'Peak count', value: peak ? peak.count.toLocaleString() : '—' },
+      { id: 'peak-period', label: 'Busiest period', value: peak?.label ?? '-' },
+      { id: 'peak-count', label: 'Peak count', value: peak ? peak.count.toLocaleString() : '-' },
     ],
     table: tableFromRows('Activity by time period', 'events', temporalTableRows(temporalAnnular)),
   }
@@ -177,15 +177,15 @@ function buildMagnitudeSection(ctx) {
     id: 'magnitude-distribution',
     title: SECTION_TITLES['magnitude-distribution'],
     narrative: [
-      `Of ${distribution.total.toLocaleString()} earthquakes in scope, the most common band is ${dominant?.label ?? '—'}${
+      `Of ${distribution.total.toLocaleString()} earthquakes in scope, the most common band is ${dominant?.label ?? '-'}${
         dominant ? ` (${dominant.count.toLocaleString()} events, ${dominant.percent.toFixed(0)}%).` : '.'
       }`,
       'Lower magnitudes are detected more reliably near populated areas. A heavy small-event tail often reflects catalog completeness, not necessarily higher hazard.',
     ],
     metrics: [
       { id: 'mag-total', label: 'Total events', value: distribution.total.toLocaleString() },
-      { id: 'mag-dominant', label: 'Dominant band', value: dominant?.label ?? '—', highlight: true },
-      { id: 'mag-share', label: 'Largest share', value: dominant ? `${dominant.percent.toFixed(0)}%` : '—' },
+      { id: 'mag-dominant', label: 'Dominant band', value: dominant?.label ?? '-', highlight: true },
+      { id: 'mag-share', label: 'Largest share', value: dominant ? `${dominant.percent.toFixed(0)}%` : '-' },
     ],
     table: tableFromRows('Magnitude distribution', 'events', magnitudeTableRows(events, minMagnitude)),
   }
@@ -205,7 +205,7 @@ function buildDepthSection(ctx) {
     id: 'depth-breakdown',
     title: SECTION_TITLES['depth-breakdown'],
     narrative: [
-      `Among ${breakdown.total.toLocaleString()} events with depth reported, ${dominant?.label ?? '—'} events dominate${
+      `Among ${breakdown.total.toLocaleString()} events with depth reported, ${dominant?.label ?? '-'} events dominate${
         dominant ? ` (${dominant.count.toLocaleString()}, ${dominant.percent.toFixed(0)}%).` : '.'
       }`,
       'Shallow earthquakes (<35 km) are typically felt more strongly at the surface.',
@@ -277,8 +277,8 @@ function buildKpis({ summary, narrative, globalAnalysis, temporalAnnular, events
     summary?.maxEvent?.mag != null
       ? globalAnalysis
         ? `M${summary.maxEvent.mag.toFixed(1)}`
-        : `M${summary.maxEvent.mag.toFixed(1)} · ${summary.maxEvent.dist?.toFixed(0) ?? '—'} mi`
-      : '—'
+        : `M${summary.maxEvent.mag.toFixed(1)} · ${summary.maxEvent.dist?.toFixed(0) ?? '-'} mi`
+      : '-'
 
   const kpis = [
     {
@@ -361,7 +361,7 @@ function buildCatalogTables({ config, globalAnalysis, hasTemporalAnalytics, annu
 }
 
 /**
- * @param {object} params — analytics + config from EarthquakeReportViewer
+ * @param {object} params, analytics + config from EarthquakeReportViewer
  * @returns {import('./reportDocument.types').ReportDocument}
  */
 export function buildReportDocument({

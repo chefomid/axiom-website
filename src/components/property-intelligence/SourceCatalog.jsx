@@ -32,19 +32,19 @@ export default function SourceCatalog({
   )
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto sleek-scrollbar">
+    <div className="flex flex-col">
       {groups.map(group => {
         const isInsurance = group.id === 'property_insurance'
         return (
           <div key={group.id} className="border-b border-panel-border">
             <div
               className={`px-4 py-2 ${
-                isInsurance ? 'border-b border-amber-500/15 bg-amber-500/5' : 'bg-panel-surface/30'
+                isInsurance ? 'border-b border-command-stable/15 bg-command-stable/5' : 'bg-panel-surface/40'
               }`}
             >
               <p
                 className={`font-mono text-[9px] uppercase tracking-[0.2em] ${
-                  isInsurance ? 'text-amber-200/90' : 'text-ink-muted'
+                  isInsurance ? 'text-command-stable/90' : 'text-ink-muted'
                 }`}
               >
                 {group.label}
@@ -69,7 +69,7 @@ export default function SourceCatalog({
                       className={`flex cursor-pointer gap-3 px-4 py-2.5 transition hover:bg-panel-surface/40 ${
                         dimmed ? 'opacity-50' : ''
                       } ${disabled ? 'pointer-events-none opacity-60' : ''} ${
-                        isPremium && checked ? 'bg-amber-500/5' : ''
+                        isPremium && checked ? 'bg-command-stable/5' : ''
                       }`}
                     >
                       <input
@@ -100,24 +100,24 @@ export default function SourceCatalog({
                           </span>
                         </span>
                         {vendor ? (
-                          <span className="mt-0.5 block font-mono text-[9px] text-amber-200/70">{vendor.name}</span>
+                          <span className="mt-0.5 block font-mono text-[9px] text-ink-faint">{vendor.name}</span>
                         ) : null}
                         <span className="mt-0.5 block font-mono text-[9px] leading-relaxed text-ink-faint">
                           {src.description}
                         </span>
                         {src.marketing_note && (checked || isPremium) ? (
-                          <span className="mt-1 block font-mono text-[9px] leading-relaxed text-amber-100/80">
+                          <span className="mt-1 block font-mono text-[9px] leading-relaxed text-ink-muted">
                             {src.marketing_note}
                           </span>
                         ) : null}
-                        {needsKey && checked ? (
-                          <span className="mt-1 block font-mono text-[9px] text-command-watch">
-                            API key not configured — add to server .env to enable live data
+                        {needsKey ? (
+                          <span className="mt-1 block font-mono text-[9px] text-ink-faint">
+                            {checked ? 'Unavailable, skipped on generate' : 'Unavailable'}
                           </span>
                         ) : null}
                         {src.needs_source_url && checked ? (
                           <span className="mt-1 block font-mono text-[9px] text-command-live">
-                            Set public pages below (manual or AI-assisted)
+                            Public record pages resolve automatically on generate
                           </span>
                         ) : null}
                       </span>

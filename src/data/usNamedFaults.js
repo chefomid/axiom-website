@@ -1,6 +1,6 @@
 /**
  * Simplified polylines for major US fault systems.
- * Coordinates are [longitude, latitude] — approximate segment traces for nearest-fault labeling.
+ * Coordinates are [longitude, latitude], approximate segment traces for nearest-fault labeling.
  *
  * referenceUrl values point to live USGS fault / earthquake science pages (verified 2026).
  */

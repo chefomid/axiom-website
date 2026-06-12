@@ -4,19 +4,24 @@ import { motion, AnimatePresence } from 'framer-motion'
 const PLATFORM_SECTIONS = [
   {
     title: 'Portfolio & Intake',
-    body: 'PDFs in, structured JSON out. Workbooks and BOR letters from one book.',
+    body: 'Every line of coverage on one screen. Broker-ready workbooks in minutes, not days.',
   },
   {
     title: 'Assistant',
-    body: 'Coverage chat and contract compliance — cloud or offline models.',
+    body: 'Ask about your coverage in plain English. Grounded in your imported policies.',
   },
   {
     title: 'Broker Connect',
-    body: 'Endorsements, COIs, and applications in one numbered outbound flow.',
+    body: 'COIs, endorsements, and renewals in one traceable outbound flow.',
   },
   {
     title: 'Mailman',
-    body: 'Outlook via Nylas — inbox and compose beside your portfolio.',
+    body: 'Inbox and compose beside your portfolio without tab-hopping to Outlook.',
+  },
+  {
+    title: 'Contract Reviewer',
+    body: 'Upload contracts for a line-by-line compliance read. Spot gaps before sign-off and export findings to your broker.',
+    walkthrough: true,
   },
 ]
 
@@ -27,14 +32,14 @@ const DOSSIER = [
     title: 'Insurance Operations Workspace',
     eyebrow: 'AXIOM Enterprise Risk Platform',
     description:
-      'One workspace for your insurance program inside AXIOM. Intake, compliance, and broker workflows share a single portfolio view — outputs feed the rest of the risk stack, alongside your existing broker and carrier relationships.',
+      'One workspace for your insurance program inside AXIOM. Intake, compliance, and broker workflows share a single portfolio view. Outputs feed the rest of the risk stack, alongside your existing broker and carrier relationships.',
   },
   {
     id: 1,
     src: '/insurance-manager/booklet/02-portfolio-overview-manual-import.png',
     title: 'All Coverages in One View',
     description:
-      'GL, Auto, Property, WC, and Umbrella on one screen — dates, carriers, limits, exposures, and premiums.',
+      'GL, Auto, Property, WC, and Umbrella on one screen: dates, carriers, limits, exposures, and premiums.',
     primary: [
       'AI extraction or guided manual import per line',
       'One-click exposure workbooks and BOR letters',
@@ -56,12 +61,12 @@ const DOSSIER = [
     quadCallout: {
       logo: '/insurance-manager/nhtsa-logo.png',
       title: 'NHTSA VIN Check',
-      body: 'VINs decoded via NHTSA vPIC — make, model, and type compared to your schedule.',
+      body: 'VINs decoded via NHTSA vPIC: make, model, and type compared to your schedule.',
     },
     screenshotLayout: 'quad',
     title: 'Detailed Exposure Views',
     description:
-      'Underwriter-ready schedules by line — GL locations, Auto fleet with NHTSA VIN check, WC payroll totals.',
+      'Underwriter-ready schedules by line: GL locations, Auto fleet with NHTSA VIN check, WC payroll totals.',
     primary: [
       'Sortable GL and Auto tables with Excel export',
       'NHTSA VIN validation with one-click corrections',
@@ -102,7 +107,7 @@ const DOSSIER = [
     screenshotLayout: 'gallery',
     title: 'Insurance Email Inside the Workflow',
     description:
-      'Outlook via Nylas — Inbox, Sent, and compose beside your portfolio imports.',
+      'Outlook via Nylas: Inbox, Sent, and compose beside your portfolio imports.',
     primary: [
       'Reply or compose with attachments and thread tagging',
       'COI threads tied to workspace context',
@@ -149,7 +154,7 @@ const DOSSIER = [
     ],
     title: 'Assistant',
     description:
-      'Coverage intelligence in the same workspace — General Chat grounded in your session, Compliance for contract review.',
+      'Coverage intelligence in the same workspace: General Chat grounded in your session, Compliance for contract review.',
     primary: [
       'Cloud or offline AI model choice',
       'Compliance: upload contracts, map gaps, export to broker',
@@ -160,6 +165,8 @@ const DOSSIER = [
     ],
   },
 ]
+
+const COMPLIANCE_WALKTHROUGH_STEPS = DOSSIER.find(item => item.complianceSteps)?.complianceSteps ?? []
 
 function normalizeScreenshotTiles(item) {
   const raw = item.screenshotTiles ?? item.srcs ?? (item.src ? [item.src] : [])
@@ -226,15 +233,15 @@ function ComplianceDetailPopup({ open, onClose, steps }) {
             className="w-full max-w-4xl max-h-[min(85vh,820px)] rounded-2xl border border-[#8d8d8d] bg-[#161616] overflow-hidden flex flex-col shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
-            <motion.div className="flex items-center justify-between px-5 md:px-7 py-4 border-b border-[#2d2d2d] shrink-0">
+            <motion.div className="flex items-center justify-between px-5 md:px-7 py-4 border-b im-accent-bar shrink-0">
               <motion.div>
-                <p className="text-[9px] tracking-[0.22em] text-ink-muted uppercase">Assistant · Compliance</p>
-                <h4 className="font-display text-lg md:text-xl font-semibold text-white mt-1">Contract review walkthrough</h4>
+                <p className="text-[9px] tracking-[0.22em] im-accent-fg-muted uppercase">Insurance Manager</p>
+                <h4 className="font-display text-lg md:text-xl font-semibold im-accent-fg mt-1">Contract Reviewer</h4>
               </motion.div>
               <button
                 type="button"
                 onClick={onClose}
-                className="text-ink-muted hover:text-white transition-colors text-[10px] tracking-[0.3em] uppercase shrink-0"
+                className="im-accent-close uppercase shrink-0"
               >
                 Close
               </button>
@@ -265,7 +272,7 @@ function ComplianceDetailPopup({ open, onClose, steps }) {
                       <p className="text-[9px] tracking-[0.24em] text-ink-faint uppercase tabular-nums">
                         Step {String(index + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
                       </p>
-                      <h5 className="font-display text-base md:text-lg font-semibold text-white pb-2 mb-2 mt-1 border-b border-[#2d2d2d]">
+                      <h5 className="font-display text-base md:text-lg font-semibold text-white pb-2 mb-2 mt-1 im-title-rule">
                         {step.title}
                       </h5>
                       <p className="text-[11px] leading-relaxed text-ink-secondary">{step.body}</p>
@@ -491,6 +498,7 @@ function ScreenshotPanel({ item }) {
 
 export default function InsuranceManagerModal({ open, onClose }) {
   const [activeSection, setActiveSection] = useState(0)
+  const [complianceWalkthroughOpen, setComplianceWalkthroughOpen] = useState(false)
   const scrollRef = useRef(null)
   const sectionRefs = useRef([])
   const filteredDossier = useMemo(() => DOSSIER, [])
@@ -562,12 +570,6 @@ export default function InsuranceManagerModal({ open, onClose }) {
     }
   }, [open, filteredDossier])
 
-  const progress = useMemo(() => {
-    const idx = filteredDossier.findIndex(item => item.id === activeSection)
-    if (idx < 0) return 0
-    return filteredDossier.length <= 1 ? 1 : idx / (filteredDossier.length - 1)
-  }, [activeSection, filteredDossier])
-
   return (
     <AnimatePresence>
       {open && (
@@ -583,82 +585,128 @@ export default function InsuranceManagerModal({ open, onClose }) {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex items-center justify-between px-8 md:px-14 pt-7 pb-5 relative z-10 border-b border-[#141414]"
+            className="relative z-10 shrink-0 border-b border-[#9AA0A8]/35 px-6 md:px-10 py-3"
           >
-            <motion.div
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-            >
-              <p className="font-display text-xl md:text-2xl font-semibold text-white tracking-[0.08em] uppercase">
-                Insurance Manager
-              </p>
-              <p className="text-[10px] tracking-[0.24em] text-ink-faint uppercase mt-1">
-                Insured Operations Intelligence Dossier
-              </p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-              className="flex items-center gap-6"
-            >
-              <span className="font-display text-[10px] text-ink-faint tabular-nums tracking-[0.3em]">
-                {String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} /{' '}
-                {String(filteredDossier.length).padStart(2, '0')}
-              </span>
-              <a
-                href="/insurance-manager/Insurance-Manager-Booklet.pdf"
-                target="_blank"
-                rel="noreferrer"
-                className="text-ink-muted hover:text-white transition-colors text-[10px] tracking-[0.3em] uppercase"
+            <div className="flex w-full items-center justify-between gap-6">
+              <motion.div
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
+                className="min-w-0 text-left"
               >
-                Open Booklet PDF
-              </a>
-              <button
-                onClick={onClose}
-                className="text-ink-muted hover:text-white transition-colors text-[10px] tracking-[0.3em] uppercase"
+                <p className="font-display text-lg md:text-xl font-semibold text-white tracking-[0.08em] uppercase leading-tight">
+                  Insurance Manager
+                </p>
+                <p className="text-[9px] tracking-[0.22em] text-ink-faint uppercase mt-0.5">
+                  Insured Operations Intelligence Dossier
+                </p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
+                className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6"
               >
-                Close
-              </button>
-            </motion.div>
+                <span className="hidden font-display text-[10px] text-ink-faint tabular-nums tracking-[0.3em] sm:inline">
+                  {String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} /{' '}
+                  {String(filteredDossier.length).padStart(2, '0')}
+                </span>
+                <a
+                  href="/insurance-manager/Insurance-Manager-Booklet.pdf"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Open booklet PDF"
+                  title="Open Booklet PDF"
+                  className="flex h-11 w-11 items-center justify-center text-ink-muted transition-colors hover:text-white sm:h-auto sm:w-auto sm:text-[10px] sm:tracking-[0.3em] sm:uppercase"
+                >
+                  <span className="sm:hidden" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path
+                        d="M10 2H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7M10 2l5 5M10 2v5h5"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span className="hidden sm:inline">Open Booklet PDF</span>
+                </a>
+                <button
+                  onClick={onClose}
+                  aria-label="Close"
+                  title="Close"
+                  className="im-accent-close flex h-11 w-11 items-center justify-center uppercase sm:h-auto sm:w-auto"
+                >
+                  <span className="sm:hidden" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  <span className="hidden sm:inline">Close</span>
+                </button>
+              </motion.div>
+            </div>
           </motion.div>
 
-          <div className="absolute left-0 right-0 top-[78px] h-px bg-[#131313] z-10">
-            <motion.div
-              className="h-full bg-[#9a9a9a] origin-left"
-              style={{ scaleX: progress }}
-              transition={{ ease: 'linear', duration: 0.05 }}
-            />
-          </div>
-
-          <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[360px,1fr] gap-0 pt-3">
-            <div className="border-r border-[#2a2a2a] px-5 md:px-8 py-4 bg-[#0f0f0f] h-full flex items-stretch">
-              <div className="rounded-xl border border-[#323232] bg-[#171717] p-4 flex flex-col h-full w-full min-h-0">
-                <div className="shrink-0">
-                  <p className="text-[9px] tracking-[0.22em] text-ink-muted uppercase">Insurance Manager</p>
-                  <h2 className="font-display text-lg text-white leading-tight mt-1.5">
-                    Your program in one workspace.
-                  </h2>
-                  <p className="text-xs text-ink-secondary leading-snug mt-2">
-                    One portfolio view. Faster intake. Broker-ready communication.
-                  </p>
-                </div>
-
-                <div className="flex-1 flex flex-col justify-evenly py-4 min-h-0">
-                  {PLATFORM_SECTIONS.map((section, i) => (
-                    <motion.div
-                      key={section.title}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: 0.12 + i * 0.07, ease: [0.25, 0.1, 0.25, 1] }}
-                    >
-                      <p className="text-[14px] font-medium text-white pb-1.5 mb-2 border-b border-[#2d2d2d]">
-                        {section.title}
+          <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[360px,1fr] gap-0">
+            <div className="border-r border-[#9AA0A8]/35 bg-[#080808] h-full min-h-0 flex flex-col self-stretch">
+              <div className="side-panel side-panel--compact side-panel--fill flex flex-col flex-1 min-h-0 h-full w-full overflow-hidden">
+                <div className="side-panel-content flex flex-col flex-1 min-h-0 h-full">
+                  <div className="flex flex-1 min-h-0 flex-col">
+                    <section className="side-panel-section shrink-0 border-b-0 pb-3">
+                      <p className="text-[14px] font-medium leading-snug text-white/88">
+                        Insurance operations without the scattered spreadsheets.
                       </p>
-                      <p className="text-xs text-ink-secondary leading-relaxed">{section.body}</p>
-                    </motion.div>
-                  ))}
+                      <p className="text-[13px] leading-relaxed text-ink-secondary mt-2.5">
+                        One portfolio view for intake, compliance, and broker workflows. Auditable
+                        outputs and broker-ready communication.
+                      </p>
+                    </section>
+
+                    <section className="side-panel-section side-panel-section--modules flex flex-1 min-h-0 flex-col border-b-0 pb-2 pt-4">
+                      <h3 className="shrink-0 mb-3 text-[12px] font-semibold tracking-[0.06em] uppercase text-[#9AA0A8]">
+                        Platform Modules
+                      </h3>
+                      <div className="im-accent-rule mb-4 shrink-0" aria-hidden />
+                      <div className="side-panel-module-list flex-1 min-h-0">
+                        {PLATFORM_SECTIONS.map((section, i) => {
+                          const motionProps = {
+                            initial: { opacity: 0, y: 8 },
+                            animate: { opacity: 1, y: 0 },
+                            transition: { duration: 0.35, delay: 0.08 + i * 0.04, ease: [0.25, 0.1, 0.25, 1] },
+                          }
+
+                          if (section.walkthrough) {
+                            return (
+                              <motion.button
+                                key={section.title}
+                                type="button"
+                                {...motionProps}
+                                onClick={() => setComplianceWalkthroughOpen(true)}
+                                className="side-panel-module side-panel-module--interactive"
+                                aria-label={`${section.title}: open walkthrough`}
+                              >
+                                <p className="side-panel-module-title text-[13px]">{section.title}</p>
+                                <p className="text-[13px] leading-relaxed text-ink-secondary">{section.body}</p>
+                              </motion.button>
+                            )
+                          }
+
+                          return (
+                            <motion.div
+                              key={section.title}
+                              {...motionProps}
+                              className="side-panel-module"
+                            >
+                              <p className="side-panel-module-title text-[13px]">{section.title}</p>
+                              <p className="text-[13px] leading-relaxed text-ink-secondary">{section.body}</p>
+                            </motion.div>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  </div>
                 </div>
               </div>
             </div>
@@ -672,15 +720,15 @@ export default function InsuranceManagerModal({ open, onClose }) {
                       sectionRefs.current[idx] = node
                     }}
                     data-dossier-id={item.id}
-                    className={`w-full rounded-2xl border overflow-hidden transition ${
+                    className={
                       item.overview
-                        ? activeSection === item.id
-                          ? 'border-[#8d8d8d] bg-[#252525]'
-                          : 'border-[#3a3a3a] bg-[#222222]'
-                        : activeSection === item.id
-                          ? 'border-[#8d8d8d] bg-[#161616]'
-                          : 'border-[#2d2d2d] bg-[#121212]'
-                    }`}
+                        ? 'w-full'
+                        : `w-full rounded-2xl border overflow-hidden transition ${
+                            activeSection === item.id
+                              ? 'border-[#9AA0A8] bg-[#161616]'
+                              : 'border-[#2d2d2d] bg-[#121212]'
+                          }`
+                    }
                   >
                     {item.overview ? (
                       <motion.div
@@ -688,13 +736,15 @@ export default function InsuranceManagerModal({ open, onClose }) {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-40px' }}
                         transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-                        className="p-6 md:p-8"
+                        className="pb-2 md:pb-4"
                       >
-                        <p className="text-[9px] tracking-[0.22em] text-ink-muted uppercase">{item.eyebrow}</p>
-                        <h3 className="font-display text-2xl md:text-3xl font-semibold text-white pb-2 mb-3 mt-1.5 border-b border-[#2d2d2d]">
+                        <p className="text-[9px] tracking-[0.22em] text-[#9AA0A8] uppercase">{item.eyebrow}</p>
+                        <h3 className="font-display text-2xl md:text-3xl font-semibold text-white mt-1.5 mb-3 im-title-rule pb-3">
                           {item.title}
                         </h3>
-                        <p className="text-[12px] md:text-[13px] leading-[1.75] text-ink-primary">{item.description}</p>
+                        <p className="text-[12px] md:text-[13px] leading-[1.75] text-ink-primary max-w-3xl">
+                          {item.description}
+                        </p>
                       </motion.div>
                     ) : (
                     <motion.div
@@ -717,12 +767,12 @@ export default function InsuranceManagerModal({ open, onClose }) {
                           <ScreenshotPanel item={item} />
                         </motion.div>
                       </motion.div>
-                      <motion.div className="border-l border-[#2a2a2a] p-5 md:p-7 flex flex-col justify-start 2xl:justify-center 2xl:h-full gap-6 md:gap-8">
+                      <motion.div className="border-l border-[#2a2a2a] p-6 md:p-8 flex flex-col justify-center gap-6 md:gap-7 mx-auto w-full max-w-sm sm:max-w-md">
                         <div>
-                          <h3 className="font-display text-xl md:text-2xl font-semibold text-white pb-2 mb-3 border-b border-[#2d2d2d]">
+                          <h3 className="font-display text-2xl md:text-3xl font-semibold text-white pb-2 mb-3 im-title-rule">
                             {item.title}
                           </h3>
-                          <p className="text-[11px] leading-relaxed text-ink-secondary">{item.description}</p>
+                          <p className="text-[13px] md:text-sm leading-relaxed text-ink-secondary">{item.description}</p>
                         </div>
 
                         <motion.div
@@ -731,12 +781,13 @@ export default function InsuranceManagerModal({ open, onClose }) {
                           viewport={{ once: true }}
                           transition={{ delay: 0.1, duration: 0.35 }}
                         >
-                          <p className="text-xs font-semibold tracking-[0.18em] uppercase text-white pb-1.5 mb-2 border-b border-[#2d2d2d]">
+                          <p className="text-sm font-semibold tracking-[0.18em] uppercase text-[#9AA0A8]">
                             Primary Features
                           </p>
-                          <ul className="space-y-1.5">
+                          <div className="im-accent-rule mt-2 mb-3" aria-hidden />
+                          <ul className="space-y-2">
                             {item.primary.map(point => (
-                              <li key={point} className="text-[11px] text-ink-primary leading-relaxed">
+                              <li key={point} className="text-[13px] md:text-sm text-ink-primary leading-relaxed">
                                 {point}
                               </li>
                             ))}
@@ -744,18 +795,18 @@ export default function InsuranceManagerModal({ open, onClose }) {
                         </motion.div>
 
                         <motion.div
-                          className="pt-6 border-t border-[#2d2d2d]"
                           initial={{ opacity: 0 }}
                           whileInView={{ opacity: 1 }}
                           viewport={{ once: true }}
                           transition={{ delay: 0.15, duration: 0.35 }}
                         >
-                          <p className="text-xs font-semibold tracking-[0.18em] uppercase text-white pb-1.5 mb-2 border-b border-[#2d2d2d]">
+                          <p className="text-sm font-semibold tracking-[0.18em] uppercase text-[#9AA0A8]">
                             Operational Callouts
                           </p>
-                          <ul className="space-y-1.5">
+                          <div className="im-accent-rule mt-2 mb-3" aria-hidden />
+                          <ul className="space-y-2">
                             {item.callouts.map(point => (
-                              <li key={point} className="text-[11px] text-ink-secondary leading-relaxed">
+                              <li key={point} className="text-[13px] md:text-sm text-ink-secondary leading-relaxed">
                                 {point}
                               </li>
                             ))}
@@ -769,6 +820,12 @@ export default function InsuranceManagerModal({ open, onClose }) {
               </div>
             </div>
           </div>
+
+          <ComplianceDetailPopup
+            open={complianceWalkthroughOpen}
+            onClose={() => setComplianceWalkthroughOpen(false)}
+            steps={COMPLIANCE_WALKTHROUGH_STEPS}
+          />
         </motion.div>
       )}
     </AnimatePresence>

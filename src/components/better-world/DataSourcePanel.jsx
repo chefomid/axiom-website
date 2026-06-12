@@ -1,6 +1,6 @@
 import { DATA_SOURCES } from '../../data/commandMapData'
 
-import { PanelToggle } from '../ui/CommandControls'
+import { SourceToggle } from '../ui/CommandControls'
 
 
 
@@ -18,9 +18,9 @@ export default function DataSourcePanel({ activeDataSources, onToggle }) {
 
       </div>
 
-      <div className="sleek-scrollbar max-h-48 overflow-y-auto px-2 pb-3 lg:max-h-none">
+      <div className="sleek-scrollbar max-h-48 overflow-y-auto px-3 pb-3 lg:max-h-none">
 
-        <ul className="space-y-1">
+        <ul className="grid grid-cols-1 gap-2">
 
           {DATA_SOURCES.map(source => {
 
@@ -30,17 +30,11 @@ export default function DataSourcePanel({ activeDataSources, onToggle }) {
 
               <li key={source.id}>
 
-                <PanelToggle
+                <SourceToggle
+
+                  source={source}
 
                   active={active}
-
-                  accent="stable"
-
-                  label={source.label}
-
-                  iconSrc={source.logo}
-
-                  iconAlt={source.label}
 
                   onClick={() => onToggle(source.id)}
 

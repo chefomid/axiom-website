@@ -58,17 +58,69 @@ function toCoordPair(lat, lng) {
 
 function dedupeResults(items) {
   const seen = new Set()
+
   return items.filter(item => {
     const pair = toCoordPair(item?.lat, item?.lng)
     if (!item?.label || !pair) return false
-    const key = `${item.label.toLowerCase()}|${pair.lat.toFixed(3)}|${pair.lng.toFixed(3)}`
-    if (seen.has(key)) return false
-    seen.add(key)
+
+    const labelKey = item.label.toLowerCase().replace(/\s+/g, ' ').trim()
+    const coordKey = `${pair.lat.toFixed(4)}|${pair.lng.toFixed(4)}`
+    const fingerprint = normalizeAddressFingerprint(item.label)
+
+    if (seen.has(`label:${labelKey}`)) return false
+    if (seen.has(`fp:${fingerprint}`)) return false
+    if (seen.has(`coord:${coordKey}`)) return false
+
+    seen.add(`label:${labelKey}`)
+    seen.add(`fp:${fingerprint}`)
+    seen.add(`coord:${coordKey}`)
     return true
   })
 }
 
-function inBbox(lat, lng, bbox) {
+const DIRECTION_ALIASES = [
+  [/\bnorthwest\b|\bnw\b/g, 'nw'],
+  [/\bsouthwest\b|\bsw\b/g, 'sw'],
+  [/\bnortheast\b|\bne\b/g, 'ne'],
+  [/\bsoutheast\b|\bse\b/g, 'se'],
+  [/\bnorth\b|\bn\b/g, 'n'],
+  [/\bsouth\b|\bs\b/g, 's'],
+  [/\beast\b|\be\b/g, 'e'],
+  [/\bwest\b|\bw\b/g, 'w'],
+]
+
+const STREET_ALIASES = [
+  [/\bstreet\b|\bst\b/g, 'st'],
+  [/\bavenue\b|\bave\b/g, 'ave'],
+  [/\broad\b|\brd\b/g, 'rd'],
+  [/\bboulevard\b|\bblvd\b/g, 'blvd'],
+  [/\bdrive\b|\bdr\b/g, 'dr'],
+  [/\blane\b|\bln\b/g, 'ln'],
+  [/\bcourt\b|\bct\b/g, 'ct'],
+  [/\bplace\b|\bpl\b/g, 'pl'],
+  [/\bterrace\b|\bter\b/g, 'ter'],
+  [/\bparkway\b|\bpkwy\b/g, 'pkwy'],
+  [/\bhighway\b|\bhwy\b/g, 'hwy'],
+  [/\bcircle\b|\bcir\b/g, 'cir'],
+]
+
+function normalizeAddressFingerprint(label) {
+  const hn = houseNumber(label) ?? ''
+  const zip = String(label ?? '').match(/\b(\d{5})(?:-\d{4})?\b/)?.[1] ?? ''
+
+  let text = String(label ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ')
+  for (const [pattern, token] of DIRECTION_ALIASES) text = text.replace(pattern, ` ${token} `)
+  for (const [pattern, token] of STREET_ALIASES) text = text.replace(pattern, ` ${token} `)
+  text = text
+    .replace(/\boregon\b|\bor\b/g, ' or ')
+    .replace(/\bportland\b/g, ' portland ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return `${hn}|${zip}|${text}`
+}
+
+export function inBbox(lat, lng, bbox) {
   if (!bbox || bbox.length !== 4) return true
   const [minLon, minLat, maxLon, maxLat] = bbox
   return lng >= minLon && lng <= maxLon && lat >= minLat && lat <= maxLat
@@ -83,11 +135,21 @@ function matchesCountryAndBbox(props, lat, lng, countryId, bbox) {
   return bbox?.length === 4 ? inBbox(lat, lng, bbox) : false
 }
 
-/** House number alone (e.g. "825") returns junk worldwide — require a street name. */
-export function isSearchableAddressQuery(query) {
+/** House number alone (e.g. "825") returns junk worldwide, require a street name. */
+export function isSearchableAddressQuery(query, minLength = 4) {
   const q = query.trim()
-  if (q.length < 4) return false
-  return /[a-zA-Z]{2,}/.test(q)
+  if (q.length < minLength) return false
+  if (/[a-zA-Z]{2,}/.test(q)) return true
+  if (/^\d+\s+[a-zA-Z]/.test(q)) return true
+  return false
+}
+
+/** Property workflow, wait for a fuller address before suggesting or resolving. */
+export function isPropertyAddressQuery(query) {
+  const q = query.trim()
+  if (!isSearchableAddressQuery(q, 5)) return false
+  if (q.includes(',')) return true
+  return /^\d+\s+[a-zA-Z]+\s+[a-zA-Z]{2,}/.test(q)
 }
 
 /**
@@ -238,10 +300,10 @@ async function refineWithBuildingCoords(query, item, { countryId, bbox, signal }
   return { ...item, ...base }
 }
 
-/** US property search — Census label + OSM building coords for accurate map pins. */
+/** US property search, Census label + OSM building coords for accurate map pins. */
 export async function searchUsPropertyAddresses(
   query,
-  { countryId = 'US', bbox, limit = 5, signal } = {},
+  { countryId = 'US', bbox, limit = 5, signal, refine = limit === 1 } = {},
 ) {
   const q = query.trim()
   if (!isSearchableAddressQuery(q)) return []
@@ -251,10 +313,13 @@ export async function searchUsPropertyAddresses(
   try {
     const census = await searchCensusUs(q, { signal })
     if (census.length) {
-      const refined = await Promise.all(
-        census.map(item => refineWithBuildingCoords(q, item, opts)),
-      )
-      return dedupeResults(refined).slice(0, limit)
+      if (refine) {
+        const refined = await Promise.all(
+          census.slice(0, limit).map(item => refineWithBuildingCoords(q, item, opts)),
+        )
+        return dedupeResults(refined).slice(0, limit)
+      }
+      return dedupeResults(census).slice(0, limit)
     }
   } catch (err) {
     if (err.name === 'AbortError') throw err
@@ -268,6 +333,133 @@ export async function searchUsPropertyAddresses(
   }
 
   return []
+}
+
+/** Fast US autocomplete, Census preferred, Photon fills gaps; aggressive dedupe. */
+export async function searchUsAddressSuggestions(
+  query,
+  { countryId = 'US', bbox, limit = 5, signal } = {},
+) {
+  const q = query.trim()
+  if (!isSearchableAddressQuery(q, 3)) return []
+
+  const opts = { countryId, bbox, limit: Math.max(limit, 6), signal }
+
+  const runPhoton = searchAddresses(q, opts).catch(err => {
+    if (err.name === 'AbortError') throw err
+    return []
+  })
+
+  const runCensus =
+    q.length >= 5
+      ? searchCensusUs(q, { signal }).catch(err => {
+          if (err.name === 'AbortError') throw err
+          return []
+        })
+      : Promise.resolve([])
+
+  const [census, photon] = await Promise.all([runCensus, runPhoton])
+  return dedupeResults([...census, ...photon]).slice(0, limit)
+}
+
+const CENSUS_REVERSE_BASE = import.meta.env.DEV
+  ? '/api/census/geocoder/locations/coordinates'
+  : 'https://geocoding.geo.census.gov/geocoder/locations/coordinates'
+
+/** Reverse geocode US coordinates to a street address label. */
+export async function reverseGeocodeUs(lat, lng, { signal, bbox } = {}) {
+  const pair = toCoordPair(lat, lng)
+  if (!pair) return null
+  if (!inBbox(pair.lat, pair.lng, bbox)) return null
+
+  const fetchReverse = async target => {
+    try {
+      const res = await fetch(target, { signal, headers: { Accept: 'application/json' } })
+      if (res.ok) return res
+    } catch {
+      /* try fallback */
+    }
+    return null
+  }
+
+  const censusUrl = new URL(CENSUS_REVERSE_BASE, window.location.origin)
+  censusUrl.searchParams.set('x', String(pair.lng))
+  censusUrl.searchParams.set('y', String(pair.lat))
+  censusUrl.searchParams.set('benchmark', 'Public_AR_Current')
+  censusUrl.searchParams.set('format', 'json')
+
+  let res = await fetchReverse(censusUrl)
+  if (!res && import.meta.env.DEV && CENSUS_REVERSE_BASE.startsWith('/api/census')) {
+    const direct = new URL('https://geocoding.geo.census.gov/geocoder/locations/coordinates')
+    direct.search = censusUrl.searchParams.toString()
+    res = await fetchReverse(direct)
+  }
+
+  if (res) {
+    try {
+      const match = (await res.json()).result?.addressMatches?.[0]
+      const coords = match?.coordinates
+      const matched = coords ? toCoordPair(coords.y, coords.x) : pair
+      if (match?.matchedAddress && matched) {
+        return {
+          id: `reverse-${matched.lat}-${matched.lng}`,
+          label: match.matchedAddress,
+          lat: matched.lat,
+          lng: matched.lng,
+        }
+      }
+    } catch {
+      /* fall through to Photon */
+    }
+  }
+
+  const photonUrl = new URL(
+    import.meta.env.DEV ? '/api/photon/reverse' : 'https://photon.komoot.io/reverse',
+    window.location.origin,
+  )
+  photonUrl.searchParams.set('lat', String(pair.lat))
+  photonUrl.searchParams.set('lon', String(pair.lng))
+  photonUrl.searchParams.set('lang', 'en')
+
+  res = await fetchReverse(photonUrl)
+  if (!res && import.meta.env.DEV) {
+    const direct = new URL('https://photon.komoot.io/reverse')
+    direct.search = photonUrl.searchParams.toString()
+    res = await fetchReverse(direct)
+  }
+
+  if (!res) {
+    return {
+      id: `coords-${pair.lat}-${pair.lng}`,
+      label: `Current location (${pair.lat.toFixed(4)}, ${pair.lng.toFixed(4)})`,
+      lat: pair.lat,
+      lng: pair.lng,
+    }
+  }
+
+  try {
+    const feature = (await res.json()).features?.[0]
+    const coords = feature?.geometry?.coordinates
+    const props = feature?.properties ?? {}
+    const matched = Array.isArray(coords) ? toCoordPair(coords[1], coords[0]) : pair
+    if (matched) {
+      return {
+        id: `reverse-${matched.lat}-${matched.lng}`,
+        label: formatShortLabel(props) || `Current location (${matched.lat.toFixed(4)}, ${matched.lng.toFixed(4)})`,
+        lat: matched.lat,
+        lng: matched.lng,
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return {
+    id: `coords-${pair.lat}-${pair.lng}`,
+    label: `Current location (${pair.lat.toFixed(4)}, ${pair.lng.toFixed(4)})`,
+    lat: pair.lat,
+    lng: pair.lng,
+  }
 }
 
 /** Resolve a single US address to coordinates for map placement. */
@@ -290,4 +482,104 @@ export function globalCenterLocation() {
     lng: -20,
     label: 'Global (overview)',
   }
+}
+
+const CITY_PLACE_TYPES = new Set([
+  'city',
+  'town',
+  'village',
+  'municipality',
+  'borough',
+  'hamlet',
+  'suburb',
+  'locality',
+])
+
+function formatCityStateLabel(props) {
+  const city = props.city || props.name || props.district
+  if (!city) return null
+  const state = props.state
+  if (state) return `${city}, ${state}`
+  if (props.country) return `${city}, ${props.country}`
+  return city
+}
+
+/** Minimum characters before city/state autocomplete runs. */
+export function isSearchableCityQuery(query, minLength = 2) {
+  return query.trim().length >= minLength
+}
+
+/**
+ * US city/state autocomplete for forms (Photon, city layer).
+ * @returns {Promise<Array<{ id: string, label: string, lat: number, lng: number }>>}
+ */
+export async function searchCityStateLocations(query, { countryId = 'us', limit = 6, signal } = {}) {
+  const q = query.trim()
+  if (!isSearchableCityQuery(q)) return []
+
+  const url = new URL(PHOTON_BASE, window.location.origin)
+  url.searchParams.set('q', q)
+  url.searchParams.set('limit', String(Math.max(limit * 3, 12)))
+  url.searchParams.set('lang', 'en')
+  url.searchParams.set('layer', 'city')
+
+  const fetchPhoton = async target => {
+    try {
+      const res = await fetch(target, { signal, headers: { Accept: 'application/json' } })
+      if (res.ok) return res
+    } catch {
+      /* try fallback */
+    }
+    return null
+  }
+
+  let res = await fetchPhoton(url)
+  if (!res && import.meta.env.DEV && PHOTON_BASE.startsWith('/api/photon')) {
+    const direct = new URL('https://photon.komoot.io/api/')
+    direct.search = url.searchParams.toString()
+    res = await fetchPhoton(direct)
+  }
+  if (!res) return []
+
+  let data
+  try {
+    data = await res.json()
+  } catch {
+    return []
+  }
+
+  const code = countryId?.toLowerCase()
+  const seenLabels = new Set()
+
+  const mapped = (data.features ?? [])
+    .map((feat, index) => {
+      const coords = feat.geometry?.coordinates
+      if (!Array.isArray(coords) || coords.length < 2) return null
+      const props = feat.properties ?? {}
+      const countryCode = (props.countrycode || '').toLowerCase()
+      if (code && countryCode && countryCode !== code) return null
+
+      const placeType = String(props.type ?? props.osm_value ?? '').toLowerCase()
+      if (placeType && !CITY_PLACE_TYPES.has(placeType) && !props.city) return null
+
+      const label = formatCityStateLabel(props)
+      if (!label) return null
+
+      const pair = toCoordPair(coords[1], coords[0])
+      if (!pair) return null
+
+      const labelKey = label.toLowerCase()
+      if (seenLabels.has(labelKey)) return null
+      seenLabels.add(labelKey)
+
+      return {
+        id: `${props.osm_id ?? index}-${coords[0]}-${coords[1]}`,
+        label,
+        lat: pair.lat,
+        lng: pair.lng,
+      }
+    })
+    .filter(Boolean)
+
+  return mapped.slice(0, limit)
 }

@@ -535,7 +535,7 @@ export default function EarthquakeAnalysisModal({
                             value={
                               summary?.peakDensityPer1000SqMiPerYear != null
                                 ? `${summary.peakDensityPer1000SqMiPerYear.toFixed(2)} / yr / 1k sq mi`
-                                : '—'
+                                : '-'
                             }
                           />
                         ) : null}
@@ -546,7 +546,7 @@ export default function EarthquakeAnalysisModal({
                               ? globalAnalysis
                                 ? `M${summary.maxEvent.mag.toFixed(1)}`
                                 : `M${summary.maxEvent.mag.toFixed(1)} @ ${summary.maxEvent.dist.toFixed(0)} mi`
-                              : '—'
+                              : '-'
                           }
                         />
                       </div>

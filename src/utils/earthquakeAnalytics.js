@@ -318,7 +318,7 @@ export function dateRangeForYears(years) {
 }
 
 /**
- * Worldwide summary metrics — no radius bucketing.
+ * Worldwide summary metrics, no radius bucketing.
  */
 export function computeGlobalEarthquakeAnalytics(events, yearsInRange) {
   const safeYears = Math.max(yearsInRange, 1 / 365)
@@ -370,7 +370,7 @@ export function assessSeismicDataQuality(
     if (global) {
       return {
         level: 'none',
-        message: `The ${yearPreset.label} global catalog did not load any ${magLabel} events. USGS publishes earthquakes worldwide — use Retry, try 5Y or 10Y, or select US / MX for a regional view.`,
+        message: `The ${yearPreset.label} global catalog did not load any ${magLabel} events. USGS publishes earthquakes worldwide, use Retry, try 5Y or 10Y, or select US / MX for a regional view.`,
       }
     }
 
@@ -383,7 +383,7 @@ export function assessSeismicDataQuality(
   if (total < 3) {
     return {
       level: 'sparse',
-      message: `Only ${total} event${total === 1 ? '' : 's'} found in ${yearPreset.label} at ${magLabel}. Charts may not be meaningful — try a lower magnitude filter or a longer time range.`,
+      message: `Only ${total} event${total === 1 ? '' : 's'} found in ${yearPreset.label} at ${magLabel}. Charts may not be meaningful, try a lower magnitude filter or a longer time range.`,
     }
   }
 
