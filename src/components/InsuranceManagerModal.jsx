@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { DossierMobileNav, DossierModulesSheet } from './dossier/DossierMobileNav'
+import { DossierMobileNav } from './dossier/DossierMobileNav'
 
 const IM_NAV_SECTIONS = [
   { id: 0, label: 'Insurance Operations Workspace', shortLabel: 'Overview' },
@@ -516,7 +516,6 @@ function ScreenshotPanel({ item }) {
 export default function InsuranceManagerModal({ open, onClose }) {
   const [activeSection, setActiveSection] = useState(0)
   const [complianceWalkthroughOpen, setComplianceWalkthroughOpen] = useState(false)
-  const [modulesOpen, setModulesOpen] = useState(false)
   const scrollRef = useRef(null)
   const sectionRefs = useRef([])
   const filteredDossier = useMemo(() => DOSSIER, [])
@@ -524,7 +523,6 @@ export default function InsuranceManagerModal({ open, onClose }) {
   useEffect(() => {
     if (!open) return
     setActiveSection(DOSSIER[0]?.id ?? 0)
-    setModulesOpen(false)
   }, [open])
 
   useEffect(() => {
@@ -636,14 +634,6 @@ export default function InsuranceManagerModal({ open, onClose }) {
                 transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
                 className="flex shrink-0 items-center gap-1.5 sm:gap-4 md:gap-6"
               >
-                <button
-                  type="button"
-                  onClick={() => setModulesOpen(true)}
-                  className="flex h-10 items-center justify-center rounded-lg border border-[#333] px-3 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted transition-colors hover:border-[#555] hover:text-white xl:hidden"
-                  aria-label="Open platform modules"
-                >
-                  Modules
-                </button>
                 <span className="hidden font-display text-[10px] tabular-nums tracking-[0.3em] text-ink-faint xl:inline">
                   {String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} /{' '}
                   {String(filteredDossier.length).padStart(2, '0')}
@@ -868,15 +858,6 @@ export default function InsuranceManagerModal({ open, onClose }) {
               />
             </div>
           </div>
-
-          <DossierModulesSheet
-            open={modulesOpen}
-            onClose={() => setModulesOpen(false)}
-            title="Insurance Manager"
-            intro="Insurance operations without the scattered spreadsheets. One portfolio view for intake, compliance, and broker workflows."
-            sections={PLATFORM_SECTIONS}
-            onWalkthrough={() => setComplianceWalkthroughOpen(true)}
-          />
 
           <ComplianceDetailPopup
             open={complianceWalkthroughOpen}
