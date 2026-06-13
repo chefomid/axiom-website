@@ -98,6 +98,7 @@ async def _run_one_source(
     *,
     crawl_fn=None,
     extract_fn=None,
+    **adapter_kwargs: Any,
 ) -> SourceRunResult:
     adapter = get_adapter(source_id)
     exec_cfg = _execution_config(source_id)
@@ -125,7 +126,13 @@ async def _run_one_source(
     start = time.monotonic()
     try:
         result = await asyncio.wait_for(
-            adapter.fetch(ctx, client, crawl_fn=crawl_fn, extract_fn=extract_fn),
+            adapter.fetch(
+                ctx,
+                client,
+                crawl_fn=crawl_fn,
+                extract_fn=extract_fn,
+                **adapter_kwargs,
+            ),
             timeout=timeout_ms / 1000.0,
         )
     except asyncio.TimeoutError:
@@ -159,7 +166,9 @@ async def execute_plan(
     *,
     crawl_fn=None,
     extract_fn=None,
+    post_context: dict[str, Any] | None = None,
 ) -> list[SourceRunResult]:
+    post_context = post_context or {}
     results: list[SourceRunResult] = []
     prior: dict[str, SourceRunResult] = {}
 
@@ -184,13 +193,14 @@ async def execute_plan(
     ctx.all_observations = collect_observations_from_results(results)
 
     for source_id in plan.post_process:
-        if source_id == "llm_conflict_resolve":
+        if source_id == "sov_orchestrator":
             r = await _run_one_source(
                 source_id,
                 ctx,
                 client,
                 crawl_fn=crawl_fn,
                 extract_fn=extract_fn,
+                crawl_excerpt=post_context.get("crawl_excerpt") if post_context else None,
             )
             results.append(r)
         else:
@@ -214,6 +224,7 @@ async def run_report(
     source_urls: dict[str, str] | None = None,
     crawl_fn=None,
     extract_fn=None,
+    post_context: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any] | None, list[SourceRunResult]]:
     geo, geo_result = await run_geocode(address)
     if not geo:
@@ -235,6 +246,7 @@ async def run_report(
             client,
             crawl_fn=crawl_fn,
             extract_fn=extract_fn,
+            post_context=post_context,
         )
 
     return geo, [geo_result, *run_results]

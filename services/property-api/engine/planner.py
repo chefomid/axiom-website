@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from registry_loader import get_source_by_id
 
-POST_PROCESS = frozenset({"cope_map", "llm_conflict_resolve", "pdf_dossier", "llm_extract"})
+POST_PROCESS = frozenset({"cope_map", "sov_orchestrator", "pdf_dossier", "llm_extract"})
 SKIP_FETCH = frozenset({"geocode_census"}) | POST_PROCESS
 
 

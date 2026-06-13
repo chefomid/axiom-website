@@ -9,6 +9,9 @@ export const PROPERTY_INTELLIGENCE_LABEL = 'Property Intelligence'
 /** Playwright PDF print preview (no chrome) */
 export const REPORT_PRINT_PATH = '/reports/print/:sessionId'
 
+/** Careers admin console (token-gated) */
+export const CAREERS_ADMIN_PATH = '/careers/admin'
+
 /** Careers, AXIOM / ATLAS development application */
 export const CAREERS_PATH = '/careers'
 export const CAREERS_LABEL = 'Careers'

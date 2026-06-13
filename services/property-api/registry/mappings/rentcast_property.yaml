@@ -11,3 +11,23 @@ property_type:
   path: propertyType
   type: string
   confidence: high
+owner_name:
+  path: ownerName
+  type: string
+  confidence: high
+parcel_number:
+  path: assessorID
+  type: string
+  confidence: high
+assessed_value:
+  path: assessedValue
+  type: integer
+  confidence: high
+zoning:
+  path: zoning
+  type: string
+  confidence: medium
+roof_type:
+  path: roofType
+  type: string
+  confidence: medium

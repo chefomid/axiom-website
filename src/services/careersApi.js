@@ -304,7 +304,35 @@ export async function submitApplication(values, { honeypot = '' } = {}) {
 
 
 
-  return response.json()
+  const data = await response.json()
+  return {
+    ok: Boolean(data?.ok),
+    referenceId: typeof data?.referenceId === 'string' ? data.referenceId : null,
+    confirmationSent: Boolean(data?.confirmationSent),
+    dev: Boolean(data?.dev),
+  }
+}
+
+let organizeModelInfoPromise = null
+
+export async function fetchOrganizeModelInfo() {
+  if (!organizeModelInfoPromise) {
+    organizeModelInfoPromise = (async () => {
+      try {
+        const response = await fetch('/api/careers/organize/info')
+        if (response.ok) {
+          const data = await response.json()
+          if (typeof data?.modelLabel === 'string' && data.modelLabel.trim()) {
+            return data.modelLabel.trim()
+          }
+        }
+      } catch {
+        /* fallback below */
+      }
+      return 'Nemotron Mini'
+    })()
+  }
+  return organizeModelInfoPromise
 }
 
 export async function organizeThoughts(text, { question = '' } = {}) {
@@ -329,11 +357,11 @@ export async function organizeThoughts(text, { question = '' } = {}) {
       const organized = typeof data?.text === 'string' ? data.text.trim() : ''
       if (organized) return { text: organized }
     }
-  } catch {
-    /* silent — applicants should never see organize failures */
-  }
 
-  return fallback()
+    return fallback()
+  } catch {
+    throw new Error('organize_unreachable')
+  }
 }
 
 function devFallback(payload) {
@@ -358,8 +386,7 @@ function devFallback(payload) {
 
   })
 
-  return { ok: true, dev: true }
-
+  return { ok: true, dev: true, referenceId: null, confirmationSent: false }
 }
 
 

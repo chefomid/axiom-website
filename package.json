@@ -13,9 +13,13 @@
     "property-api:dev": "python -m uvicorn main:app --reload --reload-dir services/property-api --host 127.0.0.1 --port 8000 --app-dir services/property-api",
     "install:superpowers": "powershell -ExecutionPolicy Bypass -File scripts/install-superpowers.ps1",
     "check:property-keys": "python scripts/check_property_keys.py",
-    "smoke:billing": "python scripts/smoke_billing.py"
+    "smoke:billing": "python scripts/smoke_billing.py",
+    "smoke:careers-organize": "node scripts/smoke_careers_organize.mjs",
+    "smoke:careers-apply": "node scripts/smoke_careers_apply.mjs",
+    "migrate:careers-db": "node scripts/migrate_careers_db.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "exceljs": "^4.4.0",
     "framer-motion": "^11.0.0",
     "lucide-react": "^1.17.0",

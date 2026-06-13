@@ -44,9 +44,16 @@ def env_status_payload() -> dict:
     keys = env_key_status()
     configured = [k for k, ok in keys.items() if ok]
     missing = [k for k, ok in keys.items() if not ok]
+    google_maps = bool(
+        os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
+        or os.environ.get("VITE_GOOGLE_MAPS_API_KEY", "").strip()
+    )
     return {
         "configured": configured,
         "missing": missing,
         "all_configured": len(missing) == 0,
         "loaded_env_files": [str(p.relative_to(REPO_ROOT)) for p in ENV_FILES if p.is_file()],
+        "optional": {
+            "google_maps": google_maps,
+        },
     }

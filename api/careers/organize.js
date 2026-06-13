@@ -21,13 +21,10 @@
 
 
 import {
-
   isOrganizeExpansionAcceptable,
-
   lightOrganizeText,
-
+  resolveOrganizeLlmConfig,
   shouldUseLlmOrganize,
-
 } from './organizeUtils.js'
 
 
@@ -113,51 +110,13 @@ function cleanOrganizedText(text) {
 
 
 function resolveLlmConfig() {
-
-  const nvidiaKey = process.env.NVIDIA_API_KEY?.trim()
-
-  if (nvidiaKey) {
-
-    const baseUrl = (process.env.CAREERS_LLM_BASE_URL ?? NVIDIA_DEFAULT_BASE_URL).replace(/\/$/, '')
-
-    return {
-
-      apiKey: nvidiaKey,
-
-      baseUrl,
-
-      model: process.env.CAREERS_LLM_MODEL?.trim() || NVIDIA_DEFAULT_MODEL,
-
-      provider: 'nvidia',
-
-    }
-
-  }
-
-
-
-  const openaiKey = process.env.OPENAI_API_KEY?.trim()
-
-  if (openaiKey) {
-
-    return {
-
-      apiKey: openaiKey,
-
-      baseUrl: 'https://api.openai.com/v1',
-
-      model: process.env.OPENAI_CAREERS_MODEL?.trim() || OPENAI_DEFAULT_MODEL,
-
-      provider: 'openai',
-
-    }
-
-  }
-
-
-
-  return null
-
+  const llm = resolveOrganizeLlmConfig(process.env)
+  if (!llm) return null
+  const apiKey =
+    llm.provider === 'nvidia'
+      ? process.env.NVIDIA_API_KEY?.trim()
+      : process.env.OPENAI_API_KEY?.trim()
+  return { ...llm, apiKey }
 }
 
 
@@ -192,7 +151,7 @@ export default async function handler(req, res) {
 
   if (!shouldUseLlmOrganize(text)) {
 
-    res.status(200).json({ text: lightOrganizeText(text) })
+    res.status(200).json({ text: lightOrganizeText(text), mode: 'light' })
 
     return
 
@@ -204,7 +163,7 @@ export default async function handler(req, res) {
 
   if (!llm) {
 
-    res.status(200).json({ text })
+    res.status(200).json({ text, mode: 'passthrough' })
 
     return
 
@@ -262,7 +221,7 @@ export default async function handler(req, res) {
 
       console.error(`Careers organize failed (${llm.provider}, ${upstream.status}): ${detail}`)
 
-      res.status(200).json({ text: lightOrganizeText(text) })
+      res.status(200).json({ text: lightOrganizeText(text), mode: 'light' })
 
       return
 
@@ -276,7 +235,7 @@ export default async function handler(req, res) {
 
     if (!organized || !isOrganizeExpansionAcceptable(text, organized)) {
 
-      res.status(200).json({ text: lightOrganizeText(text) })
+      res.status(200).json({ text: lightOrganizeText(text), mode: 'light' })
 
       return
 
@@ -284,13 +243,13 @@ export default async function handler(req, res) {
 
 
 
-    res.status(200).json({ text: organized })
+    res.status(200).json({ text: organized, mode: 'llm' })
 
   } catch (err) {
 
     console.error(`Careers organize error (${llm.provider}): ${err?.message ?? err}`)
 
-    res.status(200).json({ text: lightOrganizeText(text) })
+    res.status(200).json({ text: lightOrganizeText(text), mode: 'light' })
 
   }
 

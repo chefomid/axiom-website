@@ -13,6 +13,11 @@ export const APPLICATION_PURPOSE =
   'About 5–10 minutes. Most answers are quick scales or yes/no. We are looking for who you are becoming and what you are willing to commit to, not a list of past jobs.'
 export const APPLICATION_SUCCESS_MESSAGE =
   'Every meaningful achievement begins with a single step. Thank you for taking this one. We look forward to learning more about your story.'
+export const APPLICATION_NEXT_STEPS = [
+  'We review every submission carefully.',
+  'If your profile aligns with what we are building, we will reach you at the phone number or email you provided.',
+  'No further action is needed from you right now.',
+]
 export const APPLICATION_STEPS = [
   {
     id: 'basics',

@@ -184,19 +184,15 @@ function normalizeScreenshotTiles(item) {
 }
 
 function getScreenshotFrameClass(item) {
-  if (item.compact) return 'min-h-[260px] w-fit max-w-[360px] mx-auto'
-  const tileCount = normalizeScreenshotTiles(item).length
-  if (item.screenshotLayout === 'pair' || item.screenshotLayout === 'assistant-pair' || item.screenshotLayout === 'gallery' || item.screenshotLayout === 'quad' || item.screenshotLayout === 'hero-detail' || tileCount > 1) {
-    return 'min-h-0 w-full'
-  }
-  return 'min-h-[390px] w-full'
+  if (item.compact) return 'w-fit max-w-[360px] mx-auto'
+  return 'w-full'
 }
 
 function screenshotImageClass(item, layout, index) {
   if (item.compact) return 'h-[240px] w-auto max-w-full object-contain'
 
   if (layout === 'pair') return 'w-full h-auto object-contain'
-  if (layout === 'quad') return 'max-w-full max-h-full w-auto h-auto object-contain'
+  if (layout === 'quad') return 'w-full h-auto object-contain object-top'
   if (layout === 'gallery') {
     if (index === 0) return 'w-full h-auto object-contain'
     if (index === 2) return 'w-full h-auto max-h-[280px] object-contain object-top mx-auto'
@@ -208,7 +204,7 @@ function screenshotImageClass(item, layout, index) {
       ? 'w-full h-auto object-contain'
       : 'w-full h-auto max-h-[240px] object-contain'
   }
-  return 'w-full max-h-[520px] object-contain'
+  return 'w-full h-auto max-h-[min(480px,70vh)] object-contain object-top'
 }
 
 function ComplianceDetailPopup({ open, onClose, steps }) {
@@ -314,7 +310,7 @@ function AssistantScreenshotPanel({ item }) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex flex-col gap-2 w-full items-stretch"
+        className="flex flex-col gap-1.5 w-full items-stretch"
       >
         <img
           src={hero}
@@ -367,7 +363,7 @@ function ScreenshotPanel({ item }) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="grid w-full gap-2"
+          className="grid w-full gap-1.5"
         >
           <img
             src={hero}
@@ -399,7 +395,7 @@ function ScreenshotPanel({ item }) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="grid w-full gap-2"
+          className="grid w-full gap-1.5"
         >
           <img
             src={hero}
@@ -430,15 +426,15 @@ function ScreenshotPanel({ item }) {
           animate={{ opacity: 1 }}
           className="w-full"
         >
-          <motion.div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-rows-2 sm:aspect-[2/1] gap-2">
+          <motion.div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2">
             {tiles.map((tile, index) => (
               <motion.div
                 key={tile.src}
-                className="flex flex-col bg-[#0a0a0a] overflow-hidden aspect-[16/10] sm:aspect-auto sm:h-full rounded"
+                className="flex flex-col overflow-hidden rounded bg-[#0a0a0a]"
               >
                 <motion.div
-                  className={`flex flex-1 items-center justify-center min-h-0 ${
-                    index === calloutIndex ? 'px-2 pt-2 pb-0' : 'p-2'
+                  className={`flex items-start justify-center ${
+                    index === calloutIndex ? 'px-1.5 pt-1.5 pb-0' : 'p-1.5'
                   }`}
                 >
                   <img
@@ -477,8 +473,8 @@ function ScreenshotPanel({ item }) {
       layout === 'pair'
         ? 'grid grid-cols-1 sm:grid-cols-2 gap-2 w-full items-start'
         : layout === 'stack'
-          ? 'flex flex-col gap-2 w-full items-stretch'
-          : 'flex w-full items-center justify-center'
+          ? 'flex flex-col gap-1.5 w-full items-stretch'
+          : 'w-full'
 
     return (
       <motion.div
@@ -788,13 +784,13 @@ export default function InsuranceManagerModal({ open, onClose }) {
                       }`}
                     >
                       <motion.div
-                        className={`bg-[#151515] ${item.compact ? 'p-4 md:p-8' : 'p-4 md:p-7'}`}
+                        className={`bg-[#151515] ${item.compact ? 'p-3 md:p-6' : 'p-3 md:p-5'}`}
                         whileHover={{ backgroundColor: '#181818' }}
                         transition={{ duration: 0.25 }}
                       >
-                        <motion.div
-                          className={`rounded-lg border border-[#303030] bg-[#111111] p-2 flex items-start justify-center ${getScreenshotFrameClass(item)}`}
-                        >
+                      <motion.div
+                        className={`rounded-lg border border-[#303030] bg-[#111111] p-1.5 ${getScreenshotFrameClass(item)}`}
+                      >
                           <ScreenshotPanel item={item} />
                         </motion.div>
                       </motion.div>

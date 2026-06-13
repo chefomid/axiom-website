@@ -1,15 +1,24 @@
 import organizeHandler from '../api/careers/organize.js'
+import organizeInfoHandler from '../api/careers/organize/info.js'
 import applyHandler from '../api/careers/apply.js'
+import adminSubmissionsHandler from '../api/careers/admin/submissions.js'
+import adminSubmissionHandler from '../api/careers/admin/submission.js'
+import adminExportHandler from '../api/careers/admin/export.js'
+import adminResumeHandler from '../api/careers/admin/resume.js'
 
-function readJsonBody(req) {
+function readBody(req) {
   return new Promise((resolve, reject) => {
     let raw = ''
     req.on('data', chunk => {
       raw += chunk
     })
     req.on('end', () => {
+      if (!raw) {
+        resolve({})
+        return
+      }
       try {
-        resolve(raw ? JSON.parse(raw) : {})
+        resolve(JSON.parse(raw))
       } catch (err) {
         reject(err)
       }
@@ -20,22 +29,56 @@ function readJsonBody(req) {
 
 function createMockRes(nodeRes) {
   let statusCode = 200
+  const headers = {}
+
   return {
     status(code) {
       statusCode = code
       return this
     },
+    setHeader(name, value) {
+      headers[name] = value
+      return this
+    },
     json(payload) {
       nodeRes.statusCode = statusCode
+      for (const [name, value] of Object.entries(headers)) {
+        nodeRes.setHeader(name, value)
+      }
       nodeRes.setHeader('Content-Type', 'application/json')
       nodeRes.end(JSON.stringify(payload))
+    },
+    send(payload) {
+      nodeRes.statusCode = statusCode
+      for (const [name, value] of Object.entries(headers)) {
+        nodeRes.setHeader(name, value)
+      }
+      nodeRes.end(payload)
+    },
+    end(payload) {
+      nodeRes.statusCode = statusCode
+      for (const [name, value] of Object.entries(headers)) {
+        nodeRes.setHeader(name, value)
+      }
+      nodeRes.end(payload)
     },
   }
 }
 
-const ROUTES = {
+const GET_ROUTES = {
+  '/api/careers/organize/info': organizeInfoHandler,
+}
+
+const POST_ROUTES = {
   '/api/careers/organize': organizeHandler,
   '/api/careers/apply': applyHandler,
+}
+
+const ADMIN_ROUTES = {
+  '/api/careers/admin/submissions': adminSubmissionsHandler,
+  '/api/careers/admin/submission': adminSubmissionHandler,
+  '/api/careers/admin/export': adminExportHandler,
+  '/api/careers/admin/resume': adminResumeHandler,
 }
 
 /** Serve Vercel careers API routes during Vite dev. */
@@ -44,21 +87,47 @@ export function careersApiDevPlugin() {
     name: 'careers-api-dev',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (req.method !== 'POST') {
+        const path = req.url?.split('?')[0] ?? ''
+        const isPost = req.method === 'POST'
+        const isGet = req.method === 'GET'
+        const isPatch = req.method === 'PATCH'
+
+        const postHandler = isPost ? POST_ROUTES[path] : null
+        const getHandler = isGet ? GET_ROUTES[path] : null
+        const adminHandler = ADMIN_ROUTES[path]
+
+        if (!postHandler && !getHandler && !adminHandler) {
           next()
           return
         }
 
-        const path = req.url?.split('?')[0] ?? ''
-        const handler = ROUTES[path]
-        if (!handler) {
+        if (adminHandler && !(isGet || isPatch)) {
+          next()
+          return
+        }
+
+        if (getHandler && !isGet) {
+          next()
+          return
+        }
+
+        if (postHandler && !isPost) {
           next()
           return
         }
 
         try {
-          const body = await readJsonBody(req)
-          await handler({ method: 'POST', body }, createMockRes(res))
+          const body = isPost || isPatch ? await readBody(req) : {}
+          const handler = postHandler ?? getHandler ?? adminHandler
+          await handler(
+            {
+              method: req.method,
+              body,
+              url: req.url,
+              headers: req.headers,
+            },
+            createMockRes(res),
+          )
         } catch (err) {
           console.error(`[careers-api-dev] ${path}:`, err)
           res.statusCode = 500

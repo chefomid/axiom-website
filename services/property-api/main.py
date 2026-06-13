@@ -34,10 +34,13 @@ from planner.quote import _api_key_configured, build_quote, warnings_for_selecti
 from engine.executor import merge_source_urls
 from planner.runner import run_report
 from source_discovery.discover import discover_source_urls
+from source_discovery.resolve import auto_resolve_crawl_urls
 from source_discovery.cache import get_discovery
 from registry_loader import (
     default_selected_ids,
     get_categories,
+    get_margin_multiplier,
+    get_minimum_charge,
     get_presets,
     get_source_by_id,
     get_sources,
@@ -101,6 +104,7 @@ class DiscoverSourceUrlsResponse(BaseModel):
     urls: dict[str, dict[str, Any]]
     discover_available: bool
     message: str | None = None
+    warnings: list[str] = Field(default_factory=list)
     receipt: dict[str, Any]
     cached: bool = False
 
@@ -152,6 +156,10 @@ class EnrichResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     cope: dict[str, Any] | None = None
     conflicts: list[dict[str, Any]] = Field(default_factory=list)
+    vision_analysis: dict[str, Any] | None = None
+    statement_of_values: dict[str, Any] | None = None
+    sov_digest_md: str | None = None
+    sov_analysis: dict[str, Any] | None = None
 
 
 class ReportSessionCreate(BaseModel):
@@ -236,6 +244,8 @@ def _catalog_payload() -> dict[str, Any]:
         "presets": get_presets(),
         "vendors": get_vendors(),
         "default_selected": [s for s in default_selected_ids() if s != "geocode_census"],
+        "margin_multiplier": get_margin_multiplier(),
+        "minimum_charge_usd": get_minimum_charge(),
     }
 
 
@@ -250,6 +260,7 @@ def _build_final_receipt(
     line_items = []
     api_charged = 0.0
     service_charged = 0.0
+    multiplier = quote["totals"]["margin_multiplier"]
 
     for item in quote["line_items"]:
         src = get_source_by_id(item["source_id"])
@@ -264,6 +275,8 @@ def _build_final_receipt(
             charged = False
         api_charged += api_cost
         service_charged += svc_cost
+        loaded_line = api_cost + svc_cost
+        user_line = round(loaded_line * multiplier, 2) if charged and status == "success" and loaded_line > 0 else 0.0
         line_items.append(
             {
                 **item,
@@ -271,16 +284,19 @@ def _build_final_receipt(
                 "charged": charged and status == "success",
                 "api_cost_usd": api_cost,
                 "service_cost_usd": svc_cost,
+                "loaded_cost_usd": round(loaded_line, 2),
+                "user_price_usd": user_line,
                 "message": run.message if run else None,
             }
         )
 
     loaded = api_charged + service_charged
-    multiplier = quote["totals"]["margin_multiplier"]
     user_price = round(loaded * multiplier, 2)
-    min_charge = quote["totals"].get("minimum_charge_usd") or 0.99
+    min_charge = quote["totals"].get("minimum_charge_usd") or get_minimum_charge()
+    minimum_charge_applied = False
     if api_charged > 0 and user_price < min_charge:
         user_price = min_charge
+        minimum_charge_applied = True
 
     wallet_on = billing_enabled() and billing_db.is_ready()
     if wallet_on and credits_charged > 0:
@@ -302,6 +318,8 @@ def _build_final_receipt(
             "service_cost_usd": round(service_charged, 2),
             "loaded_cost_usd": round(loaded, 2),
             "margin_multiplier": multiplier,
+            "minimum_charge_usd": min_charge,
+            "minimum_charge_applied": minimum_charge_applied,
             "user_price_usd": user_price,
             "credits_charged": credits_charged,
             "charged": charged_flag,
@@ -512,24 +530,40 @@ async def enrich(body: EnrichRequest):
         legacy_source_url=source_url_str,
         crawl_source_ids=crawl_ids,
     )
-    has_crawl_urls = bool(merged_urls)
     crawl_excerpt: str | None = None
+    discovery_warnings: list[str] = []
+    post_context: dict[str, Any] = {}
 
-    async def crawl_fn(url: str):
-        nonlocal crawl_excerpt
-        excerpt, meta = await crawl_url(url)
-        if excerpt:
-            crawl_excerpt = excerpt
-        return excerpt, meta
+    headers = {"User-Agent": "AXIOM-PropertyIntelligence/0.4"}
+    async with httpx.AsyncClient(headers=headers, follow_redirects=True) as discovery_client:
+        if crawl_ids:
+            merged_urls, discovery_warnings = await auto_resolve_crawl_urls(
+                address=body.address.strip(),
+                geo=geo,
+                crawl_source_ids=crawl_ids,
+                existing_urls=merged_urls,
+                client=discovery_client,
+            )
 
-    geo_result, run_results = await run_report(
-        address=body.address.strip(),
-        selected_sources=resolved,
-        source_url=source_url_str,
-        source_urls=merged_urls,
-        crawl_fn=crawl_fn if has_crawl_urls else None,
-        extract_fn=extract_simple_facts,
-    )
+        has_crawl_urls = any(merged_urls.get(sid) for sid in crawl_ids)
+
+        async def crawl_fn(url: str):
+            nonlocal crawl_excerpt
+            excerpt, meta = await crawl_url(url)
+            if excerpt:
+                crawl_excerpt = excerpt
+                post_context["crawl_excerpt"] = excerpt
+            return excerpt, meta
+
+        geo_result, run_results = await run_report(
+            address=body.address.strip(),
+            selected_sources=resolved,
+            source_url=source_url_str,
+            source_urls=merged_urls,
+            crawl_fn=crawl_fn if has_crawl_urls else None,
+            extract_fn=extract_simple_facts,
+            post_context=post_context,
+        )
 
     from engine.models import SourceRunResult
 
@@ -567,13 +601,24 @@ async def enrich(body: EnrichRequest):
     field_dicts = [f.model_dump() for f in all_fields]
     cope_snapshot = None
     conflicts: list[dict[str, Any]] = []
+    statement_of_values: dict[str, Any] | None = None
+    sov_digest_md: str | None = None
+    sov_analysis: dict[str, Any] | None = None
     if "cope_map" in resolved:
         observations = collect_observations_from_results(run_results)
         trusted, conflicts = resolve_all(observations)
-        llm_run = next((r for r in run_results if r.source_id == "llm_conflict_resolve"), None)
-        if llm_run and llm_run.trusted_values:
-            trusted = llm_run.trusted_values
-            conflicts = llm_run.conflicts_override or conflicts
+        sov_run = next((r for r in run_results if r.source_id == "sov_orchestrator"), None)
+        if sov_run and sov_run.trusted_values:
+            trusted = sov_run.trusted_values
+            conflicts = sov_run.conflicts_override or conflicts
+        if sov_run and sov_run.analysis:
+            statement_of_values = sov_run.analysis.get("statement_of_values")
+            sov_digest_md = sov_run.analysis.get("sov_digest_md")
+            sov_analysis = {
+                k: sov_run.analysis.get(k)
+                for k in ("discrepancies", "enrichments", "underwriter_notes", "summary", "agent_trace")
+                if sov_run.analysis.get(k) is not None
+            }
         cope_snapshot = build_cope_snapshot_from_trusted(trusted, conflicts=conflicts)
 
     if success_count <= 1 and fail_count > 0:
@@ -586,7 +631,12 @@ async def enrich(body: EnrichRequest):
         status = "enriched"
         message = f"Report {report_id}: {success_count} source(s) completed."
 
-    warnings = warnings_for_selection(resolved)
+    warnings = [*warnings_for_selection(resolved), *discovery_warnings]
+
+    vision_analysis: dict[str, Any] | None = None
+    vision_run = next((r for r in run_results if r.source_id == "vision_construction"), None)
+    if vision_run and vision_run.analysis:
+        vision_analysis = vision_run.analysis
 
     return EnrichResponse(
         report_id=report_id,
@@ -605,6 +655,10 @@ async def enrich(body: EnrichRequest):
         warnings=warnings,
         cope=cope_snapshot,
         conflicts=conflicts,
+        vision_analysis=vision_analysis,
+        statement_of_values=statement_of_values,
+        sov_digest_md=sov_digest_md,
+        sov_analysis=sov_analysis,
     )
 
 

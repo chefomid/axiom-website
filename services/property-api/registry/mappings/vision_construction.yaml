@@ -1,0 +1,16 @@
+construction_type:
+  path: constructionType
+  type: string
+  confidence: medium
+iso_construction_class:
+  path: isoConstructionClass
+  type: string
+  confidence: low
+roof_type:
+  path: roofType
+  type: string
+  confidence: medium
+stories:
+  path: stories
+  type: stories
+  confidence: low

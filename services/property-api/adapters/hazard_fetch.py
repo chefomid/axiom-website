@@ -1,4 +1,4 @@
-"""Server-side hazard and environment adapters for property enrichment."""
+"""Server-side hazard fetch helpers for property enrichment."""
 
 from __future__ import annotations
 
@@ -200,3 +200,54 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     dlng = math.radians(lng2 - lng1)
     a = math.sin(dlat / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlng / 2) ** 2
     return r * 2 * math.asin(math.sqrt(a))
+
+
+async def fetch_epa_echo(client: httpx.AsyncClient, lat: float, lng: float) -> dict[str, Any]:
+    """Nearby EPA-regulated facilities via ECHO REST (aggregate counts within ~1.25 mi)."""
+    url = "https://echodata.epa.gov/echo/echo_rest_services.get_facilities"
+    params = {
+        "p_lat": lat,
+        "p_long": lng,
+        "p_radius": 1.25,
+        "output": "JSON",
+    }
+    try:
+        r = await client.get(url, params=params, timeout=20.0)
+        r.raise_for_status()
+        payload = r.json()
+        results = payload.get("Results") or {}
+        if results.get("Error"):
+            err = results["Error"]
+            message = err.get("ErrorMessage") if isinstance(err, dict) else str(err)
+            return {"summary": None, "error": message or "EPA ECHO query failed"}
+
+        total = int(results.get("QueryRows") or 0)
+        if total <= 0:
+            return {
+                "count": 0,
+                "summary": "No EPA-regulated facilities within ~1.25 mi",
+                "programs": {},
+            }
+
+        programs = {
+            "air": int(results.get("CAARows") or 0),
+            "water": int(results.get("CWARows") or 0),
+            "waste": int(results.get("RCRRows") or 0),
+            "toxic_release": int(results.get("TRIRows") or 0),
+        }
+        active = [f"{count} {label}" for label, count in [
+            ("CAA", programs["air"]),
+            ("CWA", programs["water"]),
+            ("RCRA", programs["waste"]),
+            ("TRI", programs["toxic_release"]),
+        ] if count > 0]
+        program_text = ", ".join(active) if active else "mixed programs"
+        summary = f"{total} EPA-regulated facilit{'y' if total == 1 else 'ies'} within ~1.25 mi ({program_text})"
+        return {
+            "count": total,
+            "summary": summary,
+            "programs": programs,
+            "radius_miles": 1.25,
+        }
+    except Exception as e:
+        return {"count": 0, "summary": None, "error": str(e)}

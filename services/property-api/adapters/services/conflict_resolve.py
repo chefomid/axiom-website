@@ -1,4 +1,7 @@
-"""LLM-assisted conflict resolution for semantic field disagreements."""
+"""LLM-assisted conflict resolution for semantic field disagreements.
+
+DEPRECATED: Replaced by agents/sov_orchestrator (sov_orchestrator source).
+"""
 
 from __future__ import annotations
 

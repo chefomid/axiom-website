@@ -1,0 +1,17 @@
+{
+  "critical_fields": ["year_built", "square_footage", "stories", "construction_type", "property_type"],
+  "fields": [
+    { "id": "year_built", "label": "Year built", "lanes": ["vendor_api", "online_public"] },
+    { "id": "square_footage", "label": "Building sq ft", "lanes": ["vendor_api", "online_public"] },
+    { "id": "stories", "label": "Number of stories", "lanes": ["vendor_api", "online_public", "visual_ai"] },
+    { "id": "construction_type", "label": "Construction type", "lanes": ["vendor_api", "online_public", "visual_ai"] },
+    { "id": "iso_construction_class", "label": "ISO construction class", "lanes": ["vendor_api", "online_public", "visual_ai"] },
+    { "id": "roof_type", "label": "Roof type", "lanes": ["vendor_api", "online_public", "visual_ai"] },
+    { "id": "property_type", "label": "Property type", "lanes": ["vendor_api", "online_public"] },
+    { "id": "parcel_number", "label": "Parcel / APN", "lanes": ["vendor_api", "online_public"] },
+    { "id": "owner_name", "label": "Owner of record", "lanes": ["vendor_api", "online_public"] },
+    { "id": "zoning", "label": "Zoning / land use", "lanes": ["vendor_api", "online_public"] },
+    { "id": "occupancy_use", "label": "Occupancy / use code", "lanes": ["vendor_api", "online_public"] },
+    { "id": "assessed_value", "label": "Assessed value", "lanes": ["vendor_api", "online_public"] }
+  ]
+}

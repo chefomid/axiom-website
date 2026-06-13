@@ -8,13 +8,18 @@ from typing import Any
 
 import httpx
 
-from llm.openai_client import openai_api_key, responses_with_web_search
+from llm.openai_client import format_openai_http_error, openai_api_key, responses_with_web_search
 from registry_loader import get_margin_multiplier, get_minimum_charge, get_source_by_id
 from source_discovery.cache import get_discovery, set_discovery
 from source_discovery.url_validate import validate_public_https_url, verify_url_reachable
 
 DISCOVER_API_COST_USD = 0.03
 DISCOVER_SERVICE_COST_USD = 0.07
+
+SOURCE_LABELS: dict[str, str] = {
+    "assessor_crawl": "County assessor page",
+    "permit_crawl": "Permit portal",
+}
 
 CRAWL_SOURCE_PROMPTS: dict[str, str] = {
     "assessor_crawl": (
@@ -37,6 +42,23 @@ Reply with JSON only, no markdown fences:
   "permit_crawl": { "url": "https://...", "label": "...", "confidence": "high|medium|low", "reason": "..." }
 }
 Include only keys that were requested. If you cannot find a reliable URL for a key, omit that key."""
+
+
+def _source_label(source_id: str) -> str:
+    src = get_source_by_id(source_id) or {}
+    return SOURCE_LABELS.get(source_id) or src.get("label") or source_id.replace("_", " ")
+
+
+def _humanize_discovery_issue(source_id: str, detail: str) -> str:
+    label = _source_label(source_id)
+    lowered = detail.lower()
+    if detail.startswith("No URL found"):
+        return f"Couldn't find a {label.lower()} for this address."
+    if "url is empty" in lowered or "invalid url" in lowered:
+        return f"{label}: Link was invalid."
+    if "must use https" in lowered:
+        return f"{label}: Only secure HTTPS links are accepted."
+    return f"{label}: {detail}"
 
 
 def discovery_receipt() -> dict[str, float]:
@@ -86,6 +108,7 @@ async def discover_source_urls(
     geo: dict[str, Any],
     crawl_source_ids: list[str],
     client: httpx.AsyncClient,
+    strict_reachability: bool = True,
 ) -> dict[str, Any]:
     """
     Return discovery payload: urls, discover_available, message, receipt, cached.
@@ -98,6 +121,7 @@ async def discover_source_urls(
             "urls": {},
             "discover_available": bool(api_key),
             "message": "No crawl sources selected",
+            "warnings": [],
             "receipt": receipt,
             "cached": False,
         }
@@ -107,6 +131,7 @@ async def discover_source_urls(
             "urls": {},
             "discover_available": False,
             "message": "AI discovery unavailable — add OPENAI_API_KEY to server .env",
+            "warnings": [],
             "receipt": receipt,
             "cached": False,
         }
@@ -146,11 +171,11 @@ async def discover_source_urls(
             user_input=user_input,
         )
     except httpx.HTTPStatusError as e:
-        detail = e.response.text[:200] if e.response else str(e)
         return {
             "urls": {},
             "discover_available": True,
-            "message": f"AI discovery failed: {detail}",
+            "message": format_openai_http_error(e, context="AI discovery"),
+            "warnings": [],
             "receipt": receipt,
             "cached": False,
         }
@@ -159,6 +184,7 @@ async def discover_source_urls(
             "urls": {},
             "discover_available": True,
             "message": f"AI discovery failed: {e}",
+            "warnings": [],
             "receipt": receipt,
             "cached": False,
         }
@@ -170,29 +196,48 @@ async def discover_source_urls(
     for sid in crawl_source_ids:
         candidate = parsed.get(sid)
         if not candidate:
-            errors.append(f"No URL found for {sid}")
+            errors.append(_humanize_discovery_issue(sid, f"No URL found for {sid}"))
             continue
         url = candidate["url"]
         err = validate_public_https_url(url)
         if err:
-            errors.append(f"{sid}: {err}")
+            errors.append(_humanize_discovery_issue(sid, err))
             continue
-        reach_err = await verify_url_reachable(client, url)
-        if reach_err:
-            errors.append(f"{sid}: {reach_err}")
-            continue
+        reach_err = None
+        if strict_reachability:
+            reach_err = await verify_url_reachable(client, url)
+            if reach_err:
+                errors.append(_humanize_discovery_issue(sid, reach_err))
+                continue
+        else:
+            reach_err = await verify_url_reachable(client, url)
+            if reach_err:
+                candidate = {
+                    **candidate,
+                    "confidence": "low",
+                    "reason": reach_err,
+                }
+                errors.append(_humanize_discovery_issue(sid, reach_err))
         validated[sid] = candidate
 
+    warnings = list(errors)
     message = None
     if errors and not validated:
-        message = "; ".join(errors)
+        message = (
+            warnings[0]
+            if len(warnings) == 1
+            else "Couldn't verify public record pages for this address."
+        )
     elif errors:
-        message = "Partial results: " + "; ".join(errors)
+        filled = len(validated)
+        total = len(crawl_source_ids)
+        message = f"Resolved {filled} of {total} public record pages automatically."
 
     payload = {
         "urls": validated,
         "discover_available": True,
         "message": message,
+        "warnings": warnings,
         "receipt": receipt,
         "cached": False,
     }

@@ -27,3 +27,19 @@ parcel_number:
   path: parcelNumber
   type: string
   confidence: high
+stories:
+  path: stories
+  type: stories
+  confidence: medium
+roof_type:
+  path: roofType
+  type: string
+  confidence: medium
+zoning:
+  path: zoning
+  type: string
+  confidence: medium
+occupancy_use:
+  path: occupancyUse
+  type: string
+  confidence: medium

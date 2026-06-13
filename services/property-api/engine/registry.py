@@ -18,8 +18,10 @@ def _build_registry() -> dict[str, SourceAdapter]:
     from adapters.osint.osm import OsmFootprintAdapter
     from adapters.osint.poi import PoiExposureAdapter
     from adapters.osint.stubs import CountyParcelStubAdapter, OpenAddressesStubAdapter
-    from adapters.services.conflict_resolve import LlmConflictResolveAdapter
+    from adapters.services.sov_orchestrator import SovOrchestratorAdapter
     from adapters.services.post_process import PostProcessAdapter
+    from adapters.services.vision_construction import VisionConstructionAdapter
+    from adapters.services.web_property_research import WebPropertyResearchAdapter
     from adapters.vendors.attom import AttomHazardAdapter, AttomPropertyAdapter
     from adapters.vendors.corelogic import CoreLogicPropertyAdapter, CoreLogicSpatialAdapter
     from adapters.vendors.firststreet import FirstStreetAdapter
@@ -53,7 +55,9 @@ def _build_registry() -> dict[str, SourceAdapter]:
         PostProcessAdapter("cope_map"),
         PostProcessAdapter("pdf_dossier"),
         PostProcessAdapter("llm_extract"),
-        LlmConflictResolveAdapter(),
+        SovOrchestratorAdapter(),
+        WebPropertyResearchAdapter(),
+        VisionConstructionAdapter(),
     ]
     return {a.source_id: a for a in adapters}
 

@@ -46,6 +46,7 @@ class SourceCache:
             charged=False,
             latency_ms=0,
             cache_hit=True,
+            analysis=dict(result.analysis) if result.analysis else None,
         )
         return cached
 

@@ -9,8 +9,10 @@ import ReportPrint from './pages/ReportPrint'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import CookiePolicy from './pages/CookiePolicy'
 import Careers from './pages/Careers'
+import CareersAdmin from './pages/CareersAdmin'
 import BetterWorld from './pages/BetterWorld'
 import {
+  CAREERS_ADMIN_PATH,
   CAREERS_PATH,
   COOKIE_POLICY_PATH,
   LEGACY_BETTER_WORLD_PATH,
@@ -37,6 +39,7 @@ const router = createBrowserRouter([
       },
       { path: REPORT_PRINT_PATH, element: <ReportPrint /> },
       { path: CAREERS_PATH, element: <Careers /> },
+      { path: CAREERS_ADMIN_PATH, element: <CareersAdmin /> },
       { path: PRIVACY_POLICY_PATH, element: <PrivacyPolicy /> },
       { path: COOKIE_POLICY_PATH, element: <CookiePolicy /> },
       {

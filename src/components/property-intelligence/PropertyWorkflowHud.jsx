@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import PropertySearchBar from './PropertySearchBar'
 import IntentPackagePicker from './IntentPackagePicker'
@@ -6,18 +6,14 @@ import SourceCatalogPanel from './SourceCatalogPanel'
 import PublicSourcePanel from './PublicSourcePanel'
 import WorkflowGenerateButton from './WorkflowGenerateButton'
 import IntelligencePanelContent from './IntelligencePanelContent'
-import {
-  WORKFLOW_CTL,
-  WORKFLOW_CTL_NEUTRAL,
-  WORKFLOW_HUD_WIDTH_DOCKED,
-} from './workflowControls'
+import { WORKFLOW_HUD_WIDTH_DOCKED } from './workflowControls'
 
-function CollapseIcon({ collapsed }) {
+function ChevronIcon({ expanded }) {
   return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" aria-hidden>
-      {collapsed ? (
+    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden>
+      {expanded ? (
         <path
-          d="m8 5 5 5-5"
+          d="m12 5-5 5 5"
           stroke="currentColor"
           strokeWidth="1.5"
           strokeLinecap="round"
@@ -25,7 +21,7 @@ function CollapseIcon({ collapsed }) {
         />
       ) : (
         <path
-          d="m12 5-5 5 5"
+          d="m8 5 5 5-5"
           stroke="currentColor"
           strokeWidth="1.5"
           strokeLinecap="round"
@@ -77,7 +73,6 @@ export default function PropertyWorkflowHud({
   quoteError,
 }) {
   const [sourcesOpen, setSourcesOpen] = useState(false)
-  const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [sourcesTab, setSourcesTab] = useState('sources')
   const sourcesRef = useRef(null)
 
@@ -98,73 +93,142 @@ export default function PropertyWorkflowHud({
     }
   }, [sourcesOpen])
 
-  const togglePanelCollapsed = useCallback(() => {
-    setPanelCollapsed(v => !v)
-    setSourcesOpen(false)
-  }, [])
-
   useEffect(() => {
-    if (panelCollapsed || sourcesOpen) return undefined
-    const onKey = e => {
-      if (e.key === 'Escape') setPanelCollapsed(true)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [panelCollapsed, sourcesOpen])
+    if (locationLocked) return
+    setSourcesOpen(false)
+  }, [locationLocked])
 
   const sourceCount = selectedSources?.length ?? 0
   const hasPublicUrls = requiredUrlIds.length > 0
 
   return (
     <aside
-      className={`workflow-sidebar side-panel side-panel--compact side-panel--fill sleek-scrollbar shrink-0 ${panelCollapsed ? 'workflow-sidebar--collapsed' : ''} ${sourcesOpen ? 'workflow-sidebar--sources-open' : ''}`}
-      style={panelCollapsed ? undefined : { width: WORKFLOW_HUD_WIDTH_DOCKED }}
+      className={`workflow-sidebar side-panel side-panel--compact side-panel--fill sleek-scrollbar shrink-0 ${sourcesOpen ? 'workflow-sidebar--sources-open' : ''}`}
+      style={{ width: WORKFLOW_HUD_WIDTH_DOCKED }}
     >
-      {panelCollapsed ? (
-        <button
-          type="button"
-          onClick={togglePanelCollapsed}
-          className="workflow-sidebar__rail"
-          aria-expanded={false}
-          aria-label="Open workflow panel"
-          title="Open workflow panel"
-        >
-          <CollapseIcon collapsed />
-        </button>
-      ) : (
-        <>
-          <header ref={sourcesRef} className="workflow-sidebar__toolbar">
-            <div className="workflow-sidebar__toolbar-row">
+      <div className="side-panel-content workflow-sidebar__body sleek-scrollbar flex min-h-0 flex-1 flex-col">
+        {billingNotice ? (
+          <div className="side-panel-section shrink-0 px-0 pt-0">
+            <div className="shrink-0 rounded border border-command-stable/30 bg-command-stable/10 px-3 py-2">
+              <p className="font-mono text-[9px] leading-snug text-command-stable">{billingNotice}</p>
               <button
                 type="button"
-                onClick={togglePanelCollapsed}
-                className={`${WORKFLOW_CTL} ${WORKFLOW_CTL_NEUTRAL}`}
-                aria-expanded
-                aria-label="Collapse panel"
-                title="Collapse panel"
+                onClick={onDismissBillingNotice}
+                className="mt-1 font-mono text-[8px] uppercase tracking-wider text-ink-faint hover:text-ink-secondary"
               >
-                <CollapseIcon collapsed={false} />
+                Dismiss
               </button>
-
-              {locationLocked ? (
-                <button
-                  type="button"
-                  onClick={() => setSourcesOpen(v => !v)}
-                  className={`${WORKFLOW_CTL} ml-auto ${
-                    sourcesOpen
-                      ? 'border-command-watch/50 bg-command-watch/10 text-command-watch'
-                      : WORKFLOW_CTL_NEUTRAL
-                  }`}
-                  aria-expanded={sourcesOpen}
-                >
-                  Sources
-                  <span className="tabular-nums text-ink-faint">{sourceCount}</span>
-                </button>
-              ) : null}
             </div>
+          </div>
+        ) : null}
 
-            {locationLocked && sourcesOpen ? (
-              <div className="workflow-sidebar__sources-popover">
+        {presetNotice ? (
+          <div className="side-panel-section shrink-0 px-0">
+            <div className="shrink-0 rounded border border-command-watch/30 bg-command-watch/10 px-3 py-2">
+              <p className="font-mono text-[9px] leading-snug text-command-watch">{presetNotice}</p>
+              <button
+                type="button"
+                onClick={onDismissPresetNotice}
+                className="mt-1 font-mono text-[8px] uppercase tracking-wider text-ink-faint hover:text-ink-secondary"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <section className="side-panel-section shrink-0 border-b-0 pb-2" aria-label="Property location">
+          <h2 className="side-panel-title">Property Input</h2>
+          {!locationLocked ? (
+            <p className="side-panel-copy mb-2">
+              Enter an address or use your location. The map unlocks once the property is locked.
+            </p>
+          ) : null}
+
+          <PropertySearchBar
+            address={address}
+            loading={loadingReport}
+            locationPhase={locationPhase}
+            locationError={locationError}
+            locateSuccess={locateSuccess}
+            onAddressChange={onAddressChange}
+            onAddressSelect={onAddressSelect}
+            onMyLocation={onMyLocation}
+            onClear={onClear}
+            onSearchingChange={onSearchingChange}
+            compact
+          />
+        </section>
+
+        {locationLocked ? (
+          <section className="side-panel-section shrink-0 border-b-0 pb-2" aria-label="Data package">
+            <h2 className="side-panel-title">Data Package</h2>
+            <IntentPackagePicker
+              layout="sidebar"
+              presets={presets}
+              catalog={catalog}
+              activePresetId={activePresetId}
+              selectedSources={selectedSources}
+              quote={quote}
+              loadingQuote={loadingQuote}
+              onToggleSource={onToggleSource}
+              onApply={onApply}
+              disabled={disabled}
+              locationLocked={locationLocked}
+            />
+          </section>
+        ) : null}
+
+        <IntelligencePanelContent
+          locationPhase={locationPhase}
+          locationLocked={locationLocked}
+          apiOnline={apiOnline}
+          loadingReport={loadingReport}
+          hasReport={hasReport}
+        />
+      </div>
+
+      <footer ref={sourcesRef} className="side-panel-footer workflow-sidebar__footer">
+        <WorkflowGenerateButton
+          quote={quoteSynced ? displayQuote : quote}
+          loading={loadingQuote}
+          onGenerate={onGenerate}
+          generateDisabled={generateDisabled || !locationLocked}
+          loadingReport={loadingReport}
+          address={address}
+          selectedCount={sourceCount}
+          locationLocked={locationLocked}
+          apiOnline={apiOnline}
+          hasReport={hasReport}
+          generateBlockReason={generateBlockReason}
+          enrichStatus={enrichStatus}
+          fullWidth
+          variant="intelligence"
+        />
+
+        {locationLocked ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setSourcesOpen(v => !v)}
+              className={`workflow-sidebar__sources-toggle ${sourcesOpen ? 'workflow-sidebar__sources-toggle--open' : ''}`}
+              aria-expanded={sourcesOpen}
+              aria-controls="workflow-sources-drawer"
+            >
+              <span>Review Data Sources</span>
+              <span className="workflow-sidebar__sources-toggle-meta">
+                <span className="tabular-nums text-ink-faint">{sourceCount}</span>
+                <ChevronIcon expanded={sourcesOpen} />
+              </span>
+            </button>
+
+            {sourcesOpen ? (
+              <div
+                id="workflow-sources-drawer"
+                className="workflow-sidebar__sources-drawer"
+                role="region"
+                aria-label="Data source selection"
+              >
                 {hasPublicUrls ? (
                   <div className="flex shrink-0 gap-1 border-b border-panel-border/70 px-2 py-2">
                     <button
@@ -191,7 +255,7 @@ export default function PropertyWorkflowHud({
                     </button>
                   </div>
                 ) : null}
-                <div className="workflow-sidebar__sources-popover-body">
+                <div className="workflow-sidebar__sources-drawer-body">
                   {sourcesTab === 'urls' && hasPublicUrls ? (
                     <PublicSourcePanel
                       catalog={catalog}
@@ -219,121 +283,9 @@ export default function PropertyWorkflowHud({
                 </div>
               </div>
             ) : null}
-          </header>
-
-          <div className="side-panel-content workflow-sidebar__body sleek-scrollbar flex min-h-0 flex-1 flex-col">
-            {billingNotice ? (
-              <div className="side-panel-section shrink-0 px-0 pt-0">
-                <div className="shrink-0 rounded border border-command-stable/30 bg-command-stable/10 px-3 py-2">
-                  <p className="font-mono text-[9px] leading-snug text-command-stable">{billingNotice}</p>
-                  <button
-                    type="button"
-                    onClick={onDismissBillingNotice}
-                    className="mt-1 font-mono text-[8px] uppercase tracking-wider text-ink-faint hover:text-ink-secondary"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {presetNotice ? (
-              <div className="side-panel-section shrink-0 px-0">
-                <div className="shrink-0 rounded border border-command-watch/30 bg-command-watch/10 px-3 py-2">
-                  <p className="font-mono text-[9px] leading-snug text-command-watch">{presetNotice}</p>
-                  <button
-                    type="button"
-                    onClick={onDismissPresetNotice}
-                    className="mt-1 font-mono text-[8px] uppercase tracking-wider text-ink-faint hover:text-ink-secondary"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            <section className="side-panel-section shrink-0 border-b-0 pb-2" aria-label="Property location">
-              <h2 className="side-panel-title">Property Input</h2>
-              {!locationLocked ? (
-                <p className="side-panel-copy mb-2">
-                  Enter an address or use your location. The map unlocks once the property is locked.
-                </p>
-              ) : null}
-
-              <PropertySearchBar
-                address={address}
-                loading={loadingReport}
-                locationPhase={locationPhase}
-                locationError={locationError}
-                locateSuccess={locateSuccess}
-                onAddressChange={onAddressChange}
-                onAddressSelect={onAddressSelect}
-                onMyLocation={onMyLocation}
-                onClear={onClear}
-                onSearchingChange={onSearchingChange}
-                compact
-              />
-            </section>
-
-            {locationLocked ? (
-              <section className="side-panel-section shrink-0 border-b-0 pb-2" aria-label="Data package">
-                <h2 className="side-panel-title">Data Package</h2>
-                <IntentPackagePicker
-                  layout="sidebar"
-                  presets={presets}
-                  catalog={catalog}
-                  activePresetId={activePresetId}
-                  selectedSources={selectedSources}
-                  quote={quote}
-                  loadingQuote={loadingQuote}
-                  onToggleSource={onToggleSource}
-                  onApply={onApply}
-                  disabled={disabled}
-                  locationLocked={locationLocked}
-                />
-              </section>
-            ) : null}
-
-            <IntelligencePanelContent
-              locationPhase={locationPhase}
-              locationLocked={locationLocked}
-              apiOnline={apiOnline}
-              loadingReport={loadingReport}
-              hasReport={hasReport}
-            />
-          </div>
-
-          <footer className="side-panel-footer workflow-sidebar__footer">
-            <WorkflowGenerateButton
-              quote={quoteSynced ? displayQuote : quote}
-              loading={loadingQuote}
-              onGenerate={onGenerate}
-              generateDisabled={generateDisabled || !locationLocked}
-              loadingReport={loadingReport}
-              address={address}
-              selectedCount={sourceCount}
-              locationLocked={locationLocked}
-              apiOnline={apiOnline}
-              hasReport={hasReport}
-              generateBlockReason={generateBlockReason}
-              enrichStatus={enrichStatus}
-              fullWidth
-              variant="intelligence"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (!locationLocked) return
-                setSourcesOpen(true)
-              }}
-              disabled={!locationLocked}
-              className="side-panel-secondary"
-            >
-              Review Data Sources
-            </button>
-          </footer>
-        </>
-      )}
+          </>
+        ) : null}
+      </footer>
     </aside>
   )
 }

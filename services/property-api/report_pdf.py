@@ -93,10 +93,12 @@ async def generate_pdf_bytes(session_id: str) -> bytes:
 async def pdf_response_for_document(document: dict[str, Any]) -> Response:
     pdf_bytes = await generate_pdf_from_document(document)
     slug = _slugify_location((document.get("meta") or {}).get("location"))
+    doc_type = (document.get("meta") or {}).get("type")
+    prefix = "cope-report" if doc_type == "cope" else "seismic-report"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="seismic-report-{slug}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{prefix}-{slug}.pdf"'},
     )
 
 

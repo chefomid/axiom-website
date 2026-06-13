@@ -28,6 +28,11 @@ def main() -> int:
         print(f"  [ok]   {key}")
     for key in payload["missing"]:
         print(f"  [MISS] {key}")
+    optional = payload.get("optional") or {}
+    if optional.get("google_maps"):
+        print("  [ok]   GOOGLE_MAPS_API_KEY (optional — Street View for image analysis)")
+    else:
+        print("  [opt]  GOOGLE_MAPS_API_KEY (optional — satellite-only image analysis without it)")
     print()
     if payload["all_configured"]:
         print("All vendor keys are set.")

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { organizeThoughts } from '../../services/careersApi'
+import { isCareersOrganizeLlmEnabled } from '../../config/features'
+import { organizeThoughts, fetchOrganizeModelInfo } from '../../services/careersApi'
+import { shouldUseLlmOrganize } from '../../utils/careersOrganize'
 import AiCpuIcon from '../ui/AiCpuIcon'
 
 const INPUT_CLASS =
@@ -504,32 +506,96 @@ function SpeechDictationControl({
     toggle,
     confirmRestart,
     cancelRestart,
-    clearReadyToOrganize,
   } = dictation
   const [polishing, setPolishing] = useState(false)
+  const [organizeFeedback, setOrganizeFeedback] = useState(null)
+  const [organizeModelLabel, setOrganizeModelLabel] = useState(null)
   const polishRunRef = useRef(0)
+  const feedbackTimerRef = useRef(null)
+  const lastOrganizedTextRef = useRef(null)
 
   const showOrganize =
-    readyToOrganize && !listening && Boolean(String(value ?? '').trim())
+    readyToOrganize &&
+    !listening &&
+    isCareersOrganizeLlmEnabled() &&
+    shouldUseLlmOrganize(value)
+
+  function clearFeedbackTimer() {
+    if (feedbackTimerRef.current) {
+      clearTimeout(feedbackTimerRef.current)
+      feedbackTimerRef.current = null
+    }
+  }
+
+  function showFeedback(kind) {
+    clearFeedbackTimer()
+    setOrganizeFeedback(kind)
+    feedbackTimerRef.current = setTimeout(() => {
+      setOrganizeFeedback(null)
+      feedbackTimerRef.current = null
+    }, 4000)
+  }
+
+  useEffect(() => {
+    if (!isCareersOrganizeLlmEnabled()) return
+    let cancelled = false
+    fetchOrganizeModelInfo().then(label => {
+      if (!cancelled) setOrganizeModelLabel(label)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => clearFeedbackTimer()
+  }, [])
+
+  useEffect(() => {
+    if (listening) {
+      clearFeedbackTimer()
+      setOrganizeFeedback(null)
+      lastOrganizedTextRef.current = null
+    }
+  }, [listening])
+
+  useEffect(() => {
+    if (polishing) return
+    const current = String(value ?? '')
+    if (
+      organizeFeedback &&
+      lastOrganizedTextRef.current !== null &&
+      current !== lastOrganizedTextRef.current
+    ) {
+      clearFeedbackTimer()
+      setOrganizeFeedback(null)
+      lastOrganizedTextRef.current = null
+    }
+  }, [value, polishing, organizeFeedback])
 
   function runOrganize() {
     const trimmed = String(value ?? '').trim()
     if (!trimmed || polishing) return
 
     const runId = ++polishRunRef.current
+    clearFeedbackTimer()
+    setOrganizeFeedback('polishing')
     setPolishing(true)
     onPolishingChange?.(true)
 
     organizeThoughts(trimmed, { question })
       .then(result => {
         if (polishRunRef.current !== runId) return
-        onOrganized(result?.text ?? trimmed)
-        clearReadyToOrganize()
+        const organized = result?.text ?? trimmed
+        onOrganized(organized)
+        lastOrganizedTextRef.current = organized
+        showFeedback(organized === trimmed ? 'unchanged' : 'tidied')
       })
       .catch(() => {
         if (polishRunRef.current !== runId) return
         onOrganized(trimmed)
-        clearReadyToOrganize()
+        lastOrganizedTextRef.current = trimmed
+        showFeedback('error')
       })
       .finally(() => {
         if (polishRunRef.current !== runId) return
@@ -539,6 +605,14 @@ function SpeechDictationControl({
   }
 
   if (!supported) return null
+
+  const modelLabel = organizeModelLabel ?? 'Nemotron Mini'
+  const organizeTooltip = polishing
+    ? `Organizing with ${modelLabel}\u2026`
+    : `Organize thoughts \u00b7 ${modelLabel}`
+  const organizeAriaLabel = polishing
+    ? `Organizing your answer with ${modelLabel}`
+    : `Organize thoughts with ${modelLabel}`
 
   return (
     <>
@@ -569,14 +643,14 @@ function SpeechDictationControl({
               onClick={runOrganize}
               disabled={polishing}
               aria-busy={polishing}
-              aria-label={polishing ? 'Organizing your answer' : 'Organize thoughts'}
+              aria-label={organizeAriaLabel}
               className={`field-icon-tooltip-btn axiom-ai-cpu-btn ${
                 polishing ? 'axiom-ai-cpu-btn--busy' : ''
               }`}
             >
               <AiCpuIcon size={20} strokeWidth={1.85} />
-              <span className="field-icon-tooltip" role="tooltip">
-                {polishing ? 'Organizing\u2026' : 'Organize thoughts'}
+              <span className="field-icon-tooltip field-icon-tooltip--model" role="tooltip">
+                {organizeTooltip}
               </span>
             </button>
           ) : null}
@@ -584,13 +658,28 @@ function SpeechDictationControl({
         {listening ? (
           <p className="mt-1.5 text-xs text-ink-muted">Words appear as you speak.</p>
         ) : null}
-        {showOrganize && !polishing ? (
+        {showOrganize && !polishing && !organizeFeedback ? (
           <p className="mt-1.5 text-xs text-ink-muted">
             Tap the CPU icon to tidy your wording without adding new details.
           </p>
         ) : null}
-        {polishing ? (
+        {organizeFeedback === 'polishing' || polishing ? (
           <p className="mt-1.5 text-xs text-ink-muted">Organizing your answer\u2026</p>
+        ) : null}
+        {organizeFeedback === 'tidied' ? (
+          <p className="mt-1.5 text-xs text-ink-muted" role="status">
+            Answer tidied.
+          </p>
+        ) : null}
+        {organizeFeedback === 'unchanged' ? (
+          <p className="mt-1.5 text-xs text-ink-muted" role="status">
+            Looks good — no changes needed.
+          </p>
+        ) : null}
+        {organizeFeedback === 'error' ? (
+          <p className="mt-1.5 text-xs text-command-critical" role="alert">
+            Could not reach organize — your words are unchanged.
+          </p>
         ) : null}
         {speechError ? (
           <p className="mt-1.5 text-xs text-command-critical" role="alert">

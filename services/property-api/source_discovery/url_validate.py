@@ -41,16 +41,32 @@ def validate_public_https_url(url: str) -> str | None:
     return None
 
 
+def humanize_http_status(status_code: int) -> str:
+    if status_code == 503:
+        return "Site is temporarily unavailable — paste the URL manually or try again later."
+    if status_code in (502, 504):
+        return "Site is not responding right now — paste the URL manually or try again later."
+    if status_code == 403:
+        return "Site blocked automated access — open it in your browser and paste the URL below."
+    if status_code == 404:
+        return "Page not found — the suggested link may be outdated."
+    if status_code >= 500:
+        return "Site returned a server error — paste the URL manually or try again later."
+    if status_code >= 400:
+        return "Could not open this page automatically — verify the link and paste it below."
+    return "Could not verify this page."
+
+
 async def verify_url_reachable(client: httpx.AsyncClient, url: str, *, timeout: float = 8.0) -> str | None:
-    """HEAD/GET check; return error message if unreachable."""
+    """HEAD/GET check; return user-facing error message if unreachable."""
     try:
         r = await client.head(url, timeout=timeout, follow_redirects=True)
         if r.status_code >= 400:
             r = await client.get(url, timeout=timeout, follow_redirects=True)
         if r.status_code >= 400:
-            return f"URL returned HTTP {r.status_code}"
+            return humanize_http_status(r.status_code)
     except httpx.TimeoutException:
-        return "URL timed out"
-    except Exception as e:
-        return f"URL not reachable: {e}"
+        return "Site took too long to respond — paste the URL manually or try again later."
+    except Exception:
+        return "Could not reach this site — paste the URL manually if you have it."
     return None

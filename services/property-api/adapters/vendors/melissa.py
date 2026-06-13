@@ -41,6 +41,10 @@ class MelissaPropertyAdapter(BaseAdapter):
                 "ownerName": primary.get("Name1Full"),
                 "assessedValue": rec.get("AssessedValueTotal"),
                 "parcelNumber": prop.get("ParcelNumber"),
+                "stories": rec.get("AreaStories") or rec.get("Stories"),
+                "roofType": rec.get("RoofMaterial"),
+                "zoning": rec.get("ZonedCodeLocal") or rec.get("PropertyUseStandardized"),
+                "occupancyUse": rec.get("PropertyUseStandardized") or rec.get("PropertyUseGroup"),
             }
             return success_result(self.source_id, raw_data=mapped, source_bucket="melissa")
         except Exception as e:

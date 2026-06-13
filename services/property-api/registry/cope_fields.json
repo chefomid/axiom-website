@@ -7,9 +7,10 @@
       "fields": [
         { "id": "year_built", "label": "Year built", "type": "year", "precedence": ["attom", "melissa", "rentcast", "assessor_crawl", "crawl4ai_heuristic"] },
         { "id": "square_footage", "label": "Building sq ft", "type": "integer", "unit": "sqft", "tolerance_pct": 5, "precedence": ["attom", "corelogic", "melissa", "rentcast", "assessor_crawl"] },
-        { "id": "stories", "label": "Number of stories", "type": "stories", "precedence": ["attom", "corelogic", "osm", "assessor_crawl"] },
-        { "id": "construction_type", "label": "Construction type", "type": "string", "precedence": ["attom", "corelogic", "melissa", "assessor_crawl"] },
-        { "id": "roof_type", "label": "Roof type", "type": "string", "precedence": ["attom", "corelogic", "permit_crawl", "assessor_crawl"] },
+        { "id": "stories", "label": "Number of stories", "type": "stories", "precedence": ["attom", "corelogic", "osm", "vision_construction", "assessor_crawl"] },
+        { "id": "construction_type", "label": "Construction type", "type": "string", "precedence": ["attom", "corelogic", "melissa", "vision_construction", "assessor_crawl"] },
+        { "id": "iso_construction_class", "label": "ISO construction class", "type": "string", "precedence": ["attom", "corelogic", "vision_construction", "melissa", "assessor_crawl", "web_search"] },
+        { "id": "roof_type", "label": "Roof type", "type": "string", "precedence": ["attom", "corelogic", "permit_crawl", "vision_construction", "assessor_crawl"] },
         { "id": "property_type", "label": "Property type", "type": "string", "precedence": ["attom", "rentcast", "melissa", "assessor_crawl"] },
         { "id": "parcel_number", "label": "Parcel / APN", "type": "string", "precedence": ["regrid", "county_parcel", "assessor_crawl", "melissa"] }
       ]

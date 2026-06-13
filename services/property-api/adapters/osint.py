@@ -7,8 +7,6 @@ from typing import Any
 
 import httpx
 
-from adapters import hazards
-
 
 async def fetch_poi_exposure(client: httpx.AsyncClient, lat: float, lng: float) -> dict[str, Any]:
     """High-risk POI categories within ~500m via Overpass."""

@@ -1,3 +1,8 @@
+import { useState } from 'react'
+
+import { INTELLIGENCE_SOURCE_CHIP_LABELS } from '../../data/intelligenceSources'
+import IntelligenceSourcesModal from './IntelligenceSourcesModal'
+
 const REVIEW_ITEMS = [
 
   'Property Identity',
@@ -101,6 +106,8 @@ export default function IntelligencePanelContent({
   hasReport,
 
 }) {
+
+  const [sourcesOpen, setSourcesOpen] = useState(false)
 
   const status = scanStatus({ locationPhase, locationLocked, loadingReport, hasReport })
 
@@ -208,6 +215,44 @@ export default function IntelligencePanelContent({
 
         <div className="mt-auto shrink-0 pt-3">
 
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+
+            <p className="font-mono text-[8px] uppercase tracking-[0.14em] text-white/38">
+
+              Sources
+
+            </p>
+
+            <button
+
+              type="button"
+
+              onClick={() => setSourcesOpen(true)}
+
+              className="font-mono text-[8px] uppercase tracking-[0.12em] text-white/42 transition hover:text-white/78"
+
+            >
+
+              Learn more
+
+            </button>
+
+          </div>
+
+          <div className="mb-3 flex flex-wrap gap-1.5">
+
+            {INTELLIGENCE_SOURCE_CHIP_LABELS.map(item => (
+
+              <span key={item} className="workflow-sidebar__deliverable-chip">
+
+                {item}
+
+              </span>
+
+            ))}
+
+          </div>
+
           <p className="mb-1.5 font-mono text-[8px] uppercase tracking-[0.14em] text-white/38">
 
             Deliverables
@@ -231,6 +276,8 @@ export default function IntelligencePanelContent({
         </div>
 
       </section>
+
+      <IntelligenceSourcesModal open={sourcesOpen} onClose={() => setSourcesOpen(false)} />
 
     </div>
 

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import Nav from '../Nav'
+import SiteFooter from '../SiteFooter'
 import StatusChip from '../better-world/StatusChip'
 import { useIsLgUp } from '../../hooks/useMediaQuery'
 
@@ -17,13 +18,28 @@ const LICENSED_APIS = [
   { name: 'First Street', hook: 'Flood, fire, and heat risk' },
 ]
 
-const COPE_PILLARS = ['Construction', 'Occupancy', 'Protection', 'Exposure']
+const COPE_PILLARS = [
+  { label: 'Construction', detail: 'Building type, year built, roof' },
+  { label: 'Occupancy', detail: 'Use class, units, owner' },
+  { label: 'Protection', detail: 'Hydrants, fire stations, distance' },
+  { label: 'Exposure', detail: 'Flood, quake, wildfire, weather' },
+]
 
 const WORKFLOW = [
   { step: '01', title: 'Drop a pin', body: 'Search an address and lock the site on the map.' },
   { step: '02', title: 'Pick your stack', body: 'Government hazard feeds plus licensed property APIs.' },
   { step: '03', title: 'Get the dossier', body: 'A cited COPE report with pricing shown upfront.' },
 ]
+
+function OverviewBackground() {
+  return (
+    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <div className="absolute -top-32 right-[8%] h-[26rem] w-[26rem] rounded-full bg-white/[0.03] blur-3xl" />
+      <div className="absolute bottom-[18%] -left-20 h-[22rem] w-[22rem] rounded-full bg-slate-200/[0.03] blur-3xl" />
+      <div className="absolute left-[42%] top-[38%] h-px w-[38%] bg-gradient-to-r from-transparent via-white/10 to-transparent rotate-[8deg]" />
+    </div>
+  )
+}
 
 function MobileHeader() {
   return (
@@ -52,7 +68,7 @@ function MobileHeader() {
             >
               Home
             </Link>
-            <p className="font-display text-sm font-semibold uppercase tracking-[0.08em] text-white leading-tight truncate">
+            <p className="font-display truncate text-sm font-semibold uppercase leading-tight tracking-[0.08em] text-white">
               Property Intelligence
             </p>
           </div>
@@ -65,12 +81,12 @@ function MobileHeader() {
 
 function SourcePanel({ label, note, children }) {
   return (
-    <div className="bg-[#080808] p-6 sm:p-8 flex flex-col gap-4">
+    <div className="flex h-full flex-col gap-5 rounded-lg border border-[#1f1f1f] bg-[#080808]/90 p-6 sm:p-7">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-muted">{label}</p>
-        {note && (
+        {note ? (
           <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">{note}</span>
-        )}
+        ) : null}
       </div>
       {children}
     </div>
@@ -81,134 +97,159 @@ export default function PropertyIntelligenceOverview({ comingSoon = true }) {
   const isLgUp = useIsLgUp()
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-black text-ink-primary font-sans">
+    <div className="relative isolate flex min-h-[100dvh] flex-col bg-black font-sans text-ink-primary">
+      <OverviewBackground />
       {isLgUp ? <Nav /> : <MobileHeader />}
 
       <main
-        className={`sleek-scrollbar flex-1 overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 ${
-          isLgUp ? 'pt-28 md:pt-32' : 'pt-6'
+        className={`sleek-scrollbar flex-1 overflow-y-auto px-6 pb-10 sm:px-8 md:px-12 ${
+          isLgUp ? 'pt-28 md:pt-32' : 'pt-8'
         }`}
       >
-        <div className="mx-auto max-w-2xl space-y-10">
-          {comingSoon && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#1a1a1a] pb-6">
-              <StatusChip label="Coming soon" status="watch" />
+        <div className="mx-auto max-w-5xl">
+          <section className="border-b border-[#1a1a1a] pb-10 md:pb-14">
+            <div className="flex flex-wrap items-center gap-3">
+              <StatusChip
+                label={comingSoon ? 'Coming soon' : 'Live'}
+                status={comingSoon ? 'watch' : 'stable'}
+                pulse={!comingSoon}
+              />
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
-                Desktop workspace in development
+                {comingSoon ? 'Desktop workspace in development' : 'Address-level COPE enrichment'}
               </p>
             </div>
-          )}
 
-          <section className="max-w-xl">
-            <p className="text-xs tracking-[0.3em] text-ink-muted uppercase">
-              Address-level COPE
-            </p>
-            <h1 className="font-display mt-4 text-3xl font-semibold leading-[1.15] tracking-tight text-white sm:text-4xl text-balance">
-              Property Intelligence
-            </h1>
-            <p className="mt-4 text-base leading-relaxed text-ink-muted sm:text-lg text-pretty">
-              COPE dossiers from a single address. Public hazard feeds and licensed property data,
-              cited in one report.
-            </p>
+            <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-end lg:gap-14">
+              <div className="max-w-2xl">
+                <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">Address-level COPE</p>
+                <h1 className="font-display mt-4 text-balance text-3xl font-semibold leading-[1.12] tracking-tight text-white sm:text-4xl md:text-[2.65rem]">
+                  Property Intelligence
+                </h1>
+                <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-ink-muted sm:text-lg">
+                  COPE dossiers from a single address. Public hazard feeds and licensed property data,
+                  cited in one report.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-[#1f1f1f] bg-[#1a1a1a]">
+                {[
+                  { value: '4', label: 'Gov feeds' },
+                  { value: '4', label: 'Licensed APIs' },
+                  { value: 'COPE', label: 'One dossier' },
+                ].map(stat => (
+                  <div key={stat.label} className="bg-[#080808] px-4 py-5 text-center sm:px-5">
+                    <p className="font-display text-lg font-semibold text-white sm:text-xl">{stat.value}</p>
+                    <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
+                      {stat.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
 
-          <div className="grid gap-px bg-[#1a1a1a] md:grid-cols-2">
-            <SourcePanel label="Government hazard feeds" note="Public · Live">
-              <ul className="grid grid-cols-2 gap-2">
-                {GOVERNMENT_FEEDS.map(feed => (
-                  <li
-                    key={feed.id}
-                    className="flex items-center gap-2.5 rounded border border-[#2a2a2a] bg-[#111] px-2.5 py-2.5"
-                  >
-                    {feed.logo ? (
-                      <img
-                        src={feed.logo}
-                        alt=""
-                        className="h-5 w-5 shrink-0 object-contain opacity-90"
-                      />
-                    ) : (
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center font-mono text-[7px] text-ink-faint">
-                        EPA
-                      </span>
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-mono text-[10px] text-white">{feed.label}</p>
-                      <p className="truncate font-mono text-[9px] text-ink-faint">{feed.detail}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </SourcePanel>
+          <section className="py-10 md:py-14">
+            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">Data stack</p>
+                <h2 className="font-display mt-3 text-xl font-medium text-white sm:text-2xl">
+                  Public feeds and licensed sources
+                </h2>
+              </div>
+              <p className="max-w-sm text-sm leading-relaxed text-ink-faint">
+                Start with free government hazard data, then add carrier-grade property APIs as needed.
+              </p>
+            </div>
 
-            <SourcePanel label="Licensed property APIs" note="À la carte">
-              <ul className="space-y-2">
-                {LICENSED_APIS.map(api => (
-                  <li
-                    key={api.name}
-                    className="rounded border border-[#2a2a2a] bg-[#111] px-3 py-2.5"
-                  >
-                    <p className="font-display text-sm text-white">{api.name}</p>
-                    <p className="mt-0.5 font-mono text-[9px] text-ink-faint">{api.hook}</p>
-                  </li>
-                ))}
-              </ul>
-            </SourcePanel>
-          </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <SourcePanel label="Government hazard feeds" note="Public · Live">
+                <ul className="grid flex-1 grid-cols-2 gap-2.5">
+                  {GOVERNMENT_FEEDS.map(feed => (
+                    <li
+                      key={feed.id}
+                      className="flex items-center gap-2.5 rounded-md border border-[#2a2a2a] bg-[#111] px-3 py-3"
+                    >
+                      {feed.logo ? (
+                        <img
+                          src={feed.logo}
+                          alt=""
+                          className="h-5 w-5 shrink-0 object-contain opacity-90"
+                        />
+                      ) : (
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center font-mono text-[7px] text-ink-faint">
+                          EPA
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-mono text-[10px] text-white">{feed.label}</p>
+                        <p className="truncate font-mono text-[9px] text-ink-faint">{feed.detail}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </SourcePanel>
 
-          <section>
-            <p className="text-xs tracking-[0.3em] text-ink-muted uppercase">COPE</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {COPE_PILLARS.map(pillar => (
-                <span
-                  key={pillar}
-                  className="rounded border border-[#2a2a2a] bg-[#0a0a0a] px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-secondary"
+              <SourcePanel label="Licensed property APIs" note="À la carte">
+                <ul className="flex flex-1 flex-col gap-2.5">
+                  {LICENSED_APIS.map(api => (
+                    <li
+                      key={api.name}
+                      className="rounded-md border border-[#2a2a2a] bg-[#111] px-3.5 py-3"
+                    >
+                      <p className="font-display text-sm text-white">{api.name}</p>
+                      <p className="mt-0.5 font-mono text-[9px] text-ink-faint">{api.hook}</p>
+                    </li>
+                  ))}
+                </ul>
+              </SourcePanel>
+            </div>
+          </section>
+
+          <section className="border-t border-[#141414] py-10 md:py-14">
+            <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">COPE framework</p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {COPE_PILLARS.map((pillar, index) => (
+                <div
+                  key={pillar.label}
+                  className="rounded-lg border border-[#222] bg-[#0a0a0a] px-4 py-4"
                 >
-                  {pillar}
-                </span>
+                  <p className="font-mono text-[9px] tabular-nums text-ink-faint">0{index + 1}</p>
+                  <p className="font-display mt-2 text-sm font-medium text-white">{pillar.label}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{pillar.detail}</p>
+                </div>
               ))}
             </div>
           </section>
 
-          <section>
-            <p className="text-xs tracking-[0.3em] text-ink-muted uppercase">How it works</p>
-            <ol className="mt-4 space-y-px bg-[#1a1a1a]">
+          <section className="border-t border-[#141414] py-10 md:py-14">
+            <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">How it works</p>
+            <ol className="mt-6 grid gap-4 md:grid-cols-3">
               {WORKFLOW.map(item => (
                 <li
                   key={item.step}
-                  className="flex gap-4 bg-[#080808] px-5 py-4 sm:px-6"
+                  className="flex h-full flex-col rounded-lg border border-[#1f1f1f] bg-[#080808] px-5 py-5 sm:px-6"
                 >
-                  <span className="font-mono text-[10px] tabular-nums text-ink-faint pt-0.5">
-                    {item.step}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-display text-sm font-medium text-white">{item.title}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-ink-muted">{item.body}</p>
-                  </div>
+                  <span className="font-mono text-[10px] tabular-nums text-ink-faint">{item.step}</span>
+                  <p className="font-display mt-3 text-base font-medium text-white">{item.title}</p>
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-ink-muted">{item.body}</p>
                 </li>
               ))}
             </ol>
           </section>
 
-          {!comingSoon && !isLgUp && (
-            <p className="text-sm leading-relaxed text-ink-muted">
+          {!comingSoon && !isLgUp ? (
+            <p className="border-t border-[#141414] pt-8 text-sm leading-relaxed text-ink-muted">
               The full workspace runs on desktop (1024px or wider).
             </p>
-          )}
+          ) : null}
 
-          {comingSoon && isLgUp && (
+          {comingSoon && isLgUp ? (
             <p className="text-sm text-ink-faint">Launching on desktop first.</p>
-          )}
-
-          <div className="border-t border-[#141414] pt-8">
-            <Link
-              to="/"
-              className="inline-flex min-h-[44px] items-center font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted transition-colors hover:text-white"
-            >
-              ← Back to AXIOM
-            </Link>
-          </div>
+          ) : null}
         </div>
       </main>
+
+      <SiteFooter className="mt-auto" />
     </div>
   )
 }

@@ -480,7 +480,11 @@ export default function PropertyIntelligenceView() {
           quoteError={quoteError}
         />
 
-        <div className={`relative min-h-[45vh] min-w-0 flex-1 lg:min-h-0 ${showReportPanel ? 'lg:flex-1' : ''}`}>
+        <div
+          className={`relative min-h-[42vh] min-w-0 flex-1 lg:min-h-0 ${
+            showReportPanel ? 'lg:flex-[1.15]' : ''
+          }`}
+        >
           <PropertyMap
             lat={mapLat}
             lng={mapLng}
@@ -494,7 +498,7 @@ export default function PropertyIntelligenceView() {
         </div>
 
         {showReportPanel ? (
-          <aside className="flex min-h-[280px] w-full shrink-0 flex-col border-t border-panel-border bg-panel-bg lg:min-h-0 lg:w-[440px] lg:border-l lg:border-t-0 xl:w-[480px]">
+          <aside className="flex min-h-[280px] w-full shrink-0 flex-col border-t border-panel-border bg-panel-bg lg:min-h-0 lg:w-[min(28rem,34vw)] lg:max-w-[480px] lg:border-l lg:border-t-0">
             <ReportResultsPanel
               variant="panel"
               record={record}

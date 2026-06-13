@@ -57,6 +57,7 @@ class SourceRunResult:
     cache_hit: bool = False
     trusted_values: dict[str, TrustedValue] | None = None
     conflicts_override: list[dict[str, Any]] | None = None
+    analysis: dict[str, Any] | None = None
 
     def to_legacy_fields(self) -> list[dict[str, Any]]:
         """Backward-compatible PropertyField dicts."""

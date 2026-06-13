@@ -35,3 +35,11 @@ parcel_number:
   path: parcelNumber
   type: string
   confidence: high
+zoning:
+  path: zoning
+  type: string
+  confidence: medium
+assessed_value:
+  path: assessedValue
+  type: integer
+  confidence: high

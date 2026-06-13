@@ -10,12 +10,15 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas
 
 
-ROOT = Path(r"c:\Users\Orcc_\OneDrive\Desktop\AXIOM\website")
+ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIR = ROOT / "Pictures" / "COI Tracker"
 BRIEF_PATH = SOURCE_DIR / "COI_Tracker_Booklet_Content_Brief.txt"
-OUTPUT_DIR = SOURCE_DIR / "output"
+OUTPUT_DIR = ROOT / "public" / "coi-tracker"
 BOOKLET_PATH = OUTPUT_DIR / "COI-Tracker-Booklet.pdf"
-INDIVIDUAL_DIR = OUTPUT_DIR / "individual"
+INDIVIDUAL_DIR = SOURCE_DIR / "output" / "individual"
+
+# Matches CoiTrackerModal.jsx DOSSIER order (interactive dossier is source of truth).
+MODAL_ASSET_SEQUENCE = [1, 2, 3, 4, 7, 8, 10, 11, 12, 13]
 
 
 @dataclass
@@ -152,7 +155,16 @@ def draw_bullets(
     return y
 
 
-def draw_image_fit(c: canvas.Canvas, image_path: Path, x: float, y: float, width: float, height: float) -> None:
+def draw_image_fit(
+    c: canvas.Canvas,
+    image_path: Path,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    *,
+    valign: str = "center",
+) -> None:
     with Image.open(image_path) as img:
         img_w, img_h = img.size
 
@@ -160,7 +172,7 @@ def draw_image_fit(c: canvas.Canvas, image_path: Path, x: float, y: float, width
     draw_w = img_w * scale
     draw_h = img_h * scale
     draw_x = x + (width - draw_w) / 2
-    draw_y = y + (height - draw_h) / 2
+    draw_y = y + (height - draw_h) if valign == "top" else y + (height - draw_h) / 2
 
     c.setFillColorRGB(0.06, 0.06, 0.06)
     c.rect(x, y, width, height, stroke=0, fill=1)
@@ -212,6 +224,19 @@ def draw_back_cover(c: canvas.Canvas, page_w: float, page_h: float, cta: str) ->
     c.showPage()
 
 
+def measure_asset_text_height(c: canvas.Canvas, asset: Asset, text_w: float) -> float:
+    height = 0.0
+    height += max(1, len(wrap_lines(c, asset.title, text_w, "Helvetica-Bold", 18))) * 22 + 10
+    height += max(1, len(wrap_lines(c, asset.description, text_w, "Helvetica", 10.5))) * 14 + 10
+    height += 16
+    for bullet in asset.primary_features:
+        height += max(1, len(wrap_lines(c, bullet, text_w - 10, "Helvetica", 9.5))) * 13
+    height += 8 + 16
+    for bullet in asset.sub_features:
+        height += max(1, len(wrap_lines(c, bullet, text_w - 10, "Helvetica", 9.5))) * 13
+    return height
+
+
 def draw_asset_spread(c: canvas.Canvas, page_w: float, page_h: float, asset: Asset, index_label: str) -> None:
     c.setFillColorRGB(0.04, 0.04, 0.04)
     c.rect(0, 0, page_w, page_h, stroke=0, fill=1)
@@ -227,10 +252,13 @@ def draw_asset_spread(c: canvas.Canvas, page_w: float, page_h: float, asset: Ass
     image_x = margin
     image_y = content_bottom
     image_h = content_top - content_bottom
-    draw_image_fit(c, asset.image_path, image_x, image_y, image_w, image_h)
+    draw_image_fit(c, asset.image_path, image_x, image_y, image_w, image_h, valign="top")
 
     text_x = image_x + image_w + gap
+    text_h = measure_asset_text_height(c, asset, text_w)
     y = content_top - 4
+    if text_h < image_h * 0.72:
+        y = content_bottom + (image_h + text_h) / 2
     c.setFillColorRGB(1, 1, 1)
     c.setFont("Helvetica-Bold", 18)
     y = draw_wrapped_paragraph(c, asset.title, text_x, y, text_w, "Helvetica-Bold", 18, (0.96, 0.96, 0.96), 22)
@@ -319,23 +347,17 @@ def main() -> None:
     draw_cover(c, page_w, page_h, front_headline, front_subheadline)
 
     asset_by_id = {asset.asset_id: asset for asset in assets}
-    standard_sequence = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 14]
-    for asset_id in standard_sequence:
+    for asset_id in MODAL_ASSET_SEQUENCE:
         asset = asset_by_id.get(asset_id)
-        if asset:
-            draw_asset_spread(c, page_w, page_h, asset, f"Asset {asset.asset_id:02d}")
+        if not asset:
+            raise RuntimeError(f"Missing dossier asset {asset_id:02d} in content brief.")
 
-    # Keep reporting pages paired in a dedicated spread.
-    if 12 in asset_by_id and 13 in asset_by_id:
-        draw_reporting_pair(c, page_w, page_h, asset_by_id[12], asset_by_id[13])
-    else:
-        for asset_id in (12, 13):
-            if asset_id in asset_by_id:
-                draw_asset_spread(c, page_w, page_h, asset_by_id[asset_id], f"Asset {asset_id:02d}")
+        if asset_id in (12, 13):
+            continue
 
-    # Optional alternate portfolio crop as appendix.
-    if 3 in asset_by_id:
-        draw_asset_spread(c, page_w, page_h, asset_by_id[3], "Appendix")
+        draw_asset_spread(c, page_w, page_h, asset, f"Asset {asset.asset_id:02d}")
+
+    draw_reporting_pair(c, page_w, page_h, asset_by_id[12], asset_by_id[13])
 
     draw_back_cover(c, page_w, page_h, back_cta)
     c.save()

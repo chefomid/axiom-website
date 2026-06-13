@@ -496,6 +496,48 @@
       "cope_sections": ["construction", "occupancy", "protection", "exposure"]
     },
     {
+      "id": "web_property_research",
+      "category": "intelligence",
+      "tier": "service",
+      "label": "AI web property research",
+      "description": "OpenAI web search for public assessor, permit, and listing data beyond ATTOM.",
+      "api_cost_usd": 0.04,
+      "service_cost_usd": 0.1,
+      "coverage": "global",
+      "selectable": true,
+      "default_selected": false,
+      "depends_on": ["geocode_census"],
+      "requires_api_key": true,
+      "env_key": "OPENAI_API_KEY",
+      "cope_sections": ["construction", "occupancy"],
+      "execution": {
+        "timeout_ms": 95000,
+        "cache_ttl_seconds": 86400,
+        "parallel_group": "intelligence"
+      }
+    },
+    {
+      "id": "vision_construction",
+      "category": "intelligence",
+      "tier": "service",
+      "label": "Image construction analysis",
+      "description": "Property Inspector agent: orients Street View toward the subject, selects the best facade, and analyzes construction for COPE.",
+      "api_cost_usd": 0.06,
+      "service_cost_usd": 0.04,
+      "coverage": "US",
+      "selectable": true,
+      "default_selected": false,
+      "depends_on": ["geocode_census"],
+      "requires_api_key": true,
+      "env_key": "OPENAI_API_KEY",
+      "cope_sections": ["construction"],
+      "execution": {
+        "timeout_ms": 150000,
+        "cache_ttl_seconds": 86400,
+        "parallel_group": "intelligence"
+      }
+    },
+    {
       "id": "llm_extract",
       "category": "intelligence",
       "tier": "service",
@@ -511,18 +553,20 @@
       "env_key": "OPENAI_API_KEY"
     },
     {
-      "id": "llm_conflict_resolve",
+      "id": "sov_orchestrator",
       "category": "intelligence",
       "tier": "service",
-      "label": "Conflict resolution",
-      "description": "Reconcile conflicting sqft, year built, and construction across sources.",
-      "api_cost_usd": 0,
+      "label": "SOV orchestrator",
+      "description": "Reconcile vendor API, online public, and Property Inspector visual AI into an enriched Statement of Values.",
+      "api_cost_usd": 0.01,
       "service_cost_usd": 0.08,
       "coverage": "global",
       "selectable": true,
       "default_selected": false,
       "depends_on": ["geocode_census"],
-      "requires_api_key": false
+      "requires_api_key": false,
+      "env_key": "OPENAI_API_KEY",
+      "cope_sections": ["construction", "occupancy"]
     },
     {
       "id": "pdf_dossier",

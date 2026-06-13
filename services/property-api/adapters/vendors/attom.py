@@ -44,6 +44,9 @@ class AttomPropertyAdapter(BaseAdapter):
             building = prop.get("building") or {}
             summary = prop.get("summary") or {}
             lot = prop.get("lot") or {}
+            assessment = prop.get("assessment") or {}
+            assessed = assessment.get("assessed") or {}
+            market = assessment.get("market") or {}
             mapped = {
                 "yearBuilt": summary.get("yearbuilt") or building.get("construction", {}).get("yearBuilt"),
                 "squareFootage": building.get("size", {}).get("livingsize") or building.get("size", {}).get("universalsize"),
@@ -54,6 +57,8 @@ class AttomPropertyAdapter(BaseAdapter):
                 "ownerName": (prop.get("owner") or {}).get("owner1", {}).get("fullname"),
                 "occupancyUse": summary.get("propertyType"),
                 "parcelNumber": lot.get("lotnum") or lot.get("apn"),
+                "zoning": lot.get("zoningtype") or lot.get("zonetype"),
+                "assessedValue": assessed.get("assdttlvalue") or market.get("mktttlvalue"),
             }
             return success_result(self.source_id, raw_data=mapped, source_bucket="attom")
         except httpx.HTTPStatusError as e:
@@ -107,6 +112,24 @@ class AttomHazardAdapter(BaseAdapter):
                 fields.append({"key": "flood_summary", "value": str(mapped["floodSummary"]), "source": "attom_hazard", "confidence": "high"})
             if mapped.get("wildfireSummary"):
                 fields.append({"key": "wildfire_summary", "value": str(mapped["wildfireSummary"]), "source": "attom_hazard", "confidence": "high"})
-            return success_result(self.source_id, fields=fields, raw_data=mapped, source_bucket="attom_hazard")
+
+            usgs = ctx.prior_results.get("hazard_usgs")
+            if usgs and usgs.status == "success":
+                usgs_data = usgs.hazards.get("usgs") or {}
+                seismic_summary = usgs_data.get("summary")
+                if seismic_summary:
+                    fields.append(
+                        {
+                            "key": "seismic_summary",
+                            "value": str(seismic_summary),
+                            "source": "attom_hazard",
+                            "confidence": "high",
+                        }
+                    )
+                    mapped["seismicSummary"] = seismic_summary
+
+            if not fields:
+                return failed_result(self.source_id, "No ATTOM hazard data at this location")
+            return success_result(self.source_id, fields=fields)
         except Exception as e:
             return failed_result(self.source_id, str(e))

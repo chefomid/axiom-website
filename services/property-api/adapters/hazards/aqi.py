@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx
 
-from adapters import hazards as hazard_fetch
+from adapters import hazard_fetch
 from adapters.base import failed_result, success_result
 from engine.adapter import BaseAdapter
 from engine.models import SourceContext, SourceRunResult

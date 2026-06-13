@@ -30,6 +30,7 @@ def build_line_items(
     *,
     country_hint: str | None = None,
 ) -> list[dict[str, Any]]:
+    multiplier = get_margin_multiplier()
     items: list[dict[str, Any]] = []
     for source_id in selected_sources:
         src = get_source_by_id(source_id)
@@ -37,6 +38,10 @@ def build_line_items(
             continue
         available = source_available_for_location(src, country_hint)
         key_ok = not src.get("requires_api_key") or _api_key_configured(src)
+        api_cost = float(src.get("api_cost_usd", 0))
+        service_cost = float(src.get("service_cost_usd", 0))
+        loaded = api_cost + service_cost
+        billable = available and key_ok
         items.append(
             {
                 "source_id": source_id,
@@ -49,8 +54,11 @@ def build_line_items(
                 "badge": src.get("badge"),
                 "marketing_note": src.get("marketing_note"),
                 "cope_sections": src.get("cope_sections") or [],
-                "api_cost_usd": float(src.get("api_cost_usd", 0)),
-                "service_cost_usd": float(src.get("service_cost_usd", 0)),
+                "api_cost_usd": api_cost,
+                "service_cost_usd": service_cost,
+                "loaded_cost_usd": _round_usd(loaded),
+                "user_price_usd": _round_usd(loaded * multiplier) if billable and loaded > 0 else 0.0,
+                "billable": billable,
                 "enabled": True,
                 "selectable": bool(src.get("selectable", True)),
                 "required": bool(src.get("required", False)),
@@ -64,11 +72,7 @@ def build_line_items(
 
 
 def _billable(item: dict[str, Any]) -> bool:
-    return (
-        item.get("enabled")
-        and item.get("available", True)
-        and item.get("configured", True)
-    )
+    return bool(item.get("billable", item.get("enabled") and item.get("available", True) and item.get("configured", True)))
 
 
 def compute_totals(line_items: list[dict[str, Any]]) -> dict[str, float]:
@@ -78,13 +82,17 @@ def compute_totals(line_items: list[dict[str, Any]]) -> dict[str, float]:
     multiplier = get_margin_multiplier()
     user_price = _round_usd(loaded * multiplier)
     min_charge = get_minimum_charge()
+    minimum_charge_applied = False
     if api_cost > 0 and user_price < min_charge:
         user_price = min_charge
+        minimum_charge_applied = True
     return {
         "api_cost_usd": _round_usd(api_cost),
         "service_cost_usd": _round_usd(service_cost),
         "loaded_cost_usd": _round_usd(loaded),
         "margin_multiplier": multiplier,
+        "minimum_charge_usd": min_charge,
+        "minimum_charge_applied": minimum_charge_applied,
         "user_price_usd": user_price,
     }
 
@@ -159,9 +167,9 @@ def warnings_for_selection(selected_sources: list[str]) -> list[str]:
         warnings.append(
             "COPE snapshot will have gaps — add ATTOM for carrier-grade Construction & Occupancy."
         )
-    if "llm_conflict_resolve" in selected_sources and len(configured_property) < 2:
+    if "sov_orchestrator" in selected_sources and len(configured_property) < 2:
         warnings.append(
-            "Conflict resolution requires two or more property record sources."
+            "SOV orchestrator works best with two or more property record sources."
         )
     if "attom_hazard" in selected_sources and "attom_property" not in selected_sources:
         warnings.append("ATTOM hazard is typically paired with ATTOM property detail.")

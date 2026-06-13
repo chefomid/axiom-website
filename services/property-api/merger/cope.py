@@ -34,6 +34,8 @@ SOURCE_BUCKETS: dict[str, str] = {
     "fire_station_gis": "fire_station_gis",
     "hydrant_gis": "hydrant_gis",
     "poi_exposure": "poi_exposure",
+    "web_search": "web_search",
+    "vision_construction": "vision_construction",
 }
 
 EXPOSURE_FIELD_IDS = frozenset(
@@ -71,6 +73,11 @@ def unknown_field_note(field_id: str, *, sources_seen: set[str]) -> str:
             "enable those sources in Customize sources."
         )
 
+    if field_id == "iso_construction_class":
+        if "vision_construction" in sources_seen:
+            return "Image analysis did not produce a confident ISO class — verify manually."
+        return "Enable Image construction analysis or add ATTOM/CoreLogic for ISO construction class."
+
     if has_attom:
         return "Not in the ATTOM property record for this address — try assessor crawl or CoreLogic."
 
@@ -83,6 +90,7 @@ FIELD_ALIASES: dict[str, str] = {
     "osm_stories": "stories",
     "property_type": "property_type",
     "construction_type": "construction_type",
+    "iso_construction_class": "iso_construction_class",
     "roof_type": "roof_type",
     "parcel_number": "parcel_number",
     "owner_name": "owner_name",
