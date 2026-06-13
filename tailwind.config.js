@@ -29,6 +29,10 @@ export default {
           surface: '#111111',
         },
       },
+      spacing: {
+        'safe-bottom': 'var(--safe-bottom)',
+        'safe-top': 'var(--safe-top)',
+      },
     },
   },
   plugins: [],

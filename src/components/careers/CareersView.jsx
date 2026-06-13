@@ -4,12 +4,14 @@ import { AnimatePresence, motion } from 'framer-motion'
 import Nav from '../Nav'
 import SiteFooter from '../SiteFooter'
 import { GhostButton, PrimaryButton } from '../ui/CommandControls'
+import MobileStickyFooter from '../ui/MobileStickyFooter'
 import {
   APPLICATION_DRAFT_KEY,
   APPLICATION_PURPOSE,
   APPLICATION_STEPS,
   APPLICATION_SUBTITLE,
   APPLICATION_SUCCESS_MESSAGE,
+  APPLICATION_NEXT_STEPS,
   APPLICATION_TITLE,
 } from './applicationSchema'
 import CityStateInput from './CityStateInput'
@@ -237,11 +239,12 @@ function ProgressHeader({ stepIndex, maxVisitedIndex, onJump }) {
   )
 }
 
-function SuccessPanel({ values }) {
+function SuccessPanel({ values, submitResult }) {
   const name =
     values.preferredName ||
     [values.firstName, values.lastName].filter(Boolean).join(' ') ||
     ''
+  const email = String(values.email ?? '').trim()
 
   return (
     <motion.div
@@ -256,9 +259,30 @@ function SuccessPanel({ values }) {
       <h2 className="mt-3 font-display text-2xl font-medium tracking-tight text-white">
         {name ? `Thank you, ${name}.` : 'Thank you.'}
       </h2>
+      {submitResult?.confirmationSent && email ? (
+        <p className="mt-4 text-sm leading-relaxed text-ink-secondary">
+          A confirmation copy was sent to{' '}
+          <span className="text-ink-primary">{email}</span>.
+        </p>
+      ) : null}
+      {submitResult?.referenceId ? (
+        <p className="mt-3 font-mono text-[11px] tracking-[0.06em] text-ink-muted">
+          Reference: {submitResult.referenceId}
+        </p>
+      ) : null}
       <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-secondary">
         {APPLICATION_SUCCESS_MESSAGE}
       </p>
+      <ul className="mt-6 max-w-xl space-y-2 text-sm leading-relaxed text-ink-muted">
+        {APPLICATION_NEXT_STEPS.map(step => (
+          <li key={step} className="flex gap-2">
+            <span className="text-command-stable" aria-hidden>
+              •
+            </span>
+            <span>{step}</span>
+          </li>
+        ))}
+      </ul>
       <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
         You only need to begin.
       </p>
@@ -273,6 +297,7 @@ export default function CareersView() {
   const [errors, setErrors] = useState({})
   const [status, setStatus] = useState('editing')
   const [submitError, setSubmitError] = useState(null)
+  const [submitResult, setSubmitResult] = useState(null)
   const [honeypot, setHoneypot] = useState('')
   const formTopRef = useRef(null)
 
@@ -329,13 +354,15 @@ export default function CareersView() {
 
     setStatus('submitting')
     setSubmitError(null)
+    setSubmitResult(null)
     try {
-      await submitApplication(values, { honeypot })
+      const result = await submitApplication(values, { honeypot })
       try {
         window.localStorage.removeItem(APPLICATION_DRAFT_KEY)
       } catch {
         /* ignore */
       }
+      setSubmitResult(result)
       setStatus('success')
       scrollToForm()
     } catch (err) {
@@ -348,7 +375,7 @@ export default function CareersView() {
     <div className="min-h-screen bg-black font-sans text-ink-primary">
       <Nav />
 
-      <main className="mx-auto max-w-3xl px-6 pb-24 pt-28 sm:px-8 sm:pt-32">
+      <main className="mx-auto max-w-3xl px-6 pb-[calc(5.5rem+var(--safe-bottom))] pt-28 sm:px-8 sm:pt-32 md:pb-24">
         <header>
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             Careers at AXIOM
@@ -375,7 +402,7 @@ export default function CareersView() {
 
         <div className="mt-12">
           {status === 'success' ? (
-            <SuccessPanel values={values} />
+            <SuccessPanel values={values} submitResult={submitResult} />
           ) : (
             <div className="relative rounded-2xl border border-panel-border bg-panel-bg/80 p-6 sm:p-8">
               <ProgressHeader
@@ -448,7 +475,7 @@ export default function CareersView() {
                 </div>
               ) : null}
 
-              <div className="mt-9 flex items-center justify-between gap-3 border-t border-panel-border pt-6">
+              <div className="mt-9 hidden items-center justify-between gap-3 border-t border-panel-border pt-6 md:flex">
                 <div>
                   {stepIndex > 0 ? (
                     <GhostButton onClick={() => goToStep(stepIndex - 1)}>Back</GhostButton>
@@ -477,6 +504,35 @@ export default function CareersView() {
           )}
         </div>
       </main>
+
+      {status !== 'success' ? (
+        <MobileStickyFooter className="md:hidden">
+          <div>
+            {stepIndex > 0 ? (
+              <GhostButton onClick={() => goToStep(stepIndex - 1)}>Back</GhostButton>
+            ) : (
+              <span />
+            )}
+          </div>
+          <div className="flex flex-1 items-center justify-end gap-3">
+            {isLastStep ? (
+              <div className="w-full max-w-xs [&_button]:w-full">
+                <PrimaryButton onClick={handleSubmit} disabled={status === 'submitting'}>
+                  {status === 'submitting' ? 'Submitting\u2026' : 'Submit application'}
+                </PrimaryButton>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="min-h-[44px] rounded-lg border border-[#333] bg-[#141414] px-5 font-mono text-[11px] uppercase tracking-[0.14em] text-command-stable transition-colors hover:border-command-live/50 hover:text-command-cyber"
+              >
+                Continue
+              </button>
+            )}
+          </div>
+        </MobileStickyFooter>
+      ) : null}
 
       <SiteFooter />
     </div>

@@ -25,6 +25,25 @@ body {
   min-height: 100%;
 }
 
+:root {
+  --safe-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: var(--safe-bottom);
+}
+
+.safe-bottom-bar {
+  padding-bottom: var(--safe-bottom);
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+}
+
+.scroll-pad-bottom-bar {
+  scroll-padding-bottom: calc(var(--safe-bottom) + 4.5rem);
+}
+
 body.home-snap {
   scroll-snap-type: y mandatory;
   scroll-padding-top: 5.5rem;
@@ -58,12 +77,12 @@ body.home-snap [data-snap-section] {
 }
 
 .mobile-feed-peek {
-  min-height: calc(4.25rem + env(safe-area-inset-bottom));
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  min-height: calc(4.25rem + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
 }
 
 .mobile-feed-sheet {
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  padding-bottom: var(--safe-bottom);
   border-radius: 1rem 1rem 0 0;
 }
 
@@ -2225,39 +2244,52 @@ html::-webkit-scrollbar-thumb:hover,
   z-index: 32;
 }
 
-.workflow-sidebar__toolbar {
-  position: relative;
-  z-index: 33;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 0.625rem 0.875rem;
-  background: rgba(8, 8, 8, 0.65);
-}
-
-.workflow-sidebar__toolbar-row {
+.workflow-sidebar__sources-toggle {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
   width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 10px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s ease;
 }
 
-.workflow-sidebar__sources-popover {
+.workflow-sidebar__sources-toggle:hover {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.workflow-sidebar__sources-toggle--open {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.workflow-sidebar__sources-toggle-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.workflow-sidebar__sources-drawer {
   position: absolute;
-  left: 0.875rem;
-  right: 0.875rem;
-  top: calc(100% + 4px);
+  left: 16px;
+  right: 16px;
+  bottom: calc(100% + 4px);
   z-index: 40;
   display: flex;
-  max-height: min(58vh, 520px);
+  max-height: min(52vh, 480px);
   flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background: rgba(5, 5, 5, 0.98);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
 }
 
-.workflow-sidebar__sources-popover-body {
+.workflow-sidebar__sources-drawer-body {
   display: flex;
   min-height: 0;
   min-width: 0;
@@ -2282,6 +2314,8 @@ html::-webkit-scrollbar-thumb:hover,
 }
 
 .workflow-sidebar__footer {
+  position: relative;
+  z-index: 33;
   flex-shrink: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding: 12px 16px 14px;
@@ -2588,6 +2622,11 @@ html::-webkit-scrollbar-thumb:hover,
 .field-icon-tooltip-btn:focus-visible .field-icon-tooltip {
   opacity: 1;
   visibility: visible;
+}
+
+.field-icon-tooltip--model {
+  max-width: 13rem;
+  white-space: normal;
 }
 
 /* Careers application — larger text areas with styled scrollbars */

@@ -132,8 +132,7 @@ export default function Nav() {
           <nav
             id="mobile-nav-drawer"
             aria-label="Mobile"
-            className="absolute left-0 right-0 top-full z-50 border-b border-[#141414] bg-[#0a0a0a]/98 px-6 py-6 backdrop-blur-md md:hidden"
-            style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+            className="absolute left-0 right-0 top-full z-50 max-h-[calc(100dvh-var(--safe-top)-4rem)] overflow-y-auto border-b border-[#141414] bg-[#0a0a0a]/98 px-6 py-6 backdrop-blur-md md:hidden safe-bottom-bar"
           >
             <ul className="flex flex-col gap-1">
               <li>

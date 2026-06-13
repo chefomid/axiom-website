@@ -11,7 +11,7 @@ export default function CookieBanner() {
       role="dialog"
       aria-labelledby="cookie-banner-title"
       aria-describedby="cookie-banner-desc"
-      className="fixed inset-x-0 bottom-0 z-[70] border-t border-[#333] bg-[#0a0a0a]/95 px-4 py-3 backdrop-blur-md sm:px-4 sm:py-2"
+      className="safe-bottom-bar fixed inset-x-0 bottom-0 z-[70] border-t border-[#333] bg-[#0a0a0a]/95 px-4 py-3 backdrop-blur-md sm:px-4 sm:py-2"
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div className="min-w-0 sm:flex-1">

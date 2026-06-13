@@ -19,8 +19,7 @@ export function DossierMobileNav({ sections, activeId, onSelect, className = '' 
   return (
     <nav
       aria-label="Section navigation"
-      className={`shrink-0 border-t border-[#9AA0A8]/25 bg-[#080808]/98 backdrop-blur-md xl:hidden ${className}`}
-      style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+      className={`safe-bottom-bar shrink-0 border-t border-[#9AA0A8]/25 bg-[#080808]/98 backdrop-blur-md xl:hidden ${className}`}
     >
       <div
         ref={scrollerRef}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GhostButton, PanelToggle, PrimaryButton } from '../ui/CommandControls'
+import MobileStickyFooter from '../ui/MobileStickyFooter'
 import { useConsent } from '../../context/ConsentContext'
 
 const CATEGORIES = [
@@ -23,6 +24,21 @@ const CATEGORIES = [
     locked: false,
   },
 ]
+
+function ActionButtons({ onReject, onAccept, onSave, layout = 'row' }) {
+  const stackClass =
+    layout === 'stack'
+      ? 'flex w-full flex-col-reverse gap-2 [&_button]:w-full'
+      : 'flex flex-wrap items-center justify-end gap-2'
+
+  return (
+    <div className={stackClass}>
+      <GhostButton onClick={onReject}>Reject non-essential</GhostButton>
+      <GhostButton onClick={onAccept}>Accept all</GhostButton>
+      <PrimaryButton onClick={onSave}>Save preferences</PrimaryButton>
+    </div>
+  )
+}
 
 export default function CookiePreferencesModal({ open, onClose, initialMarketingOff = false }) {
   const { consent, acceptAll, rejectNonEssential, savePreferences } = useConsent()
@@ -62,79 +78,99 @@ export default function CookiePreferencesModal({ open, onClose, initialMarketing
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
             className="flex max-h-[min(92dvh,100%)] w-full max-w-lg flex-col overflow-hidden rounded-t-xl border border-[#333] bg-[#0d0d0d]/98 shadow-2xl sm:max-h-[min(85vh,100%)] sm:rounded sm:border"
           >
-            <div className="overflow-y-auto overscroll-contain p-5 sm:p-6">
-            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-muted">
-              Privacy preferences
-            </p>
-            <h2
-              id="cookie-prefs-title"
-              className="mt-2 font-display text-lg font-medium tracking-tight text-white"
-            >
-              Manage cookie preferences
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
-              Choose which categories of cookies and similar technologies you allow. You can change
-              these settings at any time.
-            </p>
-
-            <div className="mt-5 space-y-1 rounded border border-[#2a2a2a] bg-[#0a0a0a]/60 p-2">
-              {CATEGORIES.map(cat => {
-                const active =
-                  cat.id === 'necessary'
-                    ? true
-                    : cat.id === 'analytics'
-                      ? analytics
-                      : marketing
-                const onClick = () => {
-                  if (cat.locked) return
-                  if (cat.id === 'analytics') setAnalytics(v => !v)
-                  if (cat.id === 'marketing') setMarketing(v => !v)
-                }
-                return (
-                  <PanelToggle
-                    key={cat.id}
-                    active={active}
-                    onClick={onClick}
-                    label={cat.label}
-                    meta={cat.locked ? `${cat.meta} Always on.` : cat.meta}
-                    accent={cat.locked ? 'stable' : 'live'}
-                  />
-                )
-              })}
-            </div>
-
-            <div className="mt-4 rounded border border-[#2a2a2a] bg-[#0a0a0a]/60 px-4 py-3">
-              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">
-                Your privacy choices
+            <div className="sleek-scrollbar flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6">
+              <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-muted">
+                Privacy preferences
               </p>
-              <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">
-                AXIOM does not sell your personal information. California residents can turn off
-                marketing-related preferences here. This also satisfies CCPA opt-out rights for data
-                sharing used in targeted advertising.
+              <h2
+                id="cookie-prefs-title"
+                className="mt-2 font-display text-lg font-medium tracking-tight text-white"
+              >
+                Manage cookie preferences
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
+                Choose which categories of cookies and similar technologies you allow. You can change
+                these settings at any time.
               </p>
+
+              <div className="mt-5 space-y-1 rounded border border-[#2a2a2a] bg-[#0a0a0a]/60 p-2">
+                {CATEGORIES.map(cat => {
+                  const active =
+                    cat.id === 'necessary'
+                      ? true
+                      : cat.id === 'analytics'
+                        ? analytics
+                        : marketing
+                  const onClick = () => {
+                    if (cat.locked) return
+                    if (cat.id === 'analytics') setAnalytics(v => !v)
+                    if (cat.id === 'marketing') setMarketing(v => !v)
+                  }
+                  return (
+                    <PanelToggle
+                      key={cat.id}
+                      active={active}
+                      onClick={onClick}
+                      label={cat.label}
+                      meta={cat.locked ? `${cat.meta} Always on.` : cat.meta}
+                      accent={cat.locked ? 'stable' : 'live'}
+                    />
+                  )
+                })}
+              </div>
+
+              <div className="mt-4 rounded border border-[#2a2a2a] bg-[#0a0a0a]/60 px-4 py-3">
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">
+                  Your privacy choices
+                </p>
+                <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">
+                  AXIOM does not sell your personal information. California residents can turn off
+                  marketing-related preferences here. This also satisfies CCPA opt-out rights for data
+                  sharing used in targeted advertising.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDoNotSell}
+                  className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-secondary underline decoration-[#444] underline-offset-2 transition-colors hover:text-white"
+                >
+                  Turn off marketing preferences
+                </button>
+              </div>
+
+              <div className="mt-5 hidden sm:block">
+                <ActionButtons
+                  onReject={rejectNonEssential}
+                  onAccept={acceptAll}
+                  onSave={handleSave}
+                />
+              </div>
+
               <button
                 type="button"
-                onClick={handleDoNotSell}
-                className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-secondary underline decoration-[#444] underline-offset-2 transition-colors hover:text-white"
+                onClick={onClose}
+                className="mt-3 hidden w-full font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint transition-colors hover:text-white sm:block"
               >
-                Turn off marketing preferences
+                Close
               </button>
             </div>
 
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end [&_button]:w-full sm:[&_button]:w-auto">
-              <GhostButton onClick={rejectNonEssential}>Reject non-essential</GhostButton>
-              <GhostButton onClick={acceptAll}>Accept all</GhostButton>
-              <PrimaryButton onClick={handleSave}>Save preferences</PrimaryButton>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-3 w-full font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint transition-colors hover:text-white"
-            >
-              Close
-            </button>
-            </div>
+            <MobileStickyFooter fixed={false} align="end" className="sm:hidden">
+              <div className="flex w-full flex-col gap-2">
+                <ActionButtons
+                  layout="stack"
+                  onReject={rejectNonEssential}
+                  onAccept={acceptAll}
+                  onSave={handleSave}
+                />
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="min-h-[44px] w-full font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint transition-colors hover:text-white"
+                >
+                  Close
+                </button>
+              </div>
+            </MobileStickyFooter>
           </motion.div>
         </motion.div>
       )}
