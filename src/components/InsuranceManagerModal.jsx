@@ -516,6 +516,7 @@ function ScreenshotPanel({ item }) {
 export default function InsuranceManagerModal({ open, onClose }) {
   const [activeSection, setActiveSection] = useState(0)
   const [complianceWalkthroughOpen, setComplianceWalkthroughOpen] = useState(false)
+  const [modulesOpen, setModulesOpen] = useState(false)
   const scrollRef = useRef(null)
   const sectionRefs = useRef([])
   const filteredDossier = useMemo(() => DOSSIER, [])
@@ -523,6 +524,7 @@ export default function InsuranceManagerModal({ open, onClose }) {
   useEffect(() => {
     if (!open) return
     setActiveSection(DOSSIER[0]?.id ?? 0)
+    setModulesOpen(false)
   }, [open])
 
   useEffect(() => {
