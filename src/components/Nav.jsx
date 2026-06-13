@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  CAREERS_LABEL,
-  CAREERS_PATH,
   PROPERTY_INTELLIGENCE_LABEL,
   PROPERTY_INTELLIGENCE_PATH,
   PUBLIC_DATA_COMMAND_LABEL,
@@ -15,7 +13,6 @@ const linkClass = 'hover:text-white transition-colors duration-300'
 const navLinks = [
   { to: PUBLIC_DATA_COMMAND_PATH, label: PUBLIC_DATA_COMMAND_LABEL, short: 'PDC' },
   { to: PROPERTY_INTELLIGENCE_PATH, label: PROPERTY_INTELLIGENCE_LABEL, short: 'Property Intel' },
-  { to: CAREERS_PATH, label: CAREERS_LABEL, short: CAREERS_LABEL },
 ]
 
 const mobileMenuLinks = [
@@ -33,11 +30,6 @@ const mobileMenuLinks = [
     to: PROPERTY_INTELLIGENCE_PATH,
     label: PROPERTY_INTELLIGENCE_LABEL,
     description: 'Address-level COPE enrichment and property dossiers',
-  },
-  {
-    to: CAREERS_PATH,
-    label: CAREERS_LABEL,
-    description: 'Join the AXIOM / ATLAS development team',
   },
 ]
 
