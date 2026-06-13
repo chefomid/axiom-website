@@ -222,7 +222,7 @@ export function PanelToggle({ active, onClick, label, meta, accent = 'live', ico
     <button
       type="button"
       onClick={onClick}
-      className={`group flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-all duration-200 ${
+      className={`group flex w-full flex-col gap-2 rounded-lg px-3 py-3 text-left transition-all duration-200 sm:flex-row sm:items-center sm:gap-3 ${
         active
           ? `border-l-2 ${borderAccent} bg-white/[0.05]`
           : 'border-l-2 border-transparent hover:bg-white/[0.02]'
@@ -243,13 +243,15 @@ export function PanelToggle({ active, onClick, label, meta, accent = 'live', ico
           {label}
         </span>
         {meta && (
-          <span className="mt-0.5 block font-mono text-[10px] leading-relaxed text-ink-faint">{meta}</span>
+          <span className="mt-1 block font-mono text-[10px] leading-relaxed text-ink-faint sm:mt-0.5">{meta}</span>
         )}
       </div>
-      <span className={`shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] ${active ? textAccent : 'text-ink-faint'}`}>
-        {active ? 'On' : 'Off'}
-      </span>
-      <ToggleSwitch active={active} accent={accent} />
+      <div className="flex shrink-0 items-center justify-end gap-2 self-stretch sm:self-auto">
+        <span className={`font-mono text-[9px] uppercase tracking-[0.14em] ${active ? textAccent : 'text-ink-faint'}`}>
+          {active ? 'On' : 'Off'}
+        </span>
+        <ToggleSwitch active={active} accent={accent} />
+      </div>
     </button>
   )
 }

@@ -1,5 +1,15 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { DossierMobileNav, DossierModulesSheet } from './dossier/DossierMobileNav'
+
+const IM_NAV_SECTIONS = [
+  { id: 0, label: 'Insurance Operations Workspace', shortLabel: 'Overview' },
+  { id: 1, label: 'All Coverages in One View', shortLabel: 'Portfolio' },
+  { id: 2, label: 'Detailed Exposure Views', shortLabel: 'Exposures' },
+  { id: 3, label: 'Broker Connect', shortLabel: 'Broker' },
+  { id: 4, label: 'Insurance Email Inside the Workflow', shortLabel: 'Mailman' },
+  { id: 5, label: 'Assistant', shortLabel: 'Assistant' },
+]
 
 const PLATFORM_SECTIONS = [
   {
@@ -222,7 +232,7 @@ function ComplianceDetailPopup({ open, onClose, steps }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#050505]/90 backdrop-blur-md px-4 py-8 md:px-8"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-[#050505]/90 backdrop-blur-md p-0 sm:items-center sm:px-4 sm:py-8 md:px-8"
           onClick={onClose}
         >
           <motion.div
@@ -230,7 +240,8 @@ function ComplianceDetailPopup({ open, onClose, steps }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className="w-full max-w-4xl max-h-[min(85vh,820px)] rounded-2xl border border-[#8d8d8d] bg-[#161616] overflow-hidden flex flex-col shadow-2xl"
+            className="flex max-h-[min(92dvh,100%)] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-[#8d8d8d] bg-[#161616] shadow-2xl sm:max-h-[min(85vh,820px)] sm:rounded-2xl"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             onClick={e => e.stopPropagation()}
           >
             <motion.div className="flex items-center justify-between px-5 md:px-7 py-4 border-b im-accent-bar shrink-0">
@@ -241,9 +252,15 @@ function ComplianceDetailPopup({ open, onClose, steps }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="im-accent-close uppercase shrink-0"
+                className="im-accent-close flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#333] uppercase sm:h-auto sm:w-auto sm:border-0"
+                aria-label="Close"
               >
-                Close
+                <span className="sm:hidden" aria-hidden>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M4 4l8 8M12 4L4 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <span className="hidden sm:inline">Close</span>
               </button>
             </motion.div>
 
@@ -570,6 +587,11 @@ export default function InsuranceManagerModal({ open, onClose }) {
     }
   }, [open, filteredDossier])
 
+  const scrollToSection = useCallback(id => {
+    const idx = filteredDossier.findIndex(item => item.id === id)
+    sectionRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [filteredDossier])
+
   return (
     <AnimatePresence>
       {open && (
@@ -579,35 +601,48 @@ export default function InsuranceManagerModal({ open, onClose }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-          className="fixed inset-0 z-50 bg-[#050505]/95 backdrop-blur-xl flex flex-col"
+          className="fixed inset-0 z-50 flex flex-col bg-[#050505]/95 backdrop-blur-xl"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            className="relative z-10 shrink-0 border-b border-[#9AA0A8]/35 px-6 md:px-10 py-3"
+            className="relative z-10 shrink-0 border-b border-[#9AA0A8]/35 px-4 py-3 md:px-10"
           >
-            <div className="flex w-full items-center justify-between gap-6">
+            <div className="flex w-full items-center justify-between gap-3 sm:gap-6">
               <motion.div
                 initial={{ opacity: 0, x: -12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-                className="min-w-0 text-left"
+                className="min-w-0 flex-1 text-left"
               >
-                <p className="font-display text-lg md:text-xl font-semibold text-white tracking-[0.08em] uppercase leading-tight">
+                <p className="font-display text-base font-semibold uppercase leading-tight tracking-[0.08em] text-white sm:text-lg md:text-xl">
                   Insurance Manager
                 </p>
-                <p className="text-[9px] tracking-[0.22em] text-ink-faint uppercase mt-0.5">
+                <p className="mt-0.5 hidden text-[9px] uppercase tracking-[0.22em] text-ink-faint sm:block">
                   Insured Operations Intelligence Dossier
+                </p>
+                <p className="mt-1 font-mono text-[10px] tabular-nums tracking-[0.12em] text-[#9AA0A8] xl:hidden">
+                  {String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} /{' '}
+                  {String(filteredDossier.length).padStart(2, '0')}
                 </p>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-                className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6"
+                className="flex shrink-0 items-center gap-1.5 sm:gap-4 md:gap-6"
               >
-                <span className="hidden font-display text-[10px] text-ink-faint tabular-nums tracking-[0.3em] sm:inline">
+                <button
+                  type="button"
+                  onClick={() => setModulesOpen(true)}
+                  className="flex h-10 items-center justify-center rounded-lg border border-[#333] px-3 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted transition-colors hover:border-[#555] hover:text-white xl:hidden"
+                  aria-label="Open platform modules"
+                >
+                  Modules
+                </button>
+                <span className="hidden font-display text-[10px] tabular-nums tracking-[0.3em] text-ink-faint xl:inline">
                   {String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} /{' '}
                   {String(filteredDossier.length).padStart(2, '0')}
                 </span>
@@ -649,8 +684,8 @@ export default function InsuranceManagerModal({ open, onClose }) {
             </div>
           </motion.div>
 
-          <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[360px,1fr] gap-0">
-            <div className="border-r border-[#9AA0A8]/35 bg-[#080808] h-full min-h-0 flex flex-col self-stretch">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 xl:grid-cols-[360px,1fr]">
+            <div className="hidden h-full min-h-0 flex-col self-stretch border-r border-[#9AA0A8]/35 bg-[#080808] xl:flex">
               <div className="side-panel side-panel--compact side-panel--fill flex flex-col flex-1 min-h-0 h-full w-full overflow-hidden">
                 <div className="side-panel-content flex flex-col flex-1 min-h-0 h-full">
                   <div className="flex flex-1 min-h-0 flex-col">
@@ -711,8 +746,12 @@ export default function InsuranceManagerModal({ open, onClose }) {
               </div>
             </div>
 
-            <div ref={scrollRef} className="sleek-scrollbar min-h-0 overflow-y-auto px-5 md:px-8 xl:px-12 pt-4 pb-16">
-              <div className="space-y-8">
+            <div className="flex min-h-0 flex-col">
+              <div
+                ref={scrollRef}
+                className="sleek-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-4 md:px-8 xl:px-12 xl:pb-16 [-webkit-overflow-scrolling:touch] max-xl:scroll-pb-[calc(4rem+env(safe-area-inset-bottom))]"
+              >
+              <div className="space-y-6 md:space-y-8">
                 {filteredDossier.map((item, idx) => (
                   <article
                     key={item.id}
@@ -720,7 +759,7 @@ export default function InsuranceManagerModal({ open, onClose }) {
                       sectionRefs.current[idx] = node
                     }}
                     data-dossier-id={item.id}
-                    className={
+                    className={`scroll-mt-14 ${
                       item.overview
                         ? 'w-full'
                         : `w-full rounded-2xl border overflow-hidden transition ${
@@ -728,7 +767,7 @@ export default function InsuranceManagerModal({ open, onClose }) {
                               ? 'border-[#9AA0A8] bg-[#161616]'
                               : 'border-[#2d2d2d] bg-[#121212]'
                           }`
-                    }
+                    }`}
                   >
                     {item.overview ? (
                       <motion.div
@@ -757,7 +796,7 @@ export default function InsuranceManagerModal({ open, onClose }) {
                       }`}
                     >
                       <motion.div
-                        className={`bg-[#151515] ${item.compact ? 'p-6 md:p-8' : 'p-5 md:p-7'}`}
+                        className={`bg-[#151515] ${item.compact ? 'p-4 md:p-8' : 'p-4 md:p-7'}`}
                         whileHover={{ backgroundColor: '#181818' }}
                         transition={{ duration: 0.25 }}
                       >
@@ -767,7 +806,7 @@ export default function InsuranceManagerModal({ open, onClose }) {
                           <ScreenshotPanel item={item} />
                         </motion.div>
                       </motion.div>
-                      <motion.div className="border-l border-[#2a2a2a] p-6 md:p-8 flex flex-col justify-center gap-6 md:gap-7 mx-auto w-full max-w-sm sm:max-w-md">
+                      <motion.div className="flex flex-col justify-center gap-5 border-t border-[#2a2a2a] p-5 md:gap-7 md:border-l md:border-t-0 md:p-6 lg:p-8 mx-auto w-full max-w-none 2xl:max-w-md">
                         <div>
                           <h3 className="font-display text-2xl md:text-3xl font-semibold text-white pb-2 mb-3 im-title-rule">
                             {item.title}
@@ -818,8 +857,24 @@ export default function InsuranceManagerModal({ open, onClose }) {
                   </article>
                 ))}
               </div>
+              </div>
+
+              <DossierMobileNav
+                sections={IM_NAV_SECTIONS}
+                activeId={activeSection}
+                onSelect={scrollToSection}
+              />
             </div>
           </div>
+
+          <DossierModulesSheet
+            open={modulesOpen}
+            onClose={() => setModulesOpen(false)}
+            title="Insurance Manager"
+            intro="Insurance operations without the scattered spreadsheets. One portfolio view for intake, compliance, and broker workflows."
+            sections={PLATFORM_SECTIONS}
+            onWalkthrough={() => setComplianceWalkthroughOpen(true)}
+          />
 
           <ComplianceDetailPopup
             open={complianceWalkthroughOpen}

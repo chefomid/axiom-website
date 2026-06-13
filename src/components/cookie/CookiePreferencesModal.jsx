@@ -53,15 +53,16 @@ export default function CookiePreferencesModal({ open, onClose, initialMarketing
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md sm:p-6"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/80 p-0 backdrop-blur-md sm:items-center sm:p-6"
         >
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className="w-full max-w-lg rounded border border-[#333] bg-[#0d0d0d]/98 p-5 shadow-2xl sm:p-6"
+            className="flex max-h-[min(92dvh,100%)] w-full max-w-lg flex-col overflow-hidden rounded-t-xl border border-[#333] bg-[#0d0d0d]/98 shadow-2xl sm:max-h-[min(85vh,100%)] sm:rounded sm:border"
           >
+            <div className="overflow-y-auto overscroll-contain p-5 sm:p-6">
             <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-muted">
               Privacy preferences
             </p>
@@ -120,7 +121,7 @@ export default function CookiePreferencesModal({ open, onClose, initialMarketing
               </button>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end [&_button]:w-full sm:[&_button]:w-auto">
               <GhostButton onClick={rejectNonEssential}>Reject non-essential</GhostButton>
               <GhostButton onClick={acceptAll}>Accept all</GhostButton>
               <PrimaryButton onClick={handleSave}>Save preferences</PrimaryButton>
@@ -133,6 +134,7 @@ export default function CookiePreferencesModal({ open, onClose, initialMarketing
             >
               Close
             </button>
+            </div>
           </motion.div>
         </motion.div>
       )}

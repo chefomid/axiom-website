@@ -1,5 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { DossierMobileNav } from './dossier/DossierMobileNav'
+
+const NAV_SECTIONS = [
+  { id: 'intro', label: 'Overview', shortLabel: 'Overview' },
+  { id: 1, label: 'Compliance Command Center', shortLabel: 'Command' },
+  { id: 2, label: 'Property Portfolio Overview', shortLabel: 'Portfolio' },
+  { id: 3, label: 'Tenant Compliance Operations', shortLabel: 'Tenants' },
+  { id: 4, label: 'Certificate Registry', shortLabel: 'Certificates' },
+  { id: 7, label: 'AI COI Review', shortLabel: 'AI Review' },
+  { id: 8, label: 'Mailroom', shortLabel: 'Mailroom' },
+  { id: 10, label: 'Platform Settings', shortLabel: 'Settings' },
+  { id: 11, label: 'Executive Reporting', shortLabel: 'Reports' },
+  { id: 12, label: 'Report Builder', shortLabel: 'Builder' },
+  { id: 13, label: 'Bulk Import', shortLabel: 'Import' },
+]
 
 const INTRO = {
   eyebrow: 'AXIOM Certificate Compliance',
@@ -213,6 +228,21 @@ export default function CoiTrackerModal({ open, onClose }) {
     }
   }, [open, filteredDossier])
 
+  const scrollToSection = useCallback(id => {
+    const root = scrollRef.current
+    if (!root) return
+
+    const target =
+      id === 'intro'
+        ? introRef.current
+        : sectionRefs.current[filteredDossier.findIndex(item => item.id === id)]
+
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [filteredDossier])
+
+  const mobileActiveId = onIntro ? 'intro' : activeSection
+
   return (
     <AnimatePresence>
       {open && (
@@ -222,35 +252,41 @@ export default function CoiTrackerModal({ open, onClose }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-          className="fixed inset-0 z-50 bg-[#050505]/95 backdrop-blur-xl flex flex-col"
+          className="fixed inset-0 z-50 flex flex-col bg-[#050505]/95 backdrop-blur-xl"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            className="relative z-10 shrink-0 border-b border-[#9AA0A8]/35 px-6 md:px-10 py-3"
+            className="relative z-10 shrink-0 border-b border-[#9AA0A8]/35 px-4 py-3 md:px-10"
           >
-            <div className="flex w-full items-center justify-between gap-6">
+            <div className="flex w-full items-center justify-between gap-3 sm:gap-6">
               <motion.div
                 initial={{ opacity: 0, x: -12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-                className="min-w-0 text-left"
+                className="min-w-0 flex-1 text-left"
               >
-                <p className="font-display text-lg md:text-xl font-semibold text-white tracking-[0.08em] uppercase leading-tight">
+                <p className="font-display text-base font-semibold uppercase leading-tight tracking-[0.08em] text-white sm:text-lg md:text-xl">
                   COI Tracker
                 </p>
-                <p className="text-[9px] tracking-[0.22em] text-ink-faint uppercase mt-0.5">
+                <p className="mt-0.5 hidden text-[9px] uppercase tracking-[0.22em] text-ink-faint sm:block">
                   Autonomous Certificate Intelligence Dossier
+                </p>
+                <p className="mt-1 font-mono text-[10px] tabular-nums tracking-[0.12em] text-[#9AA0A8] sm:hidden">
+                  {onIntro
+                    ? 'Overview'
+                    : `${String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} / ${String(filteredDossier.length).padStart(2, '0')}`}
                 </p>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.45, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-                className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6"
+                className="flex shrink-0 items-center gap-1.5 sm:gap-4 md:gap-6"
               >
-                <span className="hidden font-display text-[10px] text-ink-faint tabular-nums tracking-[0.3em] sm:inline">
+                <span className="hidden font-display text-[10px] tabular-nums tracking-[0.3em] text-ink-faint sm:inline">
                   {onIntro
                     ? 'Overview'
                     : `${String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} / ${String(filteredDossier.length).padStart(2, '0')}`}
@@ -293,7 +329,7 @@ export default function CoiTrackerModal({ open, onClose }) {
             </div>
           </motion.div>
 
-          <div className="relative h-0 flex-1 min-h-0">
+          <div className="relative flex min-h-0 flex-1 flex-col">
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0 z-0"
@@ -304,16 +340,19 @@ export default function CoiTrackerModal({ open, onClose }) {
                 `,
               }}
             />
-            <div ref={scrollRef} className="sleek-scrollbar relative z-10 h-full overflow-y-auto snap-y snap-proximity bg-[#050505]">
+            <div
+              ref={scrollRef}
+              className="sleek-scrollbar relative z-10 min-h-0 flex-1 overflow-y-auto bg-[#050505] md:snap-y md:snap-proximity [-webkit-overflow-scrolling:touch] max-xl:scroll-pb-[calc(4rem+env(safe-area-inset-bottom))]"
+            >
             <motion.section
               ref={introRef}
               data-snap-section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: onIntro ? 1 : 0.55, y: 0 }}
               transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-              className="relative flex min-h-[calc(100dvh-3.75rem)] shrink-0 snap-center items-center justify-center px-6 md:px-10 xl:px-16 py-10"
+              className="relative flex shrink-0 scroll-mt-14 items-start justify-center px-4 py-8 md:min-h-[calc(100dvh-3.75rem)] md:snap-center md:items-center md:px-10 md:py-10 xl:px-16"
             >
-              <div className="relative mx-auto max-w-3xl w-full">
+              <div className="relative mx-auto w-full max-w-3xl">
                 <p className="text-[9px] tracking-[0.22em] text-[#9AA0A8] uppercase">{INTRO.eyebrow}</p>
                 <h2 className="font-display text-2xl md:text-4xl font-semibold text-white mt-2 mb-4 im-title-rule pb-4">
                   {INTRO.title}
@@ -341,25 +380,27 @@ export default function CoiTrackerModal({ open, onClose }) {
                 data-snap-section
                 animate={{ opacity: !onIntro && activeSection === item.id ? 1 : onIntro ? 0.55 : 0.5 }}
                 transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-                className="relative flex min-h-[calc(100dvh-3.75rem)] shrink-0 snap-center items-center justify-center px-6 md:px-10 xl:px-16 py-10"
+                className="relative flex shrink-0 scroll-mt-14 items-start justify-center px-4 py-8 md:min-h-[calc(100dvh-3.75rem)] md:snap-center md:items-center md:px-10 md:py-10 xl:px-16"
               >
                 <div
-                  className={`relative mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 lg:gap-12 xl:gap-16 items-center ${
+                  className={`relative mx-auto grid w-full max-w-7xl grid-cols-1 items-start gap-6 md:items-center md:gap-10 lg:gap-12 xl:gap-16 ${
                     item.compact ? 'lg:grid-cols-[1.15fr,0.85fr]' : 'lg:grid-cols-[1.32fr,0.68fr]'
                   }`}
                 >
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center justify-center rounded-xl border border-[#2a2a2a] bg-[#0a0a0a]/60 p-2 md:border-0 md:bg-transparent md:p-0">
                     <img
                       src={item.src}
                       alt={item.title}
                       className={`object-contain ${
-                        item.compact ? 'h-[280px] w-auto max-w-full' : 'w-full max-h-[min(720px,68vh)]'
+                        item.compact
+                          ? 'h-[220px] w-auto max-w-full sm:h-[280px]'
+                          : 'w-full max-h-[min(420px,52vh)] sm:max-h-[min(720px,68vh)]'
                       }`}
                       loading="lazy"
                       decoding="async"
                     />
                   </div>
-                  <div className="flex flex-col justify-center gap-5 md:gap-6 mx-auto w-full max-w-md lg:max-w-none lg:mx-0">
+                  <div className="mx-auto flex w-full max-w-none flex-col justify-center gap-4 md:gap-6 lg:mx-0">
                     <div>
                       <p className="text-[10px] tracking-[0.24em] text-[#9AA0A8]/80 uppercase tabular-nums mb-2">
                         {String(idx + 1).padStart(2, '0')} / {String(filteredDossier.length).padStart(2, '0')}
@@ -402,6 +443,12 @@ export default function CoiTrackerModal({ open, onClose }) {
               </motion.article>
             ))}
             </div>
+
+            <DossierMobileNav
+              sections={NAV_SECTIONS}
+              activeId={mobileActiveId}
+              onSelect={scrollToSection}
+            />
           </div>
         </motion.div>
       )}

@@ -242,20 +242,20 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
                 <span className="text-xs font-semibold tracking-[0.2em] text-white uppercase pb-1.5 border-b border-[#2d2d2d]">
                   Included Services
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {p.tools.map(t => {
                     const Tag = t.onClick ? 'button' : 'div'
                     return (
                       <Tag
                         key={t.name}
                         onClick={t.onClick}
-                        className={`group rounded-lg border p-4 flex flex-col gap-2.5 text-left transition-colors ${
+                        className={`group flex min-h-[120px] flex-col gap-2.5 rounded-lg border p-4 text-left transition-colors sm:min-h-0 ${
                           t.onClick
-                            ? 'border-[#3a3a3a] bg-[#141414] cursor-pointer hover:border-[#5c5c5c] hover:bg-[#1a1a1a]'
+                            ? 'cursor-pointer border-[#3a3a3a] bg-[#141414] hover:border-[#5c5c5c] hover:bg-[#1a1a1a] active:scale-[0.99]'
                             : 'border-[#2d2d2d] bg-[#111111]'
                         }`}
                       >
-                        <span className="font-display text-sm font-semibold text-white pb-1.5 border-b border-[#2d2d2d] flex items-center justify-between gap-2">
+                        <span className="flex items-center justify-between gap-2 border-b border-[#2d2d2d] pb-2 font-display text-sm font-semibold text-white">
                           {t.name}
                           {t.onClick && (
                             <span className="shrink-0 text-ink-faint transition-colors group-hover:text-white">
@@ -263,7 +263,12 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
                             </span>
                           )}
                         </span>
-                        <p className="text-[11px] text-ink-muted leading-relaxed">{t.description}</p>
+                        <p className="text-xs leading-relaxed text-ink-muted sm:text-[11px]">{t.description}</p>
+                        {t.onClick && (
+                          <span className="mt-auto pt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-[#9AA0A8] sm:hidden">
+                            Tap to explore
+                          </span>
+                        )}
                       </Tag>
                     )
                   })}
