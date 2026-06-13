@@ -115,7 +115,7 @@ export default function IntelligencePanelContent({
 
   return (
 
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="shrink-0">
 
       <section className="side-panel-section shrink-0 border-b-0 pb-1">
 
@@ -175,17 +175,17 @@ export default function IntelligencePanelContent({
 
 
 
-      <section className="side-panel-section side-panel-section--modules flex min-h-0 flex-1 flex-col border-b-0 pt-2 pb-0">
+      <section className="side-panel-section shrink-0 border-b-0 pt-2 pb-0">
 
-        <h3 className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#9AA0A8]">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#9AA0A8]">
 
           Coverage &amp; Discipline
 
         </h3>
 
-        <div className="im-accent-rule my-2 shrink-0" aria-hidden />
+        <div className="im-accent-rule my-2" aria-hidden />
 
-        <div className="grid min-h-0 flex-1 grid-cols-2 gap-x-3 content-start">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4">
 
           <div className="min-w-0">
 
@@ -213,7 +213,7 @@ export default function IntelligencePanelContent({
 
         </div>
 
-        <div className="mt-auto shrink-0 pt-3">
+        <div className="mt-4 border-t border-white/[0.06] pt-4">
 
           <div className="mb-1.5 flex items-center justify-between gap-2">
 

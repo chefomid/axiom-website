@@ -297,9 +297,11 @@ export default function IntentPackagePicker({
     return <p className="font-mono text-[10px] text-ink-muted">Loading packages…</p>
   }
 
+  // Least premium first: free → paid tiers → carrier-grade preset; add-ons render below.
   const allPackageItems = [
-    ...PRIMARY_INTENTS.map(intent => ({ type: 'primary', intent })),
+    { type: 'primary', intent: PRIMARY_INTENTS[0] },
     ...MORE_INTENT_IDS.map(id => ({ type: 'secondary', id })),
+    { type: 'primary', intent: PRIMARY_INTENTS[1] },
   ]
 
   return (
