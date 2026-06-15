@@ -292,10 +292,10 @@ export function ScopePill({ onClick, label, value }) {
 }
 
 /** Primary modal / form action */
-export function PrimaryButton({ onClick, children, disabled = false }) {
+export function PrimaryButton({ onClick, children, disabled = false, type = 'button' }) {
   return (
     <button
-      type="button"
+      type={type}
       onClick={onClick}
       disabled={disabled}
       className="min-h-[40px] rounded-lg border border-[#4a4a4a] bg-[#181818] px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.14em] text-white transition-all duration-200 hover:border-command-live/60 hover:bg-[#1e1e1e] disabled:opacity-50"

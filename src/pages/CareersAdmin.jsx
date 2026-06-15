@@ -50,12 +50,15 @@ function StatusBadge({ status }) {
 function TokenGate({ onAuthenticated }) {
   const [token, setToken] = useState('')
   const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
 
   async function handleSubmit(event) {
     event.preventDefault()
     const trimmed = token.trim()
     if (!trimmed) return
 
+    setLoading(true)
+    setError(null)
     saveAdminToken(trimmed)
     try {
       await fetchSubmissions()
@@ -63,6 +66,8 @@ function TokenGate({ onAuthenticated }) {
     } catch (err) {
       clearAdminToken()
       setError(err?.message ?? 'Access denied.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -91,7 +96,9 @@ function TokenGate({ onAuthenticated }) {
             {error}
           </p>
         ) : null}
-        <PrimaryButton type="submit">Continue</PrimaryButton>
+        <PrimaryButton type="submit" disabled={loading}>
+          {loading ? 'Checking…' : 'Continue'}
+        </PrimaryButton>
       </form>
     </div>
   )
