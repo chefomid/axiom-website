@@ -330,7 +330,7 @@ function PersonProfilePanel({
           Applicant profile
         </p>
         <h2 className="mt-2 font-display text-xl font-medium text-white">{profile.name}</h2>
-        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-command-live/90">
+        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-command-watch">
           {profile.roleApplied ?? APPLICATION_ROLE}
         </p>
         <p className="mt-1 text-sm text-ink-secondary">{profile.email}</p>
