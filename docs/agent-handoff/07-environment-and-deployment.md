@@ -95,9 +95,13 @@ Served at `/api/careers/organize` and `/api/careers/apply`. Local dev uses the V
 
 Applications are saved to storage and reviewed at `/careers/admin` (no email required).
 
+In **production**, right-click the footer **Careers** link to reveal a hidden **Admin** entry.
+
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `CAREERS_ADMIN_TOKEN` | For admin console | Bearer secret for `/careers/admin` and admin API |
+| `CAREERS_ADMIN_USERNAME` | For admin login | Username for `/careers/admin` sign-in |
+| `CAREERS_ADMIN_PASSWORD` | For admin login | Password for `/careers/admin` sign-in |
+| `CAREERS_ADMIN_TOKEN` | For admin API | Internal bearer secret returned after successful login |
 | `CAREERS_DATABASE_URL` | Production | Vercel Postgres / Neon connection string |
 | `RESEND_API_KEY` | Optional (unused) | Legacy email delivery; not required for apply |
 | `CAREERS_TO_EMAIL` | Optional (unused) | Legacy internal notification recipient |
@@ -110,7 +114,7 @@ Applications are saved to storage and reviewed at `/careers/admin` (no email req
 | `OPENAI_API_KEY` | Fallback | Used when `NVIDIA_API_KEY` is unset |
 | `OPENAI_CAREERS_MODEL` | Optional | OpenAI fallback model; default `gpt-4o-mini` |
 
-**Local dev without Postgres:** submissions are stored under `.careers-data/` when `NODE_ENV=development` (Vite sets this). Set `CAREERS_ADMIN_TOKEN` in `.env.local`, restart dev, submit at `/careers`, review at `/careers/admin`.
+**Local dev without Postgres:** submissions are stored under `.careers-data/` when `NODE_ENV=development` (Vite sets this). Set `CAREERS_ADMIN_USERNAME`, `CAREERS_ADMIN_PASSWORD`, and `CAREERS_ADMIN_TOKEN` in `.env.local`, restart dev, submit at `/careers`, review at `/careers/admin`.
 
 ### Frontend (Vite)
 

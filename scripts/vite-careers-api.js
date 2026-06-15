@@ -5,6 +5,7 @@ import adminSubmissionsHandler from '../api/careers/admin/submissions.js'
 import adminSubmissionHandler from '../api/careers/admin/submission.js'
 import adminExportHandler from '../api/careers/admin/export.js'
 import adminResumeHandler from '../api/careers/admin/resume.js'
+import adminLoginHandler from '../api/careers/admin/login.js'
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -72,6 +73,7 @@ const GET_ROUTES = {
 const POST_ROUTES = {
   '/api/careers/organize': organizeHandler,
   '/api/careers/apply': applyHandler,
+  '/api/careers/admin/login': adminLoginHandler,
 }
 
 const ADMIN_ROUTES = {

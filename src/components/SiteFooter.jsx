@@ -1,10 +1,6 @@
 import { Link } from 'react-router-dom'
-import {
-  CAREERS_LABEL,
-  CAREERS_PATH,
-  COOKIE_POLICY_PATH,
-  PRIVACY_POLICY_PATH,
-} from '../constants/routes'
+import CareersFooterLink from './careers/CareersFooterLink'
+import { COOKIE_POLICY_PATH, PRIVACY_POLICY_PATH } from '../constants/routes'
 import { openCookieSettings, openDoNotSellOrShare } from './cookie/CookieConsentManager'
 
 const linkClass = 'text-xs text-ink-faint transition-colors hover:text-white'
@@ -35,9 +31,7 @@ export default function SiteFooter({ className = '' }) {
             <button type="button" onClick={() => openDoNotSellOrShare()} className={linkClass}>
               Privacy Choices
             </button>
-            <Link to={CAREERS_PATH} className={linkClass}>
-              {CAREERS_LABEL}
-            </Link>
+            <CareersFooterLink className={linkClass} />
           </nav>
         </div>
         <span className="text-xs text-ink-faint">© 2026</span>

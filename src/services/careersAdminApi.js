@@ -43,6 +43,17 @@ export function hasAdminToken() {
   return Boolean(getToken())
 }
 
+export async function loginAdmin(username, password) {
+  const response = await fetch('/api/careers/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+  const data = await parseJson(response)
+  if (data.token) saveAdminToken(data.token)
+  return data
+}
+
 export async function fetchSubmissions({ status = '', q = '' } = {}) {
   const params = new URLSearchParams()
   if (status) params.set('status', status)

@@ -10,8 +10,8 @@ import {
   fetchSubmissions,
   getResumeAuthHeaders,
   hasAdminToken,
+  loginAdmin,
   resumeDownloadUrl,
-  saveAdminToken,
   updateSubmission,
 } from '../services/careersAdminApi'
 
@@ -47,20 +47,59 @@ function StatusBadge({ status }) {
   )
 }
 
-function TokenGate({ onAuthenticated }) {
-  const [token, setToken] = useState('')
+function groupApplicants(submissions) {
+  const map = new Map()
+  for (const item of submissions) {
+    const key = String(item.applicantEmail ?? '')
+      .trim()
+      .toLowerCase()
+    if (!key) continue
+    const existing = map.get(key)
+    if (!existing) {
+      map.set(key, {
+        email: item.applicantEmail,
+        name: item.applicantName,
+        phone: item.applicantPhone ?? '',
+        location: item.applicantLocation ?? '',
+        submissions: [item],
+      })
+      continue
+    }
+    existing.submissions.push(item)
+  }
+
+  return [...map.values()]
+    .map(profile => {
+      const sorted = [...profile.submissions].sort(
+        (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt),
+      )
+      const latest = sorted[0]
+      return {
+        email: latest.applicantEmail,
+        name: latest.applicantName,
+        phone: latest.applicantPhone ?? '',
+        location: latest.applicantLocation ?? '',
+        submissions: sorted,
+      }
+    })
+    .sort((a, b) => new Date(b.submissions[0].submittedAt) - new Date(a.submissions[0].submittedAt))
+}
+
+function LoginGate({ onAuthenticated }) {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(event) {
     event.preventDefault()
-    const trimmed = token.trim()
-    if (!trimmed) return
+    const trimmedUser = username.trim()
+    if (!trimmedUser || !password) return
 
     setLoading(true)
     setError(null)
-    saveAdminToken(trimmed)
     try {
+      await loginAdmin(trimmedUser, password)
       await fetchSubmissions()
       onAuthenticated()
     } catch (err) {
@@ -76,28 +115,42 @@ function TokenGate({ onAuthenticated }) {
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
         Careers admin
       </p>
-      <h1 className="mt-3 font-display text-2xl font-medium tracking-tight text-white">
-        Enter access token
-      </h1>
+      <h1 className="mt-3 font-display text-2xl font-medium tracking-tight text-white">Sign in</h1>
       <p className="mt-3 text-sm leading-relaxed text-ink-secondary">
-        This area is restricted to the AXIOM team. Use the admin token from your environment
-        configuration.
+        This area is restricted to the AXIOM team.
       </p>
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <input
-          type="password"
-          value={token}
-          onChange={event => setToken(event.target.value)}
-          placeholder="Admin token"
-          className="w-full rounded-lg border border-panel-border bg-panel-surface/60 px-4 py-3 text-sm text-ink-primary placeholder:text-ink-faint focus:border-command-live/50 focus:outline-none focus:ring-1 focus:ring-command-live/25"
-        />
+        <label className="block">
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
+            Username
+          </span>
+          <input
+            type="text"
+            value={username}
+            onChange={event => setUsername(event.target.value)}
+            autoComplete="username"
+            className="mt-2 w-full rounded-lg border border-panel-border bg-panel-surface/60 px-4 py-3 text-sm text-ink-primary placeholder:text-ink-faint focus:border-command-live/50 focus:outline-none focus:ring-1 focus:ring-command-live/25"
+          />
+        </label>
+        <label className="block">
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
+            Password
+          </span>
+          <input
+            type="password"
+            value={password}
+            onChange={event => setPassword(event.target.value)}
+            autoComplete="current-password"
+            className="mt-2 w-full rounded-lg border border-panel-border bg-panel-surface/60 px-4 py-3 text-sm text-ink-primary placeholder:text-ink-faint focus:border-command-live/50 focus:outline-none focus:ring-1 focus:ring-command-live/25"
+          />
+        </label>
         {error ? (
           <p className="text-xs text-command-critical" role="alert">
             {error}
           </p>
         ) : null}
         <PrimaryButton type="submit" disabled={loading}>
-          {loading ? 'Checking…' : 'Continue'}
+          {loading ? 'Signing in…' : 'Sign in'}
         </PrimaryButton>
       </form>
     </div>
@@ -256,15 +309,85 @@ function SubmissionDetail({ submission, onUpdated, onUnauthorized }) {
   )
 }
 
+function PersonProfilePanel({
+  profile,
+  selectedRef,
+  onSelectApplication,
+  selectedDetail,
+  onUpdated,
+  onUnauthorized,
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-panel-border bg-panel-bg/80 p-6 sm:p-8">
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+          Applicant profile
+        </p>
+        <h2 className="mt-2 font-display text-xl font-medium text-white">{profile.name}</h2>
+        <p className="mt-1 text-sm text-ink-secondary">{profile.email}</p>
+        <p className="mt-1 text-xs text-ink-muted">
+          {profile.phone || 'No phone'} · {profile.location || 'No location'}
+        </p>
+        <a
+          href={`mailto:${profile.email}`}
+          className="mt-4 inline-block font-mono text-[10px] uppercase tracking-[0.12em] text-command-stable transition-colors hover:text-command-cyber"
+        >
+          Email applicant
+        </a>
+
+        <div className="mt-8">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+            Applications ({profile.submissions.length})
+          </p>
+          <ul className="mt-3 divide-y divide-panel-border rounded-xl border border-panel-border bg-panel-surface/30">
+            {profile.submissions.map(item => (
+              <li key={item.referenceId}>
+                <button
+                  type="button"
+                  onClick={() => onSelectApplication(item.referenceId)}
+                  className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03] ${
+                    selectedRef === item.referenceId ? 'bg-white/[0.04]' : ''
+                  }`}
+                >
+                  <div>
+                    <p className="font-mono text-[10px] text-ink-faint">{item.referenceId}</p>
+                    <p className="mt-1 text-xs text-ink-muted">{formatDate(item.submittedAt)}</p>
+                  </div>
+                  <StatusBadge status={item.status} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {selectedDetail ? (
+        <SubmissionDetail
+          submission={selectedDetail}
+          onUpdated={onUpdated}
+          onUnauthorized={onUnauthorized}
+        />
+      ) : null}
+    </div>
+  )
+}
+
 export default function CareersAdmin() {
   const [authenticated, setAuthenticated] = useState(hasAdminToken())
   const [submissions, setSubmissions] = useState([])
   const [selectedRef, setSelectedRef] = useState(null)
   const [selectedDetail, setSelectedDetail] = useState(null)
+  const [selectedEmail, setSelectedEmail] = useState(null)
+  const [viewMode, setViewMode] = useState('applications')
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  const applicants = groupApplicants(submissions)
+  const selectedProfile = applicants.find(
+    profile => profile.email.toLowerCase() === selectedEmail?.toLowerCase(),
+  )
 
   useEffect(() => {
     document.title = 'Careers Admin | AXIOM'
@@ -334,7 +457,7 @@ export default function CareersAdmin() {
       <div className="min-h-screen bg-black font-sans text-ink-primary">
         <Nav />
         <main className="px-6 pb-24 pt-28 sm:px-8 sm:pt-32">
-          <TokenGate onAuthenticated={() => setAuthenticated(true)} />
+          <LoginGate onAuthenticated={() => setAuthenticated(true)} />
         </main>
         <SiteFooter />
       </div>
@@ -372,6 +495,38 @@ export default function CareersAdmin() {
             </button>
           </div>
         </header>
+
+        <div className="mt-6 flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('applications')
+              setSelectedEmail(null)
+            }}
+            className={`rounded-lg border px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors ${
+              viewMode === 'applications'
+                ? 'border-command-live/50 bg-command-live/10 text-white'
+                : 'border-panel-border bg-panel-surface/60 text-ink-secondary hover:text-white'
+            }`}
+          >
+            Applications
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('people')
+              setSelectedRef(null)
+              setSelectedDetail(null)
+            }}
+            className={`rounded-lg border px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors ${
+              viewMode === 'people'
+                ? 'border-command-live/50 bg-command-live/10 text-white'
+                : 'border-panel-border bg-panel-surface/60 text-ink-secondary hover:text-white'
+            }`}
+          >
+            People
+          </button>
+        </div>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <select
@@ -412,65 +567,141 @@ export default function CareersAdmin() {
         ) : null}
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
-          <div className="overflow-hidden rounded-2xl border border-panel-border bg-panel-bg/80">
-            <div className="border-b border-panel-border px-4 py-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
-              Inbox {loading ? '· loading…' : `· ${submissions.length}`}
-            </div>
-            <ul className="divide-y divide-panel-border">
-              {submissions.length === 0 ? (
-                <li className="px-4 py-8 text-sm text-ink-muted">No submissions yet.</li>
-              ) : (
-                submissions.map(item => (
-                  <li key={item.referenceId}>
-                    <button
-                      type="button"
-                      onClick={() => loadDetail(item.referenceId)}
-                      className={`flex w-full items-start justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.03] ${
-                        selectedRef === item.referenceId ? 'bg-white/[0.04]' : ''
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-mono text-[10px] text-ink-faint">
-                          {item.referenceId}
-                        </p>
-                        <p className="mt-1 truncate text-sm text-white">{item.applicantName}</p>
-                        <p className="truncate text-xs text-ink-muted">{item.applicantEmail}</p>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <StatusBadge status={item.status} />
-                        <p className="mt-2 font-mono text-[10px] text-ink-faint">
-                          {formatDate(item.submittedAt)}
-                        </p>
-                      </div>
-                    </button>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-
-          <div>
-            {selectedDetail ? (
-              <SubmissionDetail
-                submission={selectedDetail}
-                onUpdated={updated => {
-                  setSelectedDetail(updated)
-                  setSubmissions(prev =>
-                    prev.map(item =>
-                      item.referenceId === updated.referenceId
-                        ? { ...item, status: updated.status, adminNotes: updated.adminNotes }
-                        : item,
-                    ),
-                  )
-                }}
-                onUnauthorized={handleUnauthorized}
-              />
-            ) : (
-              <div className="rounded-2xl border border-dashed border-panel-border bg-panel-surface/20 p-10 text-center text-sm text-ink-muted">
-                Select a submission to review the full response record.
+          {viewMode === 'applications' ? (
+            <>
+              <div className="overflow-hidden rounded-2xl border border-panel-border bg-panel-bg/80">
+                <div className="border-b border-panel-border px-4 py-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                  Inbox {loading ? '· loading…' : `· ${submissions.length}`}
+                </div>
+                <ul className="divide-y divide-panel-border">
+                  {submissions.length === 0 ? (
+                    <li className="px-4 py-8 text-sm text-ink-muted">No submissions yet.</li>
+                  ) : (
+                    submissions.map(item => (
+                      <li key={item.referenceId}>
+                        <button
+                          type="button"
+                          onClick={() => loadDetail(item.referenceId)}
+                          className={`flex w-full items-start justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.03] ${
+                            selectedRef === item.referenceId ? 'bg-white/[0.04]' : ''
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-mono text-[10px] text-ink-faint">
+                              {item.referenceId}
+                            </p>
+                            <p className="mt-1 truncate text-sm text-white">{item.applicantName}</p>
+                            <p className="truncate text-xs text-ink-muted">{item.applicantEmail}</p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <StatusBadge status={item.status} />
+                            <p className="mt-2 font-mono text-[10px] text-ink-faint">
+                              {formatDate(item.submittedAt)}
+                            </p>
+                          </div>
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
               </div>
-            )}
-          </div>
+
+              <div>
+                {selectedDetail ? (
+                  <SubmissionDetail
+                    submission={selectedDetail}
+                    onUpdated={updated => {
+                      setSelectedDetail(updated)
+                      setSubmissions(prev =>
+                        prev.map(item =>
+                          item.referenceId === updated.referenceId
+                            ? { ...item, status: updated.status, adminNotes: updated.adminNotes }
+                            : item,
+                        ),
+                      )
+                    }}
+                    onUnauthorized={handleUnauthorized}
+                  />
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-panel-border bg-panel-surface/20 p-10 text-center text-sm text-ink-muted">
+                    Select a submission to review the full response record.
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="overflow-hidden rounded-2xl border border-panel-border bg-panel-bg/80">
+                <div className="border-b border-panel-border px-4 py-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                  People {loading ? '· loading…' : `· ${applicants.length}`}
+                </div>
+                <ul className="divide-y divide-panel-border">
+                  {applicants.length === 0 ? (
+                    <li className="px-4 py-8 text-sm text-ink-muted">No applicants yet.</li>
+                  ) : (
+                    applicants.map(profile => (
+                      <li key={profile.email}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedEmail(profile.email)
+                            setSelectedRef(null)
+                            setSelectedDetail(null)
+                          }}
+                          className={`flex w-full items-start justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.03] ${
+                            selectedEmail?.toLowerCase() === profile.email.toLowerCase()
+                              ? 'bg-white/[0.04]'
+                              : ''
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm text-white">{profile.name}</p>
+                            <p className="truncate text-xs text-ink-muted">{profile.email}</p>
+                            <p className="mt-1 truncate text-xs text-ink-faint">
+                              {profile.location || 'No location'}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <StatusBadge status={profile.submissions[0].status} />
+                            <p className="mt-2 font-mono text-[10px] text-ink-faint">
+                              {profile.submissions.length}{' '}
+                              {profile.submissions.length === 1 ? 'application' : 'applications'}
+                            </p>
+                          </div>
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+
+              <div>
+                {selectedProfile ? (
+                  <PersonProfilePanel
+                    profile={selectedProfile}
+                    selectedRef={selectedRef}
+                    onSelectApplication={loadDetail}
+                    selectedDetail={selectedDetail}
+                    onUpdated={updated => {
+                      setSelectedDetail(updated)
+                      setSubmissions(prev =>
+                        prev.map(item =>
+                          item.referenceId === updated.referenceId
+                            ? { ...item, status: updated.status, adminNotes: updated.adminNotes }
+                            : item,
+                        ),
+                      )
+                    }}
+                    onUnauthorized={handleUnauthorized}
+                  />
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-panel-border bg-panel-surface/20 p-10 text-center text-sm text-ink-muted">
+                    Select a person to view their profile and applications.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </main>
       <SiteFooter />
