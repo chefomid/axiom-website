@@ -59,6 +59,7 @@ function groupApplicants(submissions) {
       map.set(key, {
         email: item.applicantEmail,
         name: item.applicantName,
+        roleApplied: item.roleApplied ?? 'Project Manager',
         phone: item.applicantPhone ?? '',
         location: item.applicantLocation ?? '',
         submissions: [item],
@@ -77,6 +78,7 @@ function groupApplicants(submissions) {
       return {
         email: latest.applicantEmail,
         name: latest.applicantName,
+        roleApplied: latest.roleApplied ?? 'Project Manager',
         phone: latest.applicantPhone ?? '',
         location: latest.applicantLocation ?? '',
         submissions: sorted,
@@ -221,6 +223,9 @@ function SubmissionDetail({ submission, onUpdated, onUnauthorized }) {
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
             {submission.referenceId}
           </p>
+          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-command-live/90">
+            {submission.roleApplied ?? 'Project Manager'}
+          </p>
           <h2 className="mt-2 font-display text-xl font-medium text-white">
             {submission.applicantName}
           </h2>
@@ -324,6 +329,9 @@ function PersonProfilePanel({
           Applicant profile
         </p>
         <h2 className="mt-2 font-display text-xl font-medium text-white">{profile.name}</h2>
+        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-command-live/90">
+          {profile.roleApplied ?? 'Project Manager'}
+        </p>
         <p className="mt-1 text-sm text-ink-secondary">{profile.email}</p>
         <p className="mt-1 text-xs text-ink-muted">
           {profile.phone || 'No phone'} · {profile.location || 'No location'}
@@ -590,8 +598,11 @@ export default function CareersAdmin() {
                             <p className="truncate font-mono text-[10px] text-ink-faint">
                               {item.referenceId}
                             </p>
-                            <p className="mt-1 truncate text-sm text-white">{item.applicantName}</p>
-                            <p className="truncate text-xs text-ink-muted">{item.applicantEmail}</p>
+                        <p className="mt-1 truncate text-sm text-white">{item.applicantName}</p>
+                        <p className="truncate font-mono text-[10px] text-command-live/80">
+                          {item.roleApplied ?? 'Project Manager'}
+                        </p>
+                        <p className="truncate text-xs text-ink-muted">{item.applicantEmail}</p>
                           </div>
                           <div className="shrink-0 text-right">
                             <StatusBadge status={item.status} />

@@ -110,7 +110,8 @@ export async function listSubmissions({ status, q, limit = 100 } = {}) {
     return sql`
       SELECT id, reference_id, submitted_at, status, admin_notes,
              applicant_name, applicant_email, applicant_phone, applicant_location,
-             (resume_filename IS NOT NULL) AS has_resume
+             (resume_filename IS NOT NULL) AS has_resume,
+             payload->'applicant'->>'roleApplied' AS role_applied
       FROM careers_submissions
       WHERE status = ${status}
         AND (
@@ -127,7 +128,8 @@ export async function listSubmissions({ status, q, limit = 100 } = {}) {
     return sql`
       SELECT id, reference_id, submitted_at, status, admin_notes,
              applicant_name, applicant_email, applicant_phone, applicant_location,
-             (resume_filename IS NOT NULL) AS has_resume
+             (resume_filename IS NOT NULL) AS has_resume,
+             payload->'applicant'->>'roleApplied' AS role_applied
       FROM careers_submissions
       WHERE status = ${status}
       ORDER BY submitted_at DESC
@@ -139,7 +141,8 @@ export async function listSubmissions({ status, q, limit = 100 } = {}) {
     return sql`
       SELECT id, reference_id, submitted_at, status, admin_notes,
              applicant_name, applicant_email, applicant_phone, applicant_location,
-             (resume_filename IS NOT NULL) AS has_resume
+             (resume_filename IS NOT NULL) AS has_resume,
+             payload->'applicant'->>'roleApplied' AS role_applied
       FROM careers_submissions
       WHERE lower(reference_id) LIKE ${'%' + search + '%'}
          OR lower(applicant_name) LIKE ${'%' + search + '%'}
@@ -152,7 +155,8 @@ export async function listSubmissions({ status, q, limit = 100 } = {}) {
   return sql`
     SELECT id, reference_id, submitted_at, status, admin_notes,
            applicant_name, applicant_email, applicant_phone, applicant_location,
-           (resume_filename IS NOT NULL) AS has_resume
+           (resume_filename IS NOT NULL) AS has_resume,
+           payload->'applicant'->>'roleApplied' AS role_applied
     FROM careers_submissions
     ORDER BY submitted_at DESC
     LIMIT ${safeLimit}
@@ -224,6 +228,7 @@ export async function exportSubmissionsCsv({ status, q } = {}) {
 
   const header = [
     'reference_id',
+    'role_applied',
     'applicant_name',
     'applicant_email',
     'applicant_phone',
@@ -243,6 +248,7 @@ export async function exportSubmissionsCsv({ status, q } = {}) {
     lines.push(
       [
         row.reference_id,
+        row.role_applied ?? 'Project Manager',
         row.applicant_name,
         row.applicant_email,
         row.applicant_phone,

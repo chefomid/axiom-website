@@ -122,6 +122,8 @@ export async function listLocalSubmissions({ status, q, limit = 100 } = {}) {
       applicant_phone: row.applicant_phone,
       applicant_location: row.applicant_location,
       has_resume: Boolean(row.has_resume),
+      role_applied: row.payload?.applicant?.roleApplied ?? null,
+      payload: row.payload,
     })
   }
 
@@ -199,6 +201,7 @@ export async function exportLocalSubmissionsCsv({ status, q } = {}) {
 
   const header = [
     'reference_id',
+    'role_applied',
     'applicant_name',
     'applicant_email',
     'applicant_phone',
@@ -218,6 +221,7 @@ export async function exportLocalSubmissionsCsv({ status, q } = {}) {
     lines.push(
       [
         row.reference_id,
+        row.role_applied ?? row.payload?.applicant?.roleApplied ?? 'Project Manager',
         row.applicant_name,
         row.applicant_email,
         row.applicant_phone,

@@ -1,4 +1,4 @@
-import { APPLICATION_STEPS } from '../components/careers/applicationSchema'
+import { APPLICATION_ROLE, APPLICATION_STEPS } from '../components/careers/applicationSchema'
 import { isCareersOrganizeLlmEnabled } from '../config/features'
 import { attachApiErrorMetadata, messageFromApiError, parseApiDetail } from '../utils/apiErrors'
 import { lightOrganizeText, shouldUseLlmOrganize } from '../utils/careersOrganize'
@@ -191,19 +191,19 @@ function extractAttachment(values) {
 
 export function buildSubmissionPayload(values, { honeypot = '' } = {}) {
 
-  const sections = APPLICATION_STEPS.map(step => ({
-
-    title: step.title,
-
-    items: step.fields.map(field => ({
-
-      label: field.label,
-
-      answer: answerFor(field, values),
-
+  const sections = [
+    {
+      title: 'Position',
+      items: [{ label: 'Role', answer: APPLICATION_ROLE }],
+    },
+    ...APPLICATION_STEPS.map(step => ({
+      title: step.title,
+      items: step.fields.map(field => ({
+        label: field.label,
+        answer: answerFor(field, values),
+      })),
     })),
-
-  }))
+  ]
 
 
 
@@ -216,6 +216,8 @@ export function buildSubmissionPayload(values, { honeypot = '' } = {}) {
     applicant: {
 
       fullName: applicantFullName(values),
+
+      roleApplied: APPLICATION_ROLE,
 
       preferredName: String(values.preferredName ?? '').trim(),
 

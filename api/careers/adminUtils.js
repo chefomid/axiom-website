@@ -1,3 +1,15 @@
+const DEFAULT_ROLE = 'Project Manager'
+
+function resolveRoleApplied(row) {
+  if (row?.role_applied) return String(row.role_applied)
+  try {
+    const payload = typeof row?.payload === 'string' ? JSON.parse(row.payload) : row?.payload
+    return payload?.applicant?.roleApplied ?? DEFAULT_ROLE
+  } catch {
+    return DEFAULT_ROLE
+  }
+}
+
 export function serializeSubmission(row, { includePayload = false } = {}) {
   if (!row) return null
 
@@ -10,6 +22,7 @@ export function serializeSubmission(row, { includePayload = false } = {}) {
         : String(row.submitted_at ?? ''),
     status: row.status,
     adminNotes: row.admin_notes ?? '',
+    roleApplied: resolveRoleApplied(row),
     applicantName: row.applicant_name,
     applicantEmail: row.applicant_email,
     applicantPhone: row.applicant_phone ?? '',

@@ -25,6 +25,8 @@ export const config = {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+const OPEN_ROLE = 'Project Manager'
+
 function badPayload(body) {
   if (!body || typeof body !== 'object') return 'Invalid payload.'
   const { applicant, sections } = body
@@ -80,6 +82,7 @@ export default async function handler(req, res) {
 
   const applicant = {
     fullName: String(body.applicant.fullName).trim(),
+    roleApplied: String(body.applicant.roleApplied ?? '').trim() || OPEN_ROLE,
     preferredName: String(body.applicant.preferredName ?? '').trim(),
     email: String(body.applicant.email).trim(),
     phone: String(body.applicant.phone ?? '').trim(),
