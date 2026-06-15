@@ -7,7 +7,7 @@
 import { MISSION_PATH } from '../../constants/routes'
 
 export const APPLICATION_DRAFT_KEY = 'axiom-careers-application-draft-v3'
-export const APPLICATION_ROLE = 'Project Management - Associate'
+export const APPLICATION_ROLE = 'Assistant Project Manager'
 export const APPLICATION_TITLE = 'Application'
 export const APPLICATION_SUBTITLE = APPLICATION_ROLE
 export const APPLICATION_PURPOSE =

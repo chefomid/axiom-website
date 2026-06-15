@@ -1,1 +1,1 @@
-export const CAREERS_OPEN_ROLE = 'Project Management - Associate'
+export const CAREERS_OPEN_ROLE = 'Assistant Project Manager'

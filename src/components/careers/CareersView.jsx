@@ -389,7 +389,7 @@ export default function CareersView() {
             {APPLICATION_TITLE}
           </h1>
           {APPLICATION_SUBTITLE ? (
-            <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-command-live/80">
+            <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-command-watch">
               {APPLICATION_SUBTITLE}
             </p>
           ) : null}

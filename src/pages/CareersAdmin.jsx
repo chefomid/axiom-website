@@ -224,7 +224,7 @@ function SubmissionDetail({ submission, onUpdated, onUnauthorized }) {
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
             {submission.referenceId}
           </p>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-command-live/90">
+          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-command-watch">
             {submission.roleApplied ?? APPLICATION_ROLE}
           </p>
           <h2 className="mt-2 font-display text-xl font-medium text-white">
@@ -600,7 +600,7 @@ export default function CareersAdmin() {
                               {item.referenceId}
                             </p>
                         <p className="mt-1 truncate text-sm text-white">{item.applicantName}</p>
-                        <p className="truncate font-mono text-[10px] text-command-live/80">
+                        <p className="truncate font-mono text-[10px] text-command-watch">
                           {item.roleApplied ?? APPLICATION_ROLE}
                         </p>
                         <p className="truncate text-xs text-ink-muted">{item.applicantEmail}</p>
