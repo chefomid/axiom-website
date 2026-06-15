@@ -1,5 +1,5 @@
 /**
- * AXIOM Potential & Commitment Assessment schema.
+ * AXIOM careers application schema.
  *
  * Field types: text | email | tel | cityState | textarea | url | file | choice |
  * multiselect | ratingGroup | likertGroup | yesNoGroup | sentenceGroup
@@ -7,10 +7,10 @@
 import { MISSION_PATH } from '../../constants/routes'
 
 export const APPLICATION_DRAFT_KEY = 'axiom-careers-application-draft-v3'
-export const APPLICATION_TITLE = 'Potential & Commitment Assessment'
-export const APPLICATION_SUBTITLE = 'Talent discovery at AXIOM'
+export const APPLICATION_TITLE = 'Application'
+export const APPLICATION_SUBTITLE = ''
 export const APPLICATION_PURPOSE =
-  'About 5–10 minutes. Most answers are quick scales or yes/no. We are looking for who you are becoming and what you are willing to commit to, not a list of past jobs.'
+  'Share your background and what draws you to AXIOM. We review each submission with care and focus on fit, motivation, and potential.'
 export const APPLICATION_SUCCESS_MESSAGE =
   'Every meaningful achievement begins with a single step. Thank you for taking this one. We look forward to learning more about your story.'
 export const APPLICATION_NEXT_STEPS = [
@@ -351,7 +351,8 @@ export const APPLICATION_STEPS = [
     fields: [
       {
         id: 'currentChallenge',
-        label: 'What challenge are you currently trying to overcome?',
+        label:
+          'Tell us about a challenge you have overcome. What did you learn from it, what did you learn about yourself, and how do you think it helps your mindset with future challenges you will come across?',
         type: 'textarea',
         required: true,
         rows: 6,
@@ -397,40 +398,40 @@ export const APPLICATION_STEPS = [
   },
   {
     id: 'promise',
-    title: 'Your Commitment',
-    intro: 'Complete each sentence in your own words, then sign below.',
+    title: 'Looking Ahead',
+    intro: 'A few quick fill-in-the-blanks. Short answers are fine — this helps us understand what you are working toward.',
     fields: [
       {
         id: 'futurePromise',
-        label: 'Future promise',
+        label: 'Looking ahead',
         type: 'sentenceGroup',
         required: true,
         items: [
           {
             id: 'becoming',
-            prefix: 'In one year I commit to becoming someone who',
+            prefix: 'A year from now, I would like to be someone who',
             placeholder: 'e.g. follows through on what I start',
           },
           {
             id: 'skill',
-            prefix: 'The skill I most want to develop is',
+            prefix: 'A skill I am excited to build next is',
             placeholder: 'e.g. clear written communication',
           },
           {
             id: 'challenge',
-            prefix: 'The challenge I am most willing to face is',
+            prefix: 'I am open to challenges like',
             placeholder: 'e.g. learning tools I have never used before',
           },
           {
             id: 'opportunity',
-            prefix: 'If given an opportunity, I will',
+            prefix: 'When I get involved in something I care about, I tend to',
             placeholder: 'e.g. show up consistently and ask for feedback early',
           },
         ],
       },
       {
         id: 'signature',
-        label: 'Signature (type your full name)',
+        label: 'Your name (confirms this submission is yours)',
         type: 'text',
         required: true,
       },

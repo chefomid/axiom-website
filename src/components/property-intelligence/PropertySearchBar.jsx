@@ -8,7 +8,7 @@ const PHASE_COPY = {
   composing: 'Pick a suggestion or press Enter to lock the property on the map',
   searching: 'Searching addresses…',
   locating: 'Finding your location…',
-  resolving: 'Placing property on the map…',
+  resolving: 'Please wait: Placing property on the map…',
   locked: 'Property located, ready to generate',
   error: '',
 }
@@ -51,6 +51,7 @@ function CheckIcon({ className = '' }) {
 export default function PropertySearchBar({
   address,
   loading,
+  locationLocked = false,
   locationPhase = 'idle',
   locationError = '',
   onAddressChange,
@@ -59,12 +60,15 @@ export default function PropertySearchBar({
   onClear,
   onSearchingChange,
   locateSuccess = false,
+  geolocateCommitting = false,
   compact = false,
 }) {
   const activeStep = stepIndex(locationPhase)
   const statusText = locationError || PHASE_COPY[locationPhase] || ''
   const isLocating = locationPhase === 'locating'
   const isLocked = locationPhase === 'locked'
+  const suppressDropdown =
+    locationLocked || geolocateCommitting || locationPhase === 'locating' || locationPhase === 'resolving'
 
   return (
     <div className={`flex flex-col ${compact ? 'gap-3.5' : 'h-full min-h-0 justify-center gap-3'}`}>
@@ -91,12 +95,14 @@ export default function PropertySearchBar({
         showClearButton
         onClear={onClear}
         onSearchingChange={onSearchingChange}
+        confirmBeforeSelect
         placeholder="123 Main St, Portland, OR 97201"
         disabled={loading || isLocating}
         label="Street address"
         labelClassName={WORKFLOW_SECTION_LABEL}
         inputClassName={WORKFLOW_INPUT}
-        hideDropdown={isLocked}
+        hideDropdown={suppressDropdown}
+        committedLabel={suppressDropdown && address ? address : undefined}
       />
 
       {!compact ? (
@@ -116,7 +122,7 @@ export default function PropertySearchBar({
                 <span
                   className={`flex h-5 w-5 items-center justify-center rounded-full font-mono text-[9px] font-medium transition ${
                     done
-                      ? 'bg-command-stable/20 text-command-stable'
+                      ? 'bg-command-watch/20 text-command-watch'
                       : active
                         ? 'bg-command-live/20 text-command-live ring-1 ring-command-live/40'
                         : 'bg-panel-surface text-ink-faint'
@@ -139,21 +145,30 @@ export default function PropertySearchBar({
       ) : null}
 
       {statusText ? (
-        <p
-          className={`font-mono text-[10px] leading-relaxed ${
-            compact ? 'text-left' : 'text-center'
-          } ${
-            locationError
-              ? 'text-command-critical'
-              : isLocked || locateSuccess
-                ? 'text-command-stable'
-                : locationPhase === 'composing' || locationPhase === 'searching'
-                  ? 'text-command-live'
-                  : 'text-ink-muted'
-          }`}
+        <div
+          className={`flex flex-col gap-1 ${compact ? 'text-left' : 'items-center text-center'}`}
         >
-          {statusText}
-        </p>
+          <p
+            className={`font-mono text-[10px] leading-relaxed ${
+              locationError
+                ? 'text-command-critical'
+                : isLocked || locateSuccess
+                  ? 'text-command-watch'
+                  : locationPhase === 'resolving'
+                    ? 'text-command-watch'
+                  : locationPhase === 'composing' || locationPhase === 'searching'
+                    ? 'text-command-live'
+                    : 'text-ink-muted'
+            }`}
+          >
+            {statusText}
+          </p>
+          {isLocked ? (
+            <p className="font-sans text-[9px] leading-snug text-ink-faint">
+              Pin may vary slightly. GPS and public map data only approximate street addresses.
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {locationError ? (
@@ -180,7 +195,7 @@ export default function PropertySearchBar({
           {isLocating ? (
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-command-live/30 border-t-command-live" aria-hidden />
           ) : locateSuccess ? (
-            <CheckIcon className="h-3.5 w-3.5 text-command-stable" />
+            <CheckIcon className="h-3.5 w-3.5 text-command-watch" />
           ) : (
             <LocationIcon className="h-3.5 w-3.5" />
           )}

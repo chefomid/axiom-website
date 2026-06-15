@@ -60,7 +60,7 @@ function MapModeBar({ mapMode, setMapMode, streetAvailable, checkingStreet, comp
             {mode.label}
             {streetReady && mapMode !== 'street' ? (
               <span
-                className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-command-stable ring-1 ring-black"
+                className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-command-watch ring-1 ring-black"
                 title="Street View available"
               />
             ) : null}
@@ -123,6 +123,13 @@ export default function PropertyMap({
   const flyTimerRef = useRef(null)
   const moveEndHandlerRef = useRef(null)
   const streetFrameRef = useRef(null)
+  const flyDelayRef = useRef(flyDelay)
+  const locationLockedRef = useRef(locationLocked)
+  const pinPendingRef = useRef(pinPending)
+
+  flyDelayRef.current = flyDelay
+  locationLockedRef.current = locationLocked
+  pinPendingRef.current = pinPending
 
   const [mapReady, setMapReady] = useState(false)
   const [mapInitError, setMapInitError] = useState(null)
@@ -293,8 +300,11 @@ export default function PropertyMap({
 
     const markerEl = markerElement(markerRef.current)
     if (markerEl) {
-      setPropertyMapPinPending(markerEl, pinPending && !locationLocked)
-      if (locationLocked) replayPropertyTargetLockAnimation(markerEl)
+      setPropertyMapPinPending(
+        markerEl,
+        pinPendingRef.current && !locationLockedRef.current,
+      )
+      if (locationLockedRef.current) replayPropertyTargetLockAnimation(markerEl)
     }
 
     if (flyTimerRef.current) {
@@ -351,24 +361,30 @@ export default function PropertyMap({
       moveEndHandlerRef.current = onMoveEnd
       liveMap.on('moveend', onMoveEnd)
 
+      const delay = flyDelayRef.current
+
       if (distance < MIN_MOVE_DEG) {
         liveMap.easeTo({
           ...flyOpts,
-          duration: 1000,
+          duration: delay === 0 ? 650 : 1000,
           easing: t => t * (2 - t),
         })
         return
       }
 
+      const duration = delay === 0
+        ? Math.min(900, Math.max(500, flyDurationMs(distance) * 0.45))
+        : flyDurationMs(distance)
+
       liveMap.flyTo({
         ...flyOpts,
-        duration: flyDurationMs(distance),
-        speed: 0.55,
-        curve: 1.2,
+        duration,
+        speed: delay === 0 ? 1.1 : 0.55,
+        curve: delay === 0 ? 1.05 : 1.2,
       })
     }
 
-    flyTimerRef.current = setTimeout(applyTarget, flyDelay)
+    flyTimerRef.current = setTimeout(applyTarget, flyDelayRef.current)
 
     return () => {
       if (flyTimerRef.current) {
@@ -381,7 +397,12 @@ export default function PropertyMap({
         moveEndHandlerRef.current = null
       }
     }
-  }, [mapReady, pin, label, flyDelay, locationLocked, pinPending])
+  }, [mapReady, pin?.lat, pin?.lng])
+
+  useEffect(() => {
+    const el = markerElement(markerRef.current)
+    if (el && label) el.title = label
+  }, [label])
 
   useEffect(() => {
     const el = markerElement(markerRef.current)

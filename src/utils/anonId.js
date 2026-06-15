@@ -1,5 +1,22 @@
 const STORAGE_KEY = 'axiom:property-intelligence:anon-id'
 
+export function setAnonId(id) {
+  const trimmed = String(id ?? '').trim()
+  if (!trimmed) return false
+  try {
+    localStorage.setItem(STORAGE_KEY, trimmed)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function adoptAnonIdFromSearchParams(searchParams) {
+  const id = searchParams?.get?.('anon_id')?.trim()
+  if (!id) return false
+  return setAnonId(id)
+}
+
 export function getOrCreateAnonId() {
   try {
     const existing = localStorage.getItem(STORAGE_KEY)

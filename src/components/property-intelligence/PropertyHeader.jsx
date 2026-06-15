@@ -6,7 +6,7 @@ import {
   PUBLIC_DATA_COMMAND_PATH,
 } from '../../constants/routes'
 
-import StatusChip from '../better-world/StatusChip'
+import { FAIR_USAGE_FOOTER } from '../ui/SafetyLimitNotice'
 import CreditsWallet from './CreditsWallet'
 
 const navLinkClass =
@@ -17,19 +17,37 @@ export default function PropertyHeader({ apiOnline }) {
 
   return (
     <header className="shrink-0 border-b border-panel-border bg-[#060606]/95 backdrop-blur-sm">
-      <div className="flex items-center justify-between gap-4 px-4 py-3 md:px-6">
+      <div className="flex items-center justify-between gap-3 px-3 py-2 md:px-4">
         <div className="min-w-0">
-          <Link
-            to="/"
-            className="font-display text-xs tracking-[0.2em] text-ink-faint transition-colors hover:text-white"
-          >
-            AXIOM
-          </Link>
-          <p className="font-display text-sm font-semibold uppercase tracking-[0.08em] text-white md:text-base">
-            {PROPERTY_INTELLIGENCE_LABEL}
-          </p>
-          <p className="hidden font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted sm:block">
-            Property dossiers · map workflow
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0">
+            <Link
+              to="/"
+              className="shrink-0 font-display text-[10px] tracking-[0.18em] text-ink-faint transition-colors hover:text-white"
+            >
+              AXIOM
+            </Link>
+            <span className="hidden text-[10px] text-ink-faint/35 sm:inline" aria-hidden>
+              /
+            </span>
+            <p className="min-w-0 font-display text-xs font-semibold uppercase tracking-[0.06em] text-white md:text-sm">
+              {PROPERTY_INTELLIGENCE_LABEL}
+            </p>
+          </div>
+
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5">
+            {apiOnline ? <CreditsWallet apiOnline={apiOnline} align="left" compact /> : null}
+            {apiOnline ? (
+              <span className="hidden text-[8px] text-ink-faint/50 sm:inline" aria-hidden>
+                ·
+              </span>
+            ) : null}
+            <p className="hidden font-mono text-[8px] uppercase tracking-[0.14em] text-ink-muted sm:inline">
+              Property dossiers · map workflow
+            </p>
+          </div>
+
+          <p className="mt-0.5 hidden font-mono text-[7px] leading-snug text-ink-faint xl:block">
+            {FAIR_USAGE_FOOTER}
           </p>
         </div>
 
@@ -42,18 +60,7 @@ export default function PropertyHeader({ apiOnline }) {
           >
             {PUBLIC_DATA_COMMAND_LABEL}
           </Link>
-          {apiOnline ? <CreditsWallet apiOnline={apiOnline} /> : null}
         </nav>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-panel-border px-4 py-2 md:px-6">
-        <StatusChip
-          label={apiOnline ? 'API Online' : 'API Offline'}
-          status={apiOnline ? 'stable' : 'watch'}
-          pulse={apiOnline}
-        />
-        <StatusChip label="COPE Workflow" status="live" />
-        <StatusChip label="Desktop Workspace" status="stable" />
       </div>
     </header>
   )

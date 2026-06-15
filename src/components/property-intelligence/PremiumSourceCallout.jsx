@@ -18,15 +18,14 @@ export default function PremiumSourceCallout({
   return (
     <div className="border-b border-amber-500/20 bg-gradient-to-b from-amber-500/5 to-transparent px-4 py-4">
       <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-amber-200/90">
-        Insurance-grade data
+        Licensed data
       </p>
       <p className="font-display text-sm leading-snug text-white">
-        Carrier-trusted property intelligence
+        Third-party property records
       </p>
       <p className="mt-2 font-mono text-[10px] leading-relaxed text-ink-secondary">
-        Underwriters recognize <span className="text-amber-100">{attom.name}</span>. Add it to your
-        receipt for defensible COPE Construction, Occupancy, and Exposure fields with source
-        citations.
+        Add <span className="text-amber-100">{attom.name}</span> to your receipt for sourced COPE
+        Construction, Occupancy, and Exposure fields with citations in the dossier.
       </p>
 
       <ul className="mt-3 space-y-2">
@@ -52,7 +51,7 @@ export default function PremiumSourceCallout({
           className={LOAD_COPE_BTN}
         >
           {keysConfigured
-            ? 'Load COPE: insurance grade preset'
+            ? 'Load COPE: licensed vendor preset'
             : 'Load COPE: free sources from preset'}
         </button>
       ) : onApplyPreset ? (

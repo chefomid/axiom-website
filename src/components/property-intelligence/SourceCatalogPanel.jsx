@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { PRESET_OPTIONAL_ADDONS } from '../../services/propertyApi'
 import SourceCatalog from './SourceCatalog'
 
 const FILTERS = [
@@ -22,8 +23,13 @@ export default function SourceCatalogPanel({
   const presetLabel = catalog?.presets?.find(p => p.id === activePresetId)?.label
 
   const filteredCatalog = useMemo(() => {
-    if (!catalog?.sources || filter === 'all') return catalog
-    const sources = catalog.sources.filter(src => {
+    if (!catalog?.sources) return catalog
+    const withoutPackageAddons = catalog.sources.filter(
+      src => !PRESET_OPTIONAL_ADDONS.includes(src.id),
+    )
+    const base = { ...catalog, sources: withoutPackageAddons }
+    if (filter === 'all') return base
+    const sources = withoutPackageAddons.filter(src => {
       if (filter === 'free') return !src.requires_api_key && src.tier !== 'insurance'
       if (filter === 'licensed') return src.requires_api_key || src.tier === 'insurance'
       return true

@@ -5,7 +5,6 @@ import { downloadReportPdf } from '../../services/reportApi'
 import { buildCopeReportDocument, validateCopeReportDocument } from '../../utils/copeReportDocument'
 import { downloadCopeExcel } from '../../utils/copeReportExcel'
 import CopeSnapshot from './CopeSnapshot'
-import ReportConflictsPanel from './ReportConflictsPanel'
 import ReportHazardsPanel from './ReportHazardsPanel'
 import ReportSourceFields from './ReportSourceFields'
 import ReportSovPanel from './ReportSovPanel'
@@ -15,7 +14,6 @@ const BASE_TABS = [
   { id: 'cope', label: 'COPE' },
   { id: 'sources', label: 'Sources' },
   { id: 'hazards', label: 'Hazards' },
-  { id: 'conflicts', label: 'Conflicts' },
 ]
 const IMAGE_TAB = { id: 'image', label: 'Image' }
 const SOV_TAB = { id: 'sov', label: 'SOV' }
@@ -42,6 +40,8 @@ function LoadingState({ variant }) {
 function ErrorState({ error, apiOnline, variant }) {
   const isGeocodeMiss = /could not be geocoded/i.test(error)
   const isApiOffline = apiOnline === false || /failed to fetch|network/i.test(error)
+  const [title, ...rest] = String(error ?? '').split('\n')
+  const safetyNote = rest.filter(Boolean).join(' ')
 
   return (
     <div
@@ -51,7 +51,10 @@ function ErrorState({ error, apiOnline, variant }) {
           : 'border-b border-command-critical/30 bg-command-critical/5 px-4 py-3'
       }
     >
-      <p className="font-mono text-[10px] text-command-critical">{error}</p>
+      <p className="font-mono text-[10px] text-command-critical">{title}</p>
+      {safetyNote ? (
+        <p className="mt-1 font-mono text-[9px] text-ink-faint">{safetyNote}</p>
+      ) : null}
       {isGeocodeMiss ? (
         <p className="mt-2 font-mono text-[9px] text-ink-faint">
           Use a full street address with city, state, and ZIP.
@@ -66,7 +69,17 @@ function ErrorState({ error, apiOnline, variant }) {
   )
 }
 
-export default function ReportResultsPanel({ record, error, loading, apiOnline, variant = 'embedded' }) {
+export default function ReportResultsPanel({
+  record,
+  error,
+  loading,
+  apiOnline,
+  variant = 'embedded',
+  expanded = false,
+  onToggleExpand,
+  onClose,
+  showHeader = true,
+}) {
   const isPanel = variant === 'panel'
   const [open, setOpen] = useState(Boolean(record))
   const [activeTab, setActiveTab] = useState('cope')
@@ -93,7 +106,6 @@ export default function ReportResultsPanel({ record, error, loading, apiOnline, 
       ? publicDataCommandAtLocation(record.lat, record.lng)
       : null
 
-  const conflictCount = (record.conflicts ?? []).filter(c => c.alternatives?.length > 1).length
   let tabs = [...BASE_TABS]
   if (record.statement_of_values) tabs = [...tabs, SOV_TAB]
   if (record.vision_analysis) tabs = [...tabs, IMAGE_TAB]
@@ -176,7 +188,7 @@ export default function ReportResultsPanel({ record, error, loading, apiOnline, 
       </div>
 
       <div
-        className="flex flex-wrap gap-1.5 border-b border-panel-border/60 px-5 py-3"
+        className="flex gap-1.5 overflow-x-auto border-b border-panel-border/60 px-5 py-3 sleek-scrollbar"
         role="tablist"
         aria-label="Report result views"
       >
@@ -187,16 +199,13 @@ export default function ReportResultsPanel({ record, error, loading, apiOnline, 
             role="tab"
             aria-selected={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`rounded-md border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide transition ${
+            className={`shrink-0 rounded-md border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide transition ${
               activeTab === tab.id
                 ? 'border-command-live/60 bg-command-live/15 text-white shadow-[inset_0_0_0_1px_rgba(74,158,255,0.15)]'
                 : 'border-panel-border bg-panel-surface/40 text-ink-muted hover:border-command-live/30 hover:text-ink-secondary'
             }`}
           >
             {tab.label}
-            {tab.id === 'conflicts' && conflictCount > 0 ? (
-              <span className="ml-1 rounded bg-command-watch/15 px-1 text-command-watch">({conflictCount})</span>
-            ) : null}
           </button>
         ))}
       </div>
@@ -208,7 +217,7 @@ export default function ReportResultsPanel({ record, error, loading, apiOnline, 
             : 'max-h-[min(50vh,420px)] overflow-y-auto sleek-scrollbar'
         }
       >
-        {activeTab === 'cope' ? <CopeSnapshot cope={record.cope} conflicts={[]} /> : null}
+        {activeTab === 'cope' ? <CopeSnapshot cope={record.cope} /> : null}
         {activeTab === 'sources' ? (
           <ReportSourceFields
             fields={record.fields}
@@ -217,9 +226,6 @@ export default function ReportResultsPanel({ record, error, loading, apiOnline, 
           />
         ) : null}
         {activeTab === 'hazards' ? <ReportHazardsPanel hazards={record.hazards} /> : null}
-        {activeTab === 'conflicts' ? (
-          <ReportConflictsPanel conflicts={record.conflicts} cope={record.cope} />
-        ) : null}
         {activeTab === 'sov' ? (
           <ReportSovPanel
             statementOfValues={record.statement_of_values}
@@ -244,13 +250,41 @@ export default function ReportResultsPanel({ record, error, loading, apiOnline, 
   if (isPanel) {
     return (
       <div className="flex h-full min-h-0 flex-col bg-panel-bg">
-        <div className="shrink-0 border-b border-panel-border bg-panel-surface/20 px-5 py-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Report results</p>
-          <p className={`mt-1.5 font-display text-lg font-semibold capitalize ${statusTone}`}>{record.status}</p>
-          {record.display_name ? (
-            <p className="mt-2 font-sans text-sm leading-relaxed text-ink-primary">{record.display_name}</p>
-          ) : null}
-        </div>
+        {showHeader ? (
+          <div className="shrink-0 border-b border-panel-border bg-panel-surface/20 px-5 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Report results</p>
+                <p className={`mt-1 font-display text-lg font-semibold capitalize ${statusTone}`}>{record.status}</p>
+                {record.display_name ? (
+                  <p className="mt-1.5 font-sans text-sm leading-relaxed text-ink-primary">{record.display_name}</p>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {onToggleExpand ? (
+                  <button
+                    type="button"
+                    onClick={onToggleExpand}
+                    className="rounded border border-panel-border px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-muted transition hover:border-command-live/40 hover:text-white"
+                    title={expanded ? 'Show map alongside report' : 'Expand report to full width'}
+                  >
+                    {expanded ? 'Split view' : 'Expand'}
+                  </button>
+                ) : null}
+                {onClose ? (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded border border-panel-border px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-muted transition hover:border-command-live/40 hover:text-white"
+                    aria-label="Close report"
+                  >
+                    Close
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
         <div className="flex min-h-0 flex-1 flex-col">{reportBody}</div>
       </div>
     )

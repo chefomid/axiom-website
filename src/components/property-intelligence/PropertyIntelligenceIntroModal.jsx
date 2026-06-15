@@ -25,7 +25,7 @@ const FEATURED_VENDOR_IDS = ['attom', 'melissa', 'rentcast', 'firststreet']
 const FALLBACK_VENDORS = {
   attom: {
     name: 'ATTOM Data',
-    tagline: 'Insurance-grade property characteristics',
+    tagline: 'Licensed property characteristics',
   },
   melissa: {
     name: 'Melissa',

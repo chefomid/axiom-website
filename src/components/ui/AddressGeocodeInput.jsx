@@ -56,6 +56,9 @@ export default function AddressGeocodeInput({
   onSearchingChange,
   onClear,
   showClearButton = false,
+  confirmBeforeSelect = false,
+  committedLabel,
+  seedSuggestions = null,
 }) {
   const listId = useId()
   const rootRef = useRef(null)
@@ -101,6 +104,17 @@ export default function AddressGeocodeInput({
   }
 
   useEffect(() => {
+    if (committedLabel && value.trim() === committedLabel.trim()) {
+      selectedLabelRef.current = committedLabel
+      setOpen(false)
+      setSuggestions([])
+      setStaleSuggestions([])
+      setHighlightIndex(-1)
+      setHint('')
+    }
+  }, [committedLabel, value])
+
+  useEffect(() => {
     onSearchingChange?.(loading && querySearchable(value.trim()))
   }, [loading, value, onSearchingChange, minSearchLength])
 
@@ -112,6 +126,18 @@ export default function AddressGeocodeInput({
       setOpen(false)
       setHint('')
       setHighlightIndex(-1)
+      return undefined
+    }
+
+    if (seedSuggestions?.length) {
+      const normalized = seedSuggestions.map(normalizeSuggestion).filter(Boolean)
+      setSuggestions(normalized)
+      setStaleSuggestions([])
+      setLoading(false)
+      setOpen(true)
+      setHighlightIndex(confirmBeforeSelect && normalized.length ? 0 : -1)
+      setHint('')
+      selectedLabelRef.current = null
       return undefined
     }
 
@@ -168,11 +194,14 @@ export default function AddressGeocodeInput({
           signal: controller.signal,
         })
         const normalized = results.map(normalizeSuggestion).filter(Boolean)
+        if (controller.signal.aborted) return
         setSuggestions(normalized)
         setStaleSuggestions([])
+        if (controller.signal.aborted) return
         openIfFocused()
         setHighlightIndex(-1)
         if (normalized.length === 0) {
+          if (controller.signal.aborted) return
           setHint(
             searchFn
               ? 'No matches, try a fuller address with city and state.'
@@ -183,6 +212,7 @@ export default function AddressGeocodeInput({
         }
       } catch (err) {
         if (err.name === 'AbortError') return
+        if (controller.signal.aborted) return
         setHint('Address lookup unavailable, check your connection and try again.')
         openIfFocused()
       } finally {
@@ -201,7 +231,18 @@ export default function AddressGeocodeInput({
     }
 
     return () => controller.abort()
-  }, [value, countryId, bbox, searchFn, requireCountry, hideDropdown, searchDebounceMs, minSearchLength])
+  }, [
+    value,
+    countryId,
+    bbox,
+    searchFn,
+    requireCountry,
+    hideDropdown,
+    searchDebounceMs,
+    minSearchLength,
+    seedSuggestions,
+    confirmBeforeSelect,
+  ])
 
   useEffect(() => {
     setSuggestions([])
@@ -221,6 +262,35 @@ export default function AddressGeocodeInput({
     document.addEventListener('pointerdown', onDocPointerDown, { capture: true })
     return () => document.removeEventListener('pointerdown', onDocPointerDown, { capture: true })
   }, [])
+
+  const loadSuggestionsForConfirm = async () => {
+    const q = value.trim()
+    if (!q) return
+    if (requireCountry && !countryId) return
+    if (!querySearchable(q)) return
+
+    setLoading(true)
+    setOpen(true)
+    setHint('')
+    try {
+      const search = searchFn ?? searchAddresses
+      const results = await search(q, { countryId, bbox, limit: 5 })
+      const normalized = results.map(normalizeSuggestion).filter(Boolean)
+      if (normalized.length) {
+        setSuggestions(normalized)
+        setStaleSuggestions([])
+        setHighlightIndex(0)
+        setHint('')
+      } else {
+        setSuggestions([])
+        setHint('No match found. Try adding city and state.')
+      }
+    } catch {
+      setHint('Address lookup unavailable. Try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const resolveTopMatch = async () => {
     const q = value.trim()
@@ -265,10 +335,19 @@ export default function AddressGeocodeInput({
   const onKeyDown = e => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      if (highlightIndex >= 0 && displaySuggestions.length) {
-        pick(displaySuggestions[highlightIndex])
+      if (displaySuggestions.length) {
+        if (highlightIndex >= 0) {
+          pick(displaySuggestions[highlightIndex])
+        } else if (confirmBeforeSelect) {
+          setHighlightIndex(0)
+          setOpen(true)
+        } else {
+          pick(displaySuggestions[0])
+        }
+      } else if (confirmBeforeSelect) {
+        void loadSuggestionsForConfirm()
       } else {
-        resolveTopMatch()
+        void resolveTopMatch()
       }
       return
     }

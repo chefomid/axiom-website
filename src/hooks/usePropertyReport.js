@@ -10,6 +10,7 @@ import {
   quoteProperty,
   sourcesMatchPreset,
 } from '../services/propertyApi'
+import { formatRateLimitMessage, isRateLimitError } from '../utils/apiErrors'
 import { getOrCreateAnonId } from '../utils/anonId'
 
 const STORAGE_KEY = 'axiom:property-intelligence:report-state'
@@ -135,7 +136,10 @@ export default function usePropertyReport() {
       const preset = catalog?.presets?.find(p => p.id === presetId)
       const ids = presetSourceIds(catalog, preset)
       if (!ids.length) return
-      setSelectedSources(ids)
+      setSelectedSources(prev => {
+        const keptAddons = prev.filter(id => PRESET_OPTIONAL_ADDONS.includes(id))
+        return [...ids, ...keptAddons.filter(id => !ids.includes(id))]
+      })
       setActivePresetId(presetId)
       setRecord(null)
       setQuote(prev => resetQuoteToEstimate(prev))
@@ -165,7 +169,12 @@ export default function usePropertyReport() {
         .catch(err => {
           if (requestId !== quoteRequestSeq.current) return
           setQuote(null)
-          setQuoteError(err?.message ?? 'Could not calculate estimate')
+          if (isRateLimitError(err)) {
+            const { title, safetyNote } = formatRateLimitMessage(err.rateLimit)
+            setQuoteError(safetyNote ? `${title}\n${safetyNote}` : title)
+          } else {
+            setQuoteError(err?.message ?? 'Could not calculate estimate')
+          }
         })
         .finally(() => {
           if (requestId === quoteRequestSeq.current) setLoadingQuote(false)
@@ -237,9 +246,15 @@ export default function usePropertyReport() {
         if (result.receipt) setQuote(prev => ({ ...prev, ...result.receipt, isFinal: true }))
         return result
       } catch (err) {
-        const message = isPaymentRequiredError(err)
-          ? 'Insufficient credits, add credits in the header, then try again.'
-          : err.message ?? 'Report failed'
+        let message
+        if (isRateLimitError(err)) {
+          const { title, safetyNote } = formatRateLimitMessage(err.rateLimit)
+          message = safetyNote ? `${title}\n${safetyNote}` : title
+        } else if (isPaymentRequiredError(err)) {
+          message = 'Insufficient credits. Add credits below the title, then try again.'
+        } else {
+          message = err.message ?? 'Report failed'
+        }
         setError(message)
         setRecord(null)
         throw err

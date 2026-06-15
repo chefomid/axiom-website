@@ -2,7 +2,7 @@ export function emptyHint({ address, selectedCount, locationLocked, loading, quo
   if (apiOnline === false) return 'Property API offline'
   if (!address?.trim()) return 'Add an address'
   if (selectedCount === 0) return 'Choose a package'
-  if (quoteError) return quoteError
+  if (quoteError) return String(quoteError).split('\n')[0]
   if (loading) return 'Calculating…'
   if (!locationLocked) return 'Confirm address to lock map'
   return 'Waiting for estimate…'

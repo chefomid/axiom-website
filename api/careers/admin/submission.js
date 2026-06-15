@@ -1,12 +1,12 @@
-import { getSubmissionByReference, isCareersDbEnabled, updateSubmission } from '../db.js'
+import { getSubmissionByReference, isCareersStorageEnabled, updateSubmission } from '../store.js'
 import { requireAdminToken } from '../adminAuth.js'
 import { parseQuery, serializeSubmission } from '../adminUtils.js'
 
 export default async function handler(req, res) {
   if (!requireAdminToken(req, res)) return
 
-  if (!isCareersDbEnabled()) {
-    res.status(503).json({ detail: 'Careers database is not configured.' })
+  if (!isCareersStorageEnabled()) {
+    res.status(503).json({ detail: 'Careers storage is not configured.' })
     return
   }
 

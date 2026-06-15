@@ -10,7 +10,7 @@ const TIER_LABELS = {
   free: 'Free',
   osint: 'OSINT',
   standard: 'Standard',
-  insurance: 'Insurance-grade',
+  insurance: 'Licensed',
   service: 'Service',
 }
 
@@ -24,7 +24,7 @@ export default function SourceTierBadge({ tier, badge, featured }) {
   }
   if (!tier) return null
   const cls = TIER_STYLES[tier] ?? TIER_STYLES.free
-  const label = featured && tier === 'insurance' ? 'Insurance-grade' : TIER_LABELS[tier] ?? tier
+  const label = featured && tier === 'insurance' ? 'Licensed' : TIER_LABELS[tier] ?? tier
   return (
     <span className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider ${cls}`}>
       {label}

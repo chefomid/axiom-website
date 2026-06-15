@@ -366,6 +366,37 @@ const CENSUS_REVERSE_BASE = import.meta.env.DEV
   ? '/api/census/geocoder/locations/coordinates'
   : 'https://geocoding.geo.census.gov/geocoder/locations/coordinates'
 
+/**
+ * Reverse-geocode GPS coordinates to a US property address.
+ * Keeps the pin anchored to the device position unless a building-level match
+ * is within MAX_REFINE_DRIFT_M of those coordinates.
+ */
+export async function resolveUsLocationFromCoords(
+  lat,
+  lng,
+  { signal, bbox, countryId = 'US' } = {},
+) {
+  const gps = toCoordPair(lat, lng)
+  if (!gps) return null
+  if (!inBbox(gps.lat, gps.lng, bbox)) return null
+
+  const reversed = await reverseGeocodeUs(gps.lat, gps.lng, { signal, bbox })
+  if (!reversed?.label) {
+    return {
+      id: `geo-${gps.lat}-${gps.lng}`,
+      label: `Current location (${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)})`,
+      lat: gps.lat,
+      lng: gps.lng,
+    }
+  }
+
+  return refineWithBuildingCoords(
+    reversed.label,
+    { ...reversed, lat: gps.lat, lng: gps.lng },
+    { countryId, bbox, signal },
+  )
+}
+
 /** Reverse geocode US coordinates to a street address label. */
 export async function reverseGeocodeUs(lat, lng, { signal, bbox } = {}) {
   const pair = toCoordPair(lat, lng)

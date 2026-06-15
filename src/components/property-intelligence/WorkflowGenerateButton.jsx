@@ -1,8 +1,11 @@
-import { formatUsd } from '../../services/propertyApi'
 import { WORKFLOW_CTL } from './workflowControls'
 import { emptyHint } from './workflowReceiptUtils'
 
-function blockMessage({ address, locationLocked, generateBlockReason, hint }) {
+function blockMessage({ address, locationLocked, generateBlockReason, hint, scheduleMode }) {
+  if (scheduleMode) {
+    if (!locationLocked) return 'Upload a schedule and choose a package first'
+    return generateBlockReason ?? hint
+  }
   if (!address?.trim() || !locationLocked) return 'Choose location first'
   return generateBlockReason ?? hint
 }
@@ -23,19 +26,23 @@ export default function WorkflowGenerateButton({
   enrichStatus = null,
   fullWidth = false,
   variant = 'default',
+  billingEnabled: _billingEnabled = false,
+  checkoutPreview: _checkoutPreview = null,
+  payLoading = false,
+  scheduleMode = false,
+  hidePriceInLabel: _hidePriceInLabel = false,
 }) {
-  const totals = quote?.totals
   const showGenerate = !hasReport
   const hint = emptyHint({ address, selectedCount, locationLocked, loading, quoteError, apiOnline })
-  const isBlocked = generateDisabled || loadingReport
-  const tooltip = blockMessage({ address, locationLocked, generateBlockReason, hint })
+  const isBlocked = generateDisabled || loadingReport || loading
+  const tooltip = blockMessage({ address, locationLocked, generateBlockReason, hint, scheduleMode })
   const widthClass = fullWidth ? 'w-full' : ''
   const isIntelligence = variant === 'intelligence'
 
   if (!showGenerate) {
     if (isIntelligence) {
       return (
-        <button type="button" disabled className={`side-panel-cta ${widthClass} opacity-50`}>
+        <button type="button" disabled className={`workflow-footer-cta ${widthClass} opacity-50`}>
           Report Ready
         </button>
       )
@@ -52,7 +59,7 @@ export default function WorkflowGenerateButton({
   if (loadingReport || (enrichStatus && enrichStatus !== 'idle')) {
     if (isIntelligence) {
       return (
-        <button type="button" disabled className={`side-panel-cta ${widthClass} opacity-70`}>
+        <button type="button" disabled className={`workflow-footer-cta ${widthClass} opacity-70`}>
           Running Report…
         </button>
       )
@@ -68,9 +75,26 @@ export default function WorkflowGenerateButton({
     )
   }
 
-  const intelligenceLabel = totals
-    ? `Generate Intelligence Report · ${formatUsd(totals.user_price_usd)}`
-    : 'Generate Intelligence Report'
+  if (payLoading) {
+    if (isIntelligence) {
+      return (
+        <button type="button" disabled className={`workflow-footer-cta ${widthClass} opacity-70`}>
+          Opening checkout…
+        </button>
+      )
+    }
+    return (
+      <button
+        type="button"
+        disabled
+        className={`${WORKFLOW_CTL} ${widthClass} border-command-live/40 bg-command-live/10 text-command-live`}
+      >
+        Opening checkout…
+      </button>
+    )
+  }
+
+  const defaultLabel = scheduleMode ? 'Analyze schedule' : 'Generate'
 
   return (
     <div className={`group relative ${fullWidth ? 'w-full' : ''}`}>
@@ -80,11 +104,11 @@ export default function WorkflowGenerateButton({
         onClick={isBlocked ? undefined : onGenerate}
         className={
           isIntelligence
-            ? `side-panel-cta ${widthClass} aria-disabled:cursor-not-allowed aria-disabled:border-white/10 aria-disabled:bg-white/20 aria-disabled:text-[#050505]/45`
+            ? `workflow-footer-cta ${widthClass}`
             : `${WORKFLOW_CTL} ${widthClass} border-command-live/50 bg-command-live/20 text-command-live hover:bg-command-live/30 aria-disabled:border-panel-border aria-disabled:bg-panel-surface/30 aria-disabled:text-ink-faint`
         }
       >
-        {isIntelligence ? intelligenceLabel : totals ? `Generate · ${formatUsd(totals.user_price_usd)}` : 'Generate'}
+        {defaultLabel}
       </button>
       {isBlocked ? (
         <div

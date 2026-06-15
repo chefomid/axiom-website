@@ -1,20 +1,20 @@
 /**
 
- * Careers application — polish dictated or rough text with a lightweight LLM pass.
+ * Careers application, polish dictated or rough text with a lightweight LLM pass.
 
  *
 
  * Env (first match wins):
 
- *   NVIDIA_API_KEY — free dev tier via build.nvidia.com (recommended)
+ *   NVIDIA_API_KEY, free dev tier via build.nvidia.com (recommended)
 
- *   CAREERS_LLM_BASE_URL — default https://integrate.api.nvidia.com/v1
+ *   CAREERS_LLM_BASE_URL, default https://integrate.api.nvidia.com/v1
 
- *   CAREERS_LLM_MODEL — default nvidia/nemotron-mini-4b-instruct
+ *   CAREERS_LLM_MODEL, default nvidia/nemotron-mini-4b-instruct
 
- *   OPENAI_API_KEY — optional fallback
+ *   OPENAI_API_KEY, optional fallback
 
- *   OPENAI_CAREERS_MODEL — default gpt-4o-mini
+ *   OPENAI_CAREERS_MODEL, default gpt-4o-mini
 
  */
 
@@ -26,6 +26,7 @@ import {
   resolveOrganizeLlmConfig,
   shouldUseLlmOrganize,
 } from './organizeUtils.js'
+import { checkRateLimit } from '../lib/rateLimit.js'
 
 
 
@@ -129,6 +130,18 @@ export default async function handler(req, res) {
 
     return
 
+  }
+
+
+
+  if (
+    !checkRateLimit(req, res, {
+      route: 'careers:organize',
+      limit: 30,
+      windowMs: 60 * 60 * 1000,
+    })
+  ) {
+    return
   }
 
 

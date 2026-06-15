@@ -1,4 +1,4 @@
-import { getResumeByReference, isCareersDbEnabled } from '../db.js'
+import { getResumeByReference, isCareersStorageEnabled } from '../store.js'
 import { requireAdminToken } from '../adminAuth.js'
 import { parseQuery } from '../adminUtils.js'
 
@@ -22,8 +22,8 @@ export default async function handler(req, res) {
 
   if (!requireAdminToken(req, res)) return
 
-  if (!isCareersDbEnabled()) {
-    res.status(503).json({ detail: 'Careers database is not configured.' })
+  if (!isCareersStorageEnabled()) {
+    res.status(503).json({ detail: 'Careers storage is not configured.' })
     return
   }
 

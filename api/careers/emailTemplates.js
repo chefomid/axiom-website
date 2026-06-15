@@ -168,8 +168,8 @@ function renderEmailShell({ eyebrow, title, bodyHtml, siteUrl }) {
             </tr>
             <tr>
               <td style="background:#111111;border-radius:0 0 12px 12px;padding:20px 28px;color:#999999;font-size:11px;line-height:1.6;">
-                <p style="margin:0 0 8px;color:#cccccc;font-size:13px;">— The AXIOM Team</p>
-                <p style="margin:0 0 4px;">AXIOM — Property &amp; Casualty Intelligence</p>
+                <p style="margin:0 0 8px;color:#cccccc;font-size:13px;">, The AXIOM Team</p>
+                <p style="margin:0 0 4px;">AXIOM, Property &amp; Casualty Intelligence</p>
                 <p style="margin:0;"><a href="${escapeHtml(siteUrl)}" style="color:#22c55e;text-decoration:none;">${escapeHtml(siteHost)}</a></p>
               </td>
             </tr>
@@ -183,7 +183,7 @@ function renderEmailShell({ eyebrow, title, bodyHtml, siteUrl }) {
 
 function renderSignatureText(siteUrl) {
   const siteHost = siteUrl.replace(/^https?:\/\//, '')
-  return ['— The AXIOM Team', 'AXIOM — Property & Casualty Intelligence', siteHost].join('\n')
+  return [', The AXIOM Team', 'AXIOM, Property & Casualty Intelligence', siteHost].join('\n')
 }
 
 export function renderApplicantConfirmation({
@@ -216,7 +216,7 @@ export function renderApplicantConfirmation({
     <p style="margin:24px 0 0;color:#888888;font-size:11px;line-height:1.6;">This message was sent because you submitted an application on our site. Keep this email for your records.</p>`
 
   const text = [
-    'Application received — AXIOM Potential & Commitment Assessment',
+    'Application received, AXIOM Careers',
     '',
     `Thank you, ${greetingName}.`,
     `We received your application on ${formattedDate}.`,
@@ -243,7 +243,7 @@ export function renderApplicantConfirmation({
     .join('\n')
 
   return {
-    subject: 'Application received — AXIOM Potential & Commitment Assessment',
+    subject: 'Application received, AXIOM Careers',
     html: renderEmailShell({
       eyebrow: 'Application confirmation',
       title: 'Your submission is on file.',
@@ -299,7 +299,7 @@ export function renderInternalNotification({
   return {
     subject: `New application | ${applicant.fullName} | ${referenceId}`,
     html: renderEmailShell({
-      eyebrow: 'Internal record — Potential & Commitment Assessment',
+      eyebrow: 'Internal record, AXIOM Careers application',
       title: applicant.fullName,
       bodyHtml,
       siteUrl,

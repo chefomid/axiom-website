@@ -106,13 +106,15 @@ function ImageryCapturesGallery({ captures }) {
         <SectionLabel>Location screenshots</SectionLabel>
         <p className="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
           Captures used by Property Inspector for this analysis. Highlighted view was selected for
-          facade review.
+          facade review. Upward pitch scans reveal upper floors when the level view cuts off the roofline.
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
         {captures.map(capture => {
           const headingLabel =
             capture.heading != null ? ` · ${capture.heading}°` : ''
+          const pitchLabel =
+            capture.pitch != null && capture.pitch !== 0 ? ` · pitch ${capture.pitch}°` : ''
           return (
             <figure
               key={capture.image_id}
@@ -139,9 +141,15 @@ function ImageryCapturesGallery({ captures }) {
                     </span>
                   ) : null}
                 </p>
-                {headingLabel ? (
+                {headingLabel || pitchLabel ? (
                   <p className="mt-0.5 font-mono text-[10px] text-ink-faint">
-                    Heading{headingLabel}
+                    {headingLabel ? `Heading${headingLabel}` : null}
+                    {pitchLabel ? (
+                      <span>
+                        {headingLabel ? ' ' : ''}
+                        Pitch{pitchLabel}
+                      </span>
+                    ) : null}
                   </p>
                 ) : null}
               </figcaption>
@@ -282,6 +290,9 @@ export default function ReportVisionPanel({ visionAnalysis }) {
         {selectedView?.heading != null ? (
           <p className="mt-1.5 font-mono text-[10px] text-ink-muted">
             Selected view: {selectedView.id} @ {selectedView.heading}°
+            {selectedView.pitch != null && selectedView.pitch !== 0
+              ? `, pitch ${selectedView.pitch}°`
+              : ''}
           </p>
         ) : null}
       </section>
@@ -345,7 +356,14 @@ export default function ReportVisionPanel({ visionAnalysis }) {
             ))}
             {captures.length > 0 ? (
               <li>
-                Captures: {captures.map(c => `${c.image_id}@${c.heading}°`).join(', ')}
+                Captures:{' '}
+                {captures
+                  .map(c => {
+                    const pitch =
+                      c.pitch != null && c.pitch !== 0 ? ` pitch ${c.pitch}°` : ''
+                    return `${c.image_id}@${c.heading}°${pitch}`
+                  })
+                  .join(', ')}
               </li>
             ) : null}
             {agentTrace.bearing_deg != null ? <li>Bearing to subject: {agentTrace.bearing_deg}°</li> : null}

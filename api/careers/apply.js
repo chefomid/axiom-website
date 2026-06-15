@@ -1,21 +1,19 @@
 /**
- * Careers application intake — persists via email delivery through Resend.
+ * Careers application intake. Persists submissions for admin review (no email required).
  *
- * Env (Vercel):
- *   RESEND_API_KEY       — required
- *   CAREERS_TO_EMAIL     — internal recipient (default axiom_coi@outlook.com)
- *   CAREERS_FROM_EMAIL   — verified sender
- *   CAREERS_SITE_URL     — logo + footer links (default production URL)
- *   CAREERS_REPLY_EMAIL  — optional reply-to on applicant confirmation
+ * Env:
+ *   CAREERS_DATABASE_URL , Postgres (production / optional local)
+ *   Local dev without DB uses .careers-data/ when NODE_ENV=development
  */
 
+import { generateReferenceId } from './emailTemplates.js'
 import {
-  generateReferenceId,
-  getCareersSiteUrl,
-  renderApplicantConfirmation,
-  renderInternalNotification,
-} from './emailTemplates.js'
-import { insertSubmission, isCareersDbEnabled } from './db.js'
+  careersStorageNotConfiguredMessage,
+  ensureStorageReady,
+  insertSubmission,
+  isCareersStorageEnabled,
+} from './store.js'
+import { checkRateLimit } from '../lib/rateLimit.js'
 
 export const config = {
   api: {
@@ -25,9 +23,6 @@ export const config = {
   },
 }
 
-const TO_EMAIL = process.env.CAREERS_TO_EMAIL ?? 'axiom_coi@outlook.com'
-const FROM_EMAIL = process.env.CAREERS_FROM_EMAIL ?? 'AXIOM Careers <onboarding@resend.dev>'
-const REPLY_EMAIL = process.env.CAREERS_REPLY_EMAIL ?? TO_EMAIL
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function badPayload(body) {
@@ -49,25 +44,19 @@ function badPayload(body) {
   return null
 }
 
-async function sendResendEmail(apiKey, emailBody) {
-  const upstream = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(emailBody),
-  })
-
-  if (!upstream.ok) {
-    const detail = await upstream.text().catch(() => '')
-    throw new Error(`Resend delivery failed (${upstream.status}): ${detail}`)
-  }
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ detail: 'Method not allowed' })
+    return
+  }
+
+  if (
+    !checkRateLimit(req, res, {
+      route: 'careers:apply',
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+    })
+  ) {
     return
   }
 
@@ -84,12 +73,8 @@ export default async function handler(req, res) {
     return
   }
 
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
-    res.status(503).json({
-      detail:
-        'Application delivery is not configured. Set RESEND_API_KEY in the Vercel project settings.',
-    })
+  if (!isCareersStorageEnabled()) {
+    res.status(503).json({ detail: careersStorageNotConfiguredMessage() })
     return
   }
 
@@ -107,7 +92,6 @@ export default async function handler(req, res) {
 
   const submittedAt = new Date().toISOString()
   const referenceId = generateReferenceId(new Date(submittedAt))
-  const siteUrl = getCareersSiteUrl()
 
   const attachment =
     body.attachment &&
@@ -120,71 +104,27 @@ export default async function handler(req, res) {
         }
       : null
 
-  const internalEmail = renderInternalNotification({
-    applicant,
-    sections: body.sections,
-    submittedAt,
-    referenceId,
-    siteUrl,
-  })
-
-  const applicantEmail = renderApplicantConfirmation({
-    applicant,
-    sections: body.sections,
-    submittedAt,
-    referenceId,
-    siteUrl,
-  })
-
   try {
-    if (isCareersDbEnabled()) {
-      try {
-        await insertSubmission({
-          referenceId,
-          submittedAt,
-          applicant,
-          sections: body.sections,
-          attachment,
-        })
-      } catch (err) {
-        console.error(`Careers DB insert failed: ${err?.message ?? err}`)
-      }
+    await ensureStorageReady()
+
+    const row = await insertSubmission({
+      referenceId,
+      submittedAt,
+      applicant,
+      sections: body.sections,
+      attachment,
+    })
+
+    if (!row) {
+      res.status(503).json({ detail: careersStorageNotConfiguredMessage() })
+      return
     }
 
-    const internalBody = {
-      from: FROM_EMAIL,
-      to: [TO_EMAIL],
-      reply_to: applicant.email,
-      subject: internalEmail.subject,
-      html: internalEmail.html,
-      text: internalEmail.text,
-    }
-    if (attachment) {
-      internalBody.attachments = [attachment]
-    }
-
-    await sendResendEmail(apiKey, internalBody)
-
-    let confirmationSent = false
-    try {
-      await sendResendEmail(apiKey, {
-        from: FROM_EMAIL,
-        to: [applicant.email],
-        reply_to: REPLY_EMAIL,
-        subject: applicantEmail.subject,
-        html: applicantEmail.html,
-        text: applicantEmail.text,
-      })
-      confirmationSent = true
-    } catch (err) {
-      console.error(`Applicant confirmation failed: ${err?.message ?? err}`)
-    }
-
-    res.status(200).json({ ok: true, referenceId, confirmationSent })
+    res.status(200).json({ ok: true, referenceId })
   } catch (err) {
-    console.error(`Careers email send failed: ${err?.message ?? err}`)
+    console.error(`Careers submission save failed: ${err?.message ?? err}`)
     res.status(502).json({
-      detail: 'The application could not be delivered. Please try again in a moment.',
+      detail: 'The application could not be saved. Please try again in a moment.',
     })
   }
 }

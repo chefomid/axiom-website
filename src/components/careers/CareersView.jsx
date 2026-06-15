@@ -28,6 +28,8 @@ import {
   YesNoGroupInput,
 } from './fields'
 import { submitApplication } from '../../services/careersApi'
+import { isRateLimitError, safetyNoteFromApiError } from '../../utils/apiErrors'
+import SafetyLimitNotice, { FAIR_USAGE_FOOTER } from '../ui/SafetyLimitNotice'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const URL_PATTERN = /^https?:\/\/.+/i
@@ -297,6 +299,7 @@ export default function CareersView() {
   const [errors, setErrors] = useState({})
   const [status, setStatus] = useState('editing')
   const [submitError, setSubmitError] = useState(null)
+  const [submitErrorNote, setSubmitErrorNote] = useState(null)
   const [submitResult, setSubmitResult] = useState(null)
   const [honeypot, setHoneypot] = useState('')
   const formTopRef = useRef(null)
@@ -354,6 +357,7 @@ export default function CareersView() {
 
     setStatus('submitting')
     setSubmitError(null)
+    setSubmitErrorNote(null)
     setSubmitResult(null)
     try {
       const result = await submitApplication(values, { honeypot })
@@ -368,6 +372,7 @@ export default function CareersView() {
     } catch (err) {
       setStatus('editing')
       setSubmitError(err?.message ?? 'Submission failed. Please try again.')
+      setSubmitErrorNote(isRateLimitError(err) ? safetyNoteFromApiError(err) : null)
     }
   }
 
@@ -391,6 +396,7 @@ export default function CareersView() {
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-secondary">
             {APPLICATION_PURPOSE}
           </p>
+          <p className="mt-3 font-mono text-[9px] text-ink-faint">{FAIR_USAGE_FOOTER}</p>
           {hadDraft && status !== 'success' ? (
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">
               Draft restored. Your answers save automatically on this device.
@@ -466,12 +472,22 @@ export default function CareersView() {
               ) : null}
 
               {submitError ? (
-                <div className="mt-6 rounded-lg border border-command-critical/30 bg-command-critical/5 px-4 py-3">
-                  <p className="text-[13px] leading-relaxed text-command-critical">{submitError}</p>
-                  <p className="mt-1 text-xs text-ink-muted">
-                    Your answers are saved on this device. Nothing was lost. Try again in a
-                    moment.
-                  </p>
+                <div className="mt-6">
+                  <SafetyLimitNotice
+                    title={submitError}
+                    safetyNote={submitErrorNote}
+                    tone={submitErrorNote ? 'watch' : 'critical'}
+                  />
+                  {!submitErrorNote ? (
+                    <p className="mt-2 text-xs text-ink-muted">
+                      Your answers are saved on this device. Nothing was lost. Try again in a
+                      moment.
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-ink-muted">
+                      Your answers are saved on this device. Nothing was lost.
+                    </p>
+                  )}
                 </div>
               ) : null}
 

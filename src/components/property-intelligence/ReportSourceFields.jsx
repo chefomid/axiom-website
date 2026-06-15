@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { formatCopeSourceLabel } from '../../utils/copeSourceLabels'
 
 const CONFIDENCE_CLASS = {
   high: 'text-command-stable',
@@ -37,7 +38,9 @@ export default function ReportSourceFields({ fields, crawlExcerpt, crawlSourceUr
     <div className="space-y-0">
       {grouped.map(([source, sourceFields]) => (
         <div key={source} className="border-b border-panel-border/60 p-4">
-          <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">{source}</p>
+          <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">
+            {formatCopeSourceLabel(source)}
+          </p>
           <ul className="space-y-2">
             {sourceFields.map((field, i) => (
               <li

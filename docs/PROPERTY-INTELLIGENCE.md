@@ -59,13 +59,15 @@ Pricing: `(API cost + service cost) × 2.5` from `registry/sources.json`.
 
 ## Prepaid credits (Stripe)
 
-When `STRIPE_SECRET_KEY` is set on the server, users can buy credit packs (no login). Credits are spent on **Find with AI** and **Generate**. See **[docs/BILLING-SETUP.md](./BILLING-SETUP.md)** for Stripe webhook, Render deploy, and local CLI setup.
+When `STRIPE_SECRET_KEY` is set on the server, users can buy credit packs (no login) or pay the exact report/discovery price via **Pay & Generate**. Credits are spent on **Find with AI** and **Generate**. See **[docs/BILLING-SETUP.md](./BILLING-SETUP.md)** for Stripe webhook, Render deploy, and local CLI setup.
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/billing/packs` | Credit pack catalog |
 | GET | `/billing/balance?anon_id=` | Wallet balance |
-| POST | `/billing/checkout` | Start Stripe Checkout |
+| GET | `/billing/checkout-preview` | Exact charge preview for enrich or discover |
+| POST | `/billing/checkout` | Start Stripe Checkout (credit pack) |
+| POST | `/billing/checkout-quote` | Start Stripe Checkout (exact amount) |
 | POST | `/billing/stripe-webhook` | Stripe events (server only) |
 
 ## Public record page URLs (manual or AI-assisted)

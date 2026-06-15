@@ -12,7 +12,7 @@ const GOVERNMENT_FEEDS = [
 ]
 
 const LICENSED_APIS = [
-  { name: 'ATTOM', hook: 'Insurance-grade property facts' },
+  { name: 'ATTOM', hook: 'Licensed property records' },
   { name: 'Melissa', hook: 'Assessor-aligned records' },
   { name: 'RentCast', hook: 'Sqft, year built, sales' },
   { name: 'First Street', hook: 'Flood, fire, and heat risk' },
@@ -157,7 +157,7 @@ export default function PropertyIntelligenceOverview({ comingSoon = true }) {
                 </h2>
               </div>
               <p className="max-w-sm text-sm leading-relaxed text-ink-faint">
-                Start with free government hazard data, then add carrier-grade property APIs as needed.
+                Start with free government hazard data, then add licensed property APIs as needed.
               </p>
             </div>
 

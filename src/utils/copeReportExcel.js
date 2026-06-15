@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs'
 
 import { buildCopeReportDocument } from './copeReportDocument'
+import { formatCopeSourceLabel } from './copeSourceLabels'
 
 const THEME = {
   headerFill: 'FF080808',
@@ -94,8 +95,8 @@ function fieldDisplayValue(field) {
   return 'Unknown'
 }
 
-function buildSummarySheet(workbook, doc) {
-  const sheet = workbook.addWorksheet('Summary', {
+function buildSummarySheet(workbook, doc, sheetName = 'Summary') {
+  const sheet = workbook.addWorksheet(sheetName, {
     views: [{ showGridLines: false }],
     properties: { defaultColWidth: 18 },
   })
@@ -183,8 +184,8 @@ function buildSummarySheet(workbook, doc) {
   }
 }
 
-function buildCopeSheet(workbook, doc) {
-  const sheet = workbook.addWorksheet('COPE', {
+function buildCopeSheet(workbook, doc, sheetName = 'COPE') {
+  const sheet = workbook.addWorksheet(sheetName, {
     views: [{ state: 'frozen', ySplit: 1, showGridLines: true }],
   })
 
@@ -211,7 +212,7 @@ function buildCopeSheet(workbook, doc) {
       const dataRow = sheet.addRow([
         field.label ?? field.id ?? '',
         fieldDisplayValue(field),
-        field.source ?? '-',
+        formatCopeSourceLabel(field.source) || '-',
         field.confidence ?? 'unknown',
         field.status ?? 'unknown',
       ])
@@ -270,4 +271,84 @@ export async function downloadCopeExcel(doc, locationLabel, { prefix = 'cope-rep
 export async function downloadCopeExcelFromRecord(record, locationLabel, { prefix = 'cope-report' } = {}) {
   const doc = buildCopeReportDocument(record)
   await downloadCopeExcel(doc, locationLabel, { prefix })
+}
+
+function excelSheetName(label, index, suffix = '') {
+  const base = slugifyLocation(label) || `loc-${index + 1}`
+  const max = 31 - suffix.length
+  return `${base.slice(0, max)}${suffix}`
+}
+
+function buildBatchOverviewSheet(workbook, batchRun) {
+  const sheet = workbook.addWorksheet('Batch Summary', {
+    views: [{ showGridLines: false }],
+    properties: { defaultColWidth: 18 },
+  })
+  sheet.columns = [{ width: 22 }, { width: 48 }, { width: 16 }, { width: 14 }]
+
+  const titleRow = sheet.addRow(['AXIOM Property Intelligence, Batch Export'])
+  sheet.mergeCells(titleRow.number, 1, titleRow.number, 4)
+  titleRow.height = 26
+  titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.headerFill } }
+  titleRow.getCell(1).font = { name: 'Calibri', size: 13, bold: true, color: { argb: THEME.headerFont } }
+
+  sheet.addRow([])
+  const meta = [
+    ['Batch ID', batchRun.batch_id ?? '-'],
+    ['Total charged', batchRun.totals?.user_price_usd != null ? `$${batchRun.totals.user_price_usd.toFixed(2)}` : '-'],
+    ['Locations quoted', String(batchRun.totals?.location_count ?? 0)],
+    ['Completed', String((batchRun.locations ?? []).filter(loc => loc.record).length)],
+  ]
+  for (const [label, value] of meta) {
+    const row = sheet.addRow([label, value])
+    row.getCell(1).font = { name: 'Calibri', size: 10, bold: true }
+    row.getCell(2).font = { name: 'Calibri', size: 10 }
+  }
+
+  sheet.addRow([])
+  const header = sheet.addRow(['#', 'Address', 'Status', 'Report ID'])
+  applyHeaderRow(header)
+
+  ;(batchRun.locations ?? []).forEach((loc, index) => {
+    const row = sheet.addRow([
+      loc.row_index ?? index + 1,
+      loc.display_name ?? loc.address_input ?? '-',
+      loc.status ?? '-',
+      loc.report_id ?? loc.record?.report_id ?? '-',
+    ])
+    const stripe = index % 2 === 1
+    row.eachCell((cell, colNumber) => {
+      applyBodyCell(cell, { stripe, center: colNumber === 1 || colNumber === 4 })
+    })
+  })
+}
+
+/** Multi-location workbook: summary sheet plus COPE sheets per successful location. */
+export async function downloadBatchCopeExcel(batchRun, { prefix = 'cope-batch' } = {}) {
+  if (!batchRun?.locations?.length) {
+    throw new Error('No batch locations to export.')
+  }
+
+  const workbook = new ExcelJS.Workbook()
+  workbook.creator = 'AXIOM Property Intelligence'
+  workbook.created = new Date()
+  workbook.modified = new Date()
+
+  buildBatchOverviewSheet(workbook, batchRun)
+
+  const enriched = batchRun.locations.filter(loc => loc.record)
+  enriched.forEach((loc, index) => {
+    const doc = buildCopeReportDocument(loc.record)
+    const label = loc.display_name ?? loc.address_input ?? `Location ${index + 1}`
+    const summaryName = excelSheetName(label, index, '-sum')
+    const copeName = excelSheetName(label, index, '-cope')
+    buildSummarySheet(workbook, doc, summaryName)
+    buildCopeSheet(workbook, doc, copeName)
+  })
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  if (!buffer?.byteLength) {
+    throw new Error('Excel export returned an empty file.')
+  }
+  saveExcelBlob(buffer, batchRun.batch_id ?? 'batch', prefix)
 }

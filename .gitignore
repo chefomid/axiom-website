@@ -4,6 +4,8 @@ dist
 *.local
 .env
 .env.*
+stripe.txt
+stripe_backup_code.txt
 .vercel
 *.log
 .vite
@@ -13,3 +15,4 @@ services/property-api/__pycache__
 services/property-api/.crawl4ai
 services/property-api/data/
 outreach/
+.careers-data/

@@ -12,7 +12,7 @@ export default function useGeolocation(options = DEFAULT_OPTIONS) {
 
   const clearError = useCallback(() => setError(''), [])
 
-  const requestPosition = useCallback(async () => {
+  const requestPosition = useCallback(async (overrideOptions = {}) => {
     if (!navigator.geolocation) {
       const msg = 'Geolocation is not supported in this browser.'
       setError(msg)
@@ -27,7 +27,7 @@ export default function useGeolocation(options = DEFAULT_OPTIONS) {
         navigator.geolocation.getCurrentPosition(
           p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
           reject,
-          { ...DEFAULT_OPTIONS, ...options },
+          { ...DEFAULT_OPTIONS, ...options, ...overrideOptions },
         )
       })
       return pos

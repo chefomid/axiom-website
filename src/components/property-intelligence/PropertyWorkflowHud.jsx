@@ -1,291 +1,535 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import PropertySearchBar from './PropertySearchBar'
+
 import IntentPackagePicker from './IntentPackagePicker'
-import SourceCatalogPanel from './SourceCatalogPanel'
-import PublicSourcePanel from './PublicSourcePanel'
+
 import WorkflowGenerateButton from './WorkflowGenerateButton'
+
 import IntelligencePanelContent from './IntelligencePanelContent'
+
+import PublicSourcePanel from './PublicSourcePanel'
+
+import BatchQuotePanel from './BatchQuotePanel'
+
+import WorkflowPricingPanel from './WorkflowPricingPanel'
+
 import { WORKFLOW_HUD_WIDTH_DOCKED } from './workflowControls'
 
-function ChevronIcon({ expanded }) {
-  return (
-    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden>
-      {expanded ? (
-        <path
-          d="m12 5-5 5 5"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ) : (
-        <path
-          d="m8 5 5 5-5"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      )}
-    </svg>
-  )
-}
+import { PRESET_OPTIONAL_ADDONS } from '../../services/propertyApi'
+
+
 
 export default function PropertyWorkflowHud({
+
+  inputMode = 'single',
+
+  onInputModeChange,
+
+  scheduleReady = false,
+
+  batchQuote,
+
+  onOpenSchedule,
+
+  onPreviewScheduleLocation,
+
   locationLocked,
+
   locationPhase,
+
   address,
+
   loadingReport,
+
   locationError,
+
   locateSuccess,
+
+  geolocateCommitting = false,
+
   onAddressChange,
+
   onAddressSelect,
+
   onMyLocation,
+
   onClear,
+
   onSearchingChange,
+
   presets,
+
   catalog,
+
   activePresetId,
+
   selectedSources,
+
   quote,
+
   loadingQuote,
+
   onToggleSource,
+
   onApply,
-  onToggleCatalogSource,
+
   disabled,
+
   apiOnline,
-  requiredUrlIds = [],
+
+  requiredUrlIds,
+
   sourceUrls,
+
   onSourceUrlsChange,
+
   onPaymentRequired,
+
+  billingEnabled = false,
+
+  checkoutPreview = null,
+
+  payLoading = false,
+
   onGenerate,
+
   generateDisabled,
+
   generateBlockReason,
+
   hasReport,
+
+  hasBatchReport = false,
+
   enrichStatus,
+
   billingNotice,
+
   onDismissBillingNotice,
+
   presetNotice,
+
   onDismissPresetNotice,
+
   quoteSynced,
+
   displayQuote,
+
   quoteError,
+
+  scheduleMode = false,
+
+  scheduleRows = [],
+
 }) {
-  const [sourcesOpen, setSourcesOpen] = useState(false)
-  const [sourcesTab, setSourcesTab] = useState('sources')
-  const sourcesRef = useRef(null)
-
-  useEffect(() => {
-    if (!sourcesOpen) return undefined
-    const onPointerDown = e => {
-      if (sourcesRef.current?.contains(e.target)) return
-      setSourcesOpen(false)
-    }
-    const onKey = e => {
-      if (e.key === 'Escape') setSourcesOpen(false)
-    }
-    window.addEventListener('pointerdown', onPointerDown, { capture: true })
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('pointerdown', onPointerDown, { capture: true })
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [sourcesOpen])
-
-  useEffect(() => {
-    if (locationLocked) return
-    setSourcesOpen(false)
-  }, [locationLocked])
 
   const sourceCount = selectedSources?.length ?? 0
-  const hasPublicUrls = requiredUrlIds.length > 0
+
+  const readyForGenerate = scheduleMode ? scheduleReady : locationLocked
+
+  const showPricing = Boolean(
+    activePresetId &&
+      (scheduleMode
+        ? scheduleRows.length > 0 && (loadingQuote || Boolean(batchQuote?.totals))
+        : locationLocked && (quoteSynced ? displayQuote : quote)?.totals),
+  )
+
+  const pricingQuote = scheduleMode ? { totals: batchQuote?.totals } : quoteSynced ? displayQuote : quote
+
+  const hasLocationInput = scheduleMode ? scheduleRows.length > 0 : locationLocked
+
+  const [packageExpanded, setPackageExpanded] = useState(false)
+
+  useEffect(() => {
+    setPackageExpanded(hasLocationInput)
+  }, [hasLocationInput])
+
+  const activePreset = presets?.find(preset => preset.id === activePresetId)
+
+  const addonCount =
+    selectedSources?.filter(sourceId => PRESET_OPTIONAL_ADDONS.includes(sourceId)).length ?? 0
+
+  const packageSummary = !hasLocationInput
+    ? scheduleMode
+      ? 'Upload a schedule to choose a package'
+      : 'Lock a location to choose a package'
+    : activePreset
+      ? `${activePreset.label}${addonCount ? ` · ${addonCount} add-on${addonCount === 1 ? '' : 's'}` : ''}`
+      : 'Choose a package'
 
   return (
+
     <aside
-      className={`workflow-sidebar side-panel side-panel--compact side-panel--fill sleek-scrollbar shrink-0 ${sourcesOpen ? 'workflow-sidebar--sources-open' : ''}`}
+
+      className="workflow-sidebar side-panel side-panel--compact side-panel--fill sleek-scrollbar shrink-0"
+
       style={{ width: WORKFLOW_HUD_WIDTH_DOCKED }}
+
     >
+
       <div className="side-panel-content workflow-sidebar__body sleek-scrollbar flex min-h-0 flex-1 flex-col">
+
         {billingNotice ? (
+
           <div className="side-panel-section shrink-0 px-0 pt-0">
+
             <div className="shrink-0 rounded border border-command-stable/30 bg-command-stable/10 px-3 py-2">
+
               <p className="font-mono text-[9px] leading-snug text-command-stable">{billingNotice}</p>
+
               <button
+
                 type="button"
+
                 onClick={onDismissBillingNotice}
+
                 className="mt-1 font-mono text-[8px] uppercase tracking-wider text-ink-faint hover:text-ink-secondary"
+
               >
+
                 Dismiss
+
               </button>
+
             </div>
+
           </div>
+
         ) : null}
+
+
 
         {presetNotice ? (
+
           <div className="side-panel-section shrink-0 px-0">
+
             <div className="shrink-0 rounded border border-command-watch/30 bg-command-watch/10 px-3 py-2">
+
               <p className="font-mono text-[9px] leading-snug text-command-watch">{presetNotice}</p>
+
               <button
+
                 type="button"
+
                 onClick={onDismissPresetNotice}
+
                 className="mt-1 font-mono text-[8px] uppercase tracking-wider text-ink-faint hover:text-ink-secondary"
+
               >
+
                 Dismiss
+
               </button>
+
             </div>
+
           </div>
+
         ) : null}
+
+
 
         <section className="side-panel-section shrink-0 border-b-0 pb-2" aria-label="Property location">
+
           <h2 className="side-panel-title">Property Input</h2>
-          {!locationLocked ? (
-            <p className="side-panel-copy mb-2">
-              Enter an address or use your location. The map unlocks once the property is locked.
-            </p>
-          ) : null}
 
-          <PropertySearchBar
-            address={address}
-            loading={loadingReport}
-            locationPhase={locationPhase}
-            locationError={locationError}
-            locateSuccess={locateSuccess}
-            onAddressChange={onAddressChange}
-            onAddressSelect={onAddressSelect}
-            onMyLocation={onMyLocation}
-            onClear={onClear}
-            onSearchingChange={onSearchingChange}
-            compact
-          />
-        </section>
 
-        {locationLocked ? (
-          <section className="side-panel-section shrink-0 border-b-0 pb-2" aria-label="Data package">
-            <h2 className="side-panel-title">Data Package</h2>
-            <IntentPackagePicker
-              layout="sidebar"
-              presets={presets}
-              catalog={catalog}
-              activePresetId={activePresetId}
-              selectedSources={selectedSources}
-              quote={quote}
-              loadingQuote={loadingQuote}
-              onToggleSource={onToggleSource}
-              onApply={onApply}
-              disabled={disabled}
-              locationLocked={locationLocked}
-            />
-          </section>
-        ) : null}
 
-        <IntelligencePanelContent
-          locationPhase={locationPhase}
-          locationLocked={locationLocked}
-          apiOnline={apiOnline}
-          loadingReport={loadingReport}
-          hasReport={hasReport}
-        />
-      </div>
+          <div className="workflow-input-mode-bar mb-3 flex rounded border border-command-watch/20 bg-black/90 p-0.5">
 
-      <footer ref={sourcesRef} className="side-panel-footer workflow-sidebar__footer">
-        <WorkflowGenerateButton
-          quote={quoteSynced ? displayQuote : quote}
-          loading={loadingQuote}
-          onGenerate={onGenerate}
-          generateDisabled={generateDisabled || !locationLocked}
-          loadingReport={loadingReport}
-          address={address}
-          selectedCount={sourceCount}
-          locationLocked={locationLocked}
-          apiOnline={apiOnline}
-          hasReport={hasReport}
-          generateBlockReason={generateBlockReason}
-          enrichStatus={enrichStatus}
-          fullWidth
-          variant="intelligence"
-        />
-
-        {locationLocked ? (
-          <>
             <button
+
               type="button"
-              onClick={() => setSourcesOpen(v => !v)}
-              className={`workflow-sidebar__sources-toggle ${sourcesOpen ? 'workflow-sidebar__sources-toggle--open' : ''}`}
-              aria-expanded={sourcesOpen}
-              aria-controls="workflow-sources-drawer"
+
+              onClick={() => onInputModeChange?.('single')}
+
+              className={`flex-1 rounded px-2 py-2 font-mono text-[9px] uppercase tracking-wider transition ${
+
+                inputMode === 'single'
+
+                  ? 'bg-command-watch/15 text-command-watch'
+
+                  : 'text-ink-secondary hover:text-white'
+
+              }`}
+
             >
-              <span>Review Data Sources</span>
-              <span className="workflow-sidebar__sources-toggle-meta">
-                <span className="tabular-nums text-ink-faint">{sourceCount}</span>
-                <ChevronIcon expanded={sourcesOpen} />
-              </span>
+
+              Enter location
+
             </button>
 
-            {sourcesOpen ? (
-              <div
-                id="workflow-sources-drawer"
-                className="workflow-sidebar__sources-drawer"
-                role="region"
-                aria-label="Data source selection"
-              >
-                {hasPublicUrls ? (
-                  <div className="flex shrink-0 gap-1 border-b border-panel-border/70 px-2 py-2">
-                    <button
-                      type="button"
-                      onClick={() => setSourcesTab('sources')}
-                      className={`rounded px-2 py-1 font-mono text-[8px] uppercase tracking-wider ${
-                        sourcesTab === 'sources'
-                          ? 'bg-command-watch/10 text-command-watch'
-                          : 'text-ink-faint hover:text-ink-secondary'
-                      }`}
-                    >
-                      Catalog
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSourcesTab('urls')}
-                      className={`rounded px-2 py-1 font-mono text-[8px] uppercase tracking-wider ${
-                        sourcesTab === 'urls'
-                          ? 'bg-command-live/10 text-command-live'
-                          : 'text-ink-faint hover:text-ink-secondary'
-                      }`}
-                    >
-                      Public URLs
-                    </button>
-                  </div>
-                ) : null}
-                <div className="workflow-sidebar__sources-drawer-body">
-                  {sourcesTab === 'urls' && hasPublicUrls ? (
-                    <PublicSourcePanel
-                      catalog={catalog}
-                      selectedSources={selectedSources}
-                      address={address}
-                      locationLocked={locationLocked}
-                      apiOnline={apiOnline}
-                      disabled={disabled}
-                      sourceUrls={sourceUrls}
-                      onSourceUrlsChange={onSourceUrlsChange}
-                      onPaymentRequired={onPaymentRequired}
-                      variant="hud"
-                    />
-                  ) : (
-                    <SourceCatalogPanel
-                      variant="popover"
-                      catalog={catalog}
-                      selectedSources={selectedSources}
-                      onToggle={onToggleCatalogSource}
-                      disabled={disabled}
-                      quote={quote}
-                      activePresetId={activePresetId}
-                    />
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </>
+            <button
+
+              type="button"
+
+              onClick={() => onInputModeChange?.('schedule')}
+
+              className={`flex-1 rounded px-2 py-2 font-mono text-[9px] uppercase tracking-wider transition ${
+
+                inputMode === 'schedule'
+
+                  ? 'bg-command-watch/15 text-command-watch'
+
+                  : 'text-ink-secondary hover:text-white'
+
+              }`}
+
+            >
+
+              Upload schedule
+
+            </button>
+
+          </div>
+
+
+
+          <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
+            <div
+              className={
+                inputMode !== 'single' ? 'invisible pointer-events-none' : ''
+              }
+              aria-hidden={inputMode !== 'single'}
+            >
+              {!locationLocked ? (
+                <p className="side-panel-copy mb-2">
+                  Enter an address or use your location. The map unlocks once the property is locked.
+                </p>
+              ) : null}
+
+              <PropertySearchBar
+                address={address}
+                loading={loadingReport}
+                locationLocked={locationLocked}
+                locationPhase={locationPhase}
+                locationError={locationError}
+                locateSuccess={locateSuccess}
+                geolocateCommitting={geolocateCommitting}
+                onAddressChange={onAddressChange}
+                onAddressSelect={onAddressSelect}
+                onMyLocation={onMyLocation}
+                onClear={onClear}
+                onSearchingChange={onSearchingChange}
+                compact
+              />
+            </div>
+
+            <div
+              className={
+                inputMode !== 'schedule' ? 'invisible pointer-events-none' : ''
+              }
+              aria-hidden={inputMode !== 'schedule'}
+            >
+              <p className="side-panel-copy mb-2">
+                Upload up to 100 locations, then choose a package to validate and price the schedule.
+              </p>
+
+              <BatchQuotePanel
+                batchQuote={batchQuote}
+                scheduleRows={scheduleRows}
+                loadingQuote={loadingQuote}
+                onOpenSchedule={onOpenSchedule}
+                onPreviewLocation={onPreviewScheduleLocation}
+              />
+            </div>
+          </div>
+
+        </section>
+
+
+
+        <section
+          className={`side-panel-section shrink-0 border-b-0 pb-2 ${!hasLocationInput ? 'opacity-45' : ''}`}
+          aria-label="Data package"
+        >
+
+          <button
+            type="button"
+            onClick={() => hasLocationInput && setPackageExpanded(expanded => !expanded)}
+            disabled={!hasLocationInput}
+            className="flex w-full items-start justify-between gap-2 text-left disabled:cursor-not-allowed"
+            aria-expanded={packageExpanded}
+          >
+            <span>
+              <span className="side-panel-title mb-0 block">Data Package</span>
+              {!packageExpanded ? (
+                <span
+                  className={`mt-1 block font-mono text-[10px] leading-snug ${
+                    hasLocationInput ? 'text-ink-secondary' : 'text-ink-faint'
+                  }`}
+                >
+                  {packageSummary}
+                </span>
+              ) : null}
+            </span>
+            <span
+              className={`mt-0.5 shrink-0 font-mono text-[11px] text-ink-faint transition-transform duration-150 ${
+                packageExpanded ? 'rotate-180' : ''
+              }`}
+              aria-hidden
+            >
+              ▾
+            </span>
+          </button>
+
+          {packageExpanded && hasLocationInput ? (
+            <>
+              {!readyForGenerate ? (
+                <p className="side-panel-copy mb-2 mt-2">
+                  {scheduleMode
+                    ? 'Choose a package and validate your schedule. Pricing appears at the bottom.'
+                    : 'Choose a package and optional add-ons. Pricing appears at the bottom once the property is locked.'}
+                </p>
+              ) : null}
+
+              <IntentPackagePicker
+                layout="sidebar"
+                presets={presets}
+                catalog={catalog}
+                activePresetId={activePresetId}
+                selectedSources={selectedSources}
+                onToggleSource={onToggleSource}
+                onApply={onApply}
+                disabled={disabled}
+                locationLocked={locationLocked}
+                scheduleHasRows={scheduleMode && scheduleRows.length > 0}
+                scheduleMode={scheduleMode}
+              />
+            </>
+          ) : null}
+
+        </section>
+
+
+
+        {!scheduleMode && locationLocked && requiredUrlIds?.length > 0 ? (
+
+          <section className="side-panel-section shrink-0 border-b-0 pb-2" aria-label="Public record sources">
+
+            <PublicSourcePanel
+
+              catalog={catalog}
+
+              selectedSources={selectedSources}
+
+              address={address}
+
+              locationLocked={locationLocked}
+
+              apiOnline={apiOnline}
+
+              disabled={disabled}
+
+              sourceUrls={sourceUrls}
+
+              onSourceUrlsChange={onSourceUrlsChange}
+
+              onPaymentRequired={onPaymentRequired}
+
+              billingEnabled={billingEnabled}
+
+              variant="sidebar"
+
+            />
+
+          </section>
+
         ) : null}
+
+
+
+        <IntelligencePanelContent
+
+          locationPhase={locationPhase}
+
+          locationLocked={readyForGenerate}
+
+          loadingReport={loadingReport}
+
+          hasReport={hasReport || hasBatchReport}
+
+        />
+
+      </div>
+
+
+
+      <footer className="side-panel-footer workflow-sidebar__footer">
+
+        <WorkflowPricingPanel
+
+          visible={showPricing}
+
+          loading={loadingQuote}
+
+          catalog={catalog}
+
+          presets={presets}
+
+          activePresetId={activePresetId}
+
+          quote={pricingQuote}
+
+          selectedSources={selectedSources}
+
+          batchQuote={batchQuote}
+
+          scheduleMode={scheduleMode}
+
+          isFinal={hasReport || hasBatchReport}
+
+        />
+
+        <WorkflowGenerateButton
+
+          quote={pricingQuote}
+
+          loading={loadingQuote}
+
+          onGenerate={onGenerate}
+
+          billingEnabled={billingEnabled}
+
+          checkoutPreview={checkoutPreview}
+
+          payLoading={payLoading}
+
+          generateDisabled={generateDisabled || !readyForGenerate}
+
+          loadingReport={loadingReport}
+
+          address={address}
+
+          selectedCount={sourceCount}
+
+          locationLocked={readyForGenerate}
+
+          apiOnline={apiOnline}
+
+          hasReport={hasReport || hasBatchReport}
+
+          generateBlockReason={generateBlockReason}
+
+          enrichStatus={enrichStatus}
+
+          fullWidth
+
+          variant="intelligence"
+
+          scheduleMode={scheduleMode}
+
+          hidePriceInLabel
+
+        />
+
       </footer>
+
     </aside>
+
   )
+
 }
+
+

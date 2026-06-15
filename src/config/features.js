@@ -11,7 +11,7 @@ export function isPropertyIntelligenceEnabled() {
   return false
 }
 
-/** LLM polish for careers dictation — off in production unless explicitly enabled with API keys. */
+/** LLM polish for careers dictation, off in production unless explicitly enabled with API keys. */
 export function isCareersOrganizeLlmEnabled() {
   if (import.meta.env.DEV) return true
   return import.meta.env.VITE_CAREERS_ORGANIZE_LLM === 'true'

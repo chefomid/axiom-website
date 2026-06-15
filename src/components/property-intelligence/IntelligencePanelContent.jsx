@@ -23,7 +23,7 @@ const REVIEW_ITEMS = [
 
 
 
-const SOURCE_DISCIPLINE = ['Verified', 'Inferred', 'Missing', 'Conflicting', 'Needs Review']
+const SOURCE_DISCIPLINE = ['Verified', 'Inferred', 'Missing', 'Needs Review']
 
 
 
@@ -99,8 +99,6 @@ export default function IntelligencePanelContent({
 
   locationLocked,
 
-  apiOnline,
-
   loadingReport,
 
   hasReport,
@@ -140,12 +138,6 @@ export default function IntelligencePanelContent({
               />
 
               {status.label}
-
-            </span>
-
-            <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-white/35">
-
-              {apiOnline ? 'API Online' : 'API Offline'}
 
             </span>
 

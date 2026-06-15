@@ -1,5 +1,7 @@
 import { normalizeSuggestion } from '../utils/coords'
 import { getOrCreateAnonId } from '../utils/anonId'
+import { saveBillingResume } from '../utils/billingResume'
+import { attachApiErrorMetadata, parseApiDetail } from '../utils/apiErrors'
 import { searchUsPropertyAddresses } from './geocode'
 
 const USER_AGENT = 'AXIOM-PropertyIntelligence/0.1 (property-intelligence)'
@@ -16,21 +18,19 @@ async function parsePropertyResponse(res) {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     const detail = data.detail ?? data.message ?? res.statusText
+    const parsed = parseApiDetail(detail)
     let message
-    let paymentRequired = null
-    if (res.status === 402 && detail && typeof detail === 'object') {
-      paymentRequired = detail
-      message = detail.message ?? 'Insufficient credits'
-    } else if (Array.isArray(detail)) {
-      message = detail.map(d => d.msg ?? JSON.stringify(d)).join('; ')
+    if (res.status === 402 && parsed && typeof parsed === 'object') {
+      message = parsed.message ?? 'Insufficient credits'
+    } else if (parsed?.message) {
+      message = parsed.message
     } else if (typeof detail === 'string') {
       message = detail
     } else {
       message = JSON.stringify(detail)
     }
     const err = new Error(message)
-    err.status = res.status
-    err.paymentRequired = paymentRequired
+    attachApiErrorMetadata(err, { status: res.status, detail })
     throw err
   }
   return data
@@ -85,6 +85,37 @@ export async function quoteProperty({ address, selectedSources }) {
     body: JSON.stringify({
       address: address.trim(),
       selected_sources: selectedSources ?? [],
+    }),
+  })
+  return parsePropertyResponse(res)
+}
+
+export async function quoteBatch({ addresses, selectedSources }) {
+  const res = await propertyFetch('/quote/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      addresses: (addresses ?? []).map(a => a.trim()).filter(Boolean),
+      selected_sources: selectedSources ?? [],
+    }),
+  })
+  return parsePropertyResponse(res)
+}
+
+export async function enrichBatch({
+  addresses,
+  selectedSources,
+  confirmedPriceUsd,
+  anonId,
+}) {
+  const res = await propertyFetch('/enrich/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      addresses: (addresses ?? []).map(a => a.trim()).filter(Boolean),
+      selected_sources: selectedSources ?? [],
+      confirmed_price_usd: confirmedPriceUsd,
+      anon_id: anonId ?? getOrCreateAnonId(),
     }),
   })
   return parsePropertyResponse(res)
@@ -149,16 +180,73 @@ export async function fetchBillingBalance(anonId) {
   return parsePropertyResponse(res)
 }
 
-export async function startBillingCheckout(packId, anonId) {
+export async function startBillingCheckout(packId, anonId, { embedded = false } = {}) {
   const res = await propertyFetch('/billing/checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       anon_id: anonId ?? getOrCreateAnonId(),
       pack_id: packId,
+      embedded,
     }),
   })
   return parsePropertyResponse(res)
+}
+
+export async function fetchBatchCheckoutPreview({ addresses, selectedSources, anonId }) {
+  const res = await propertyFetch('/billing/batch-checkout-preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      anon_id: anonId ?? getOrCreateAnonId(),
+      addresses: (addresses ?? []).map(a => a.trim()).filter(Boolean),
+      selected_sources: selectedSources ?? [],
+    }),
+  })
+  return parsePropertyResponse(res)
+}
+
+export async function fetchCheckoutPreview({ purpose, address, selectedSources, anonId, addresses }) {
+  const params = new URLSearchParams({
+    anon_id: anonId ?? getOrCreateAnonId(),
+    purpose,
+    address: address.trim(),
+    selected_sources: (selectedSources ?? []).join(','),
+  })
+  const res = await propertyFetch(`/billing/checkout-preview?${params}`)
+  return parsePropertyResponse(res)
+}
+
+export async function startQuoteCheckout({
+  purpose,
+  address,
+  addresses,
+  selectedSources,
+  confirmedPriceUsd,
+  anonId,
+  resumeContext,
+  embedded = false,
+}) {
+  if (resumeContext) {
+    saveBillingResume({ resume: purpose, ...resumeContext })
+  }
+  const body = {
+    anon_id: anonId ?? getOrCreateAnonId(),
+    purpose,
+    address: (address ?? '').trim(),
+    selected_sources: selectedSources ?? [],
+    embedded,
+  }
+  if (addresses?.length) body.addresses = addresses.map(a => a.trim()).filter(Boolean)
+  if (confirmedPriceUsd != null) body.confirmed_price_usd = confirmedPriceUsd
+
+  const res = await propertyFetch('/billing/checkout-quote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await parsePropertyResponse(res)
+  return data
 }
 
 export function isPaymentRequiredError(err) {
@@ -192,6 +280,12 @@ export function formatUsd(amount) {
   if (amount == null || Number.isNaN(amount)) return '-'
   if (amount === 0) return '$0.00'
   return `$${Number(amount).toFixed(2)}`
+}
+
+/** Per-location price after batch minimum, volume discount, and margin floor are allocated. */
+export function batchLocationPrice(location) {
+  if (location?.allocated_price_usd != null) return location.allocated_price_usd
+  return location?.quote?.totals?.user_price_usd
 }
 
 export function sourcesNeedingUrl(catalog, selectedSources) {
@@ -278,12 +372,37 @@ export function presetSourceIds(catalog, preset) {
   return preset.source_ids
 }
 
-export function sourcesMatchQuote(selectedSources, quoteSources) {
+/** Mirror backend resolve_selected_sources using catalog depends_on edges. */
+export function resolveSelectedSources(catalog, selectedSources) {
+  if (!catalog?.sources?.length) return selectedSources ?? []
+  const byId = Object.fromEntries(catalog.sources.map(src => [src.id, src]))
+  const resolved = []
+  const seen = new Set()
+
+  const add = sourceId => {
+    if (seen.has(sourceId)) return
+    const src = byId[sourceId]
+    if (!src) return
+    for (const dep of src.depends_on ?? []) add(dep)
+    seen.add(sourceId)
+    resolved.push(sourceId)
+  }
+
+  add('geocode_census')
+  for (const sourceId of selectedSources ?? []) {
+    if (sourceId !== 'geocode_census') add(sourceId)
+  }
+  return resolved
+}
+
+export function sourcesMatchQuote(selectedSources, quoteSources, catalog) {
   const normalize = ids =>
     [...new Set(ids ?? [])]
       .filter(id => id && id !== 'geocode_census')
       .sort()
-  return JSON.stringify(normalize(selectedSources)) === JSON.stringify(normalize(quoteSources))
+  const resolvedSelected = normalize(resolveSelectedSources(catalog, selectedSources))
+  const resolvedQuote = normalize(quoteSources)
+  return JSON.stringify(resolvedSelected) === JSON.stringify(resolvedQuote)
 }
 
 export function sourcesMatchPreset(catalog, presetId, selectedSources) {

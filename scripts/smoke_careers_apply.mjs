@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Smoke-test careers apply templates and handler (no live Resend required).
+ * Smoke-test careers apply templates and handler.
  * Run from repo root: npm run smoke:careers-apply
  */
 
@@ -192,46 +192,42 @@ describe('apply handler', () => {
     assert.equal(result.body.ok, true)
   })
 
-  test('valid payload without RESEND_API_KEY returns 503', async () => {
-    const saved = process.env.RESEND_API_KEY
-    delete process.env.RESEND_API_KEY
+  test('valid payload without storage returns 503', async () => {
+    const savedNodeEnv = process.env.NODE_ENV
+    const savedDb = process.env.CAREERS_DATABASE_URL
+    process.env.NODE_ENV = 'production'
+    delete process.env.CAREERS_DATABASE_URL
 
     try {
       const result = await invokeHandler({ applicant: APPLICANT, sections: SECTIONS })
       assert.equal(result.status, 503)
     } finally {
-      if (saved !== undefined) process.env.RESEND_API_KEY = saved
+      if (savedNodeEnv !== undefined) process.env.NODE_ENV = savedNodeEnv
+      else delete process.env.NODE_ENV
+      if (savedDb !== undefined) process.env.CAREERS_DATABASE_URL = savedDb
+      else delete process.env.CAREERS_DATABASE_URL
+    }
+  })
+
+  test('valid payload saves to local store in development', async () => {
+    const savedNodeEnv = process.env.NODE_ENV
+    const savedDb = process.env.CAREERS_DATABASE_URL
+    process.env.NODE_ENV = 'development'
+    delete process.env.CAREERS_DATABASE_URL
+
+    try {
+      const result = await invokeHandler({ applicant: APPLICANT, sections: SECTIONS })
+      assert.equal(result.status, 200)
+      assert.equal(result.body.ok, true)
+      assert.match(result.body.referenceId, /^AXM-\d{8}-[a-z0-9]{6}$/)
+    } finally {
+      if (savedNodeEnv !== undefined) process.env.NODE_ENV = savedNodeEnv
+      else delete process.env.NODE_ENV
+      if (savedDb !== undefined) process.env.CAREERS_DATABASE_URL = savedDb
+      else delete process.env.CAREERS_DATABASE_URL
     }
   })
 })
-
-const hasResendKey = Boolean(process.env.RESEND_API_KEY?.trim())
-
-if (hasResendKey) {
-  describe('apply handler (live Resend)', () => {
-    test('valid payload returns referenceId shape', async () => {
-      const originalFetch = globalThis.fetch
-      globalThis.fetch = async (url, options) => {
-        if (String(url).includes('api.resend.com')) {
-          return { ok: true, text: async () => '' }
-        }
-        return originalFetch(url, options)
-      }
-
-      try {
-        const result = await invokeHandler({ applicant: APPLICANT, sections: SECTIONS })
-        assert.equal(result.status, 200)
-        assert.equal(result.body.ok, true)
-        assert.match(result.body.referenceId, /^AXM-\d{8}-[a-z0-9]{6}$/)
-        assert.equal(result.body.confirmationSent, true)
-      } finally {
-        globalThis.fetch = originalFetch
-      }
-    })
-  })
-} else {
-  console.log('SKIP: no RESEND_API_KEY (set for live handler mock test)')
-}
 
 describe('organize info', () => {
   test('GET returns model label', async () => {
@@ -267,22 +263,28 @@ describe('admin auth', () => {
     }
   })
 
-  test('submissions with valid token returns 503 without database', async () => {
+  test('submissions with valid token uses local store in development', async () => {
     const savedToken = process.env.CAREERS_ADMIN_TOKEN
     const savedDb = process.env.CAREERS_DATABASE_URL
+    const savedNodeEnv = process.env.NODE_ENV
     process.env.CAREERS_ADMIN_TOKEN = 'test-admin-token'
     delete process.env.CAREERS_DATABASE_URL
+    process.env.NODE_ENV = 'development'
 
     try {
       const result = await invokeAdminRoute(adminSubmissionsHandler, {
         method: 'GET',
         headers: { authorization: 'Bearer test-admin-token' },
       })
-      assert.equal(result.status, 503)
+      assert.equal(result.status, 200)
+      assert.ok(Array.isArray(result.body.submissions))
     } finally {
       if (savedToken !== undefined) process.env.CAREERS_ADMIN_TOKEN = savedToken
       else delete process.env.CAREERS_ADMIN_TOKEN
       if (savedDb !== undefined) process.env.CAREERS_DATABASE_URL = savedDb
+      else delete process.env.CAREERS_DATABASE_URL
+      if (savedNodeEnv !== undefined) process.env.NODE_ENV = savedNodeEnv
+      else delete process.env.NODE_ENV
     }
   })
 })

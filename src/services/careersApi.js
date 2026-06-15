@@ -1,5 +1,6 @@
 import { APPLICATION_STEPS } from '../components/careers/applicationSchema'
 import { isCareersOrganizeLlmEnabled } from '../config/features'
+import { attachApiErrorMetadata, messageFromApiError, parseApiDetail } from '../utils/apiErrors'
 import { lightOrganizeText, shouldUseLlmOrganize } from '../utils/careersOrganize'
 
 
@@ -298,7 +299,16 @@ export async function submitApplication(values, { honeypot = '' } = {}) {
 
     }
 
-    throw new Error(detail)
+    const parsed = parseApiDetail(detail)
+    const message =
+      typeof parsed?.message === 'string'
+        ? parsed.message
+        : typeof detail === 'string'
+          ? detail
+          : 'Submission failed. Please try again in a moment.'
+    const err = new Error(message)
+    attachApiErrorMetadata(err, { status: response.status, detail })
+    throw err
 
   }
 
@@ -308,7 +318,6 @@ export async function submitApplication(values, { honeypot = '' } = {}) {
   return {
     ok: Boolean(data?.ok),
     referenceId: typeof data?.referenceId === 'string' ? data.referenceId : null,
-    confirmationSent: Boolean(data?.confirmationSent),
     dev: Boolean(data?.dev),
   }
 }
@@ -352,6 +361,13 @@ export async function organizeThoughts(text, { question = '' } = {}) {
       body: JSON.stringify({ text: trimmed, question }),
     })
 
+    if (response.status === 429) {
+      const data = await response.json().catch(() => ({}))
+      const err = new Error(messageFromApiError({ rateLimit: parseApiDetail(data.detail) }))
+      attachApiErrorMetadata(err, { status: 429, detail: data.detail })
+      throw err
+    }
+
     if (response.ok) {
       const data = await response.json()
       const organized = typeof data?.text === 'string' ? data.text.trim() : ''
@@ -359,34 +375,23 @@ export async function organizeThoughts(text, { question = '' } = {}) {
     }
 
     return fallback()
-  } catch {
+  } catch (err) {
+    if (err?.status === 429) throw err
     throw new Error('organize_unreachable')
   }
 }
 
 function devFallback(payload) {
-
   console.info(
-
-    '[careers] Dev mode: /api/careers/apply is a Vercel function and is not served by Vite. ' +
-
-      'Submission payload below would be emailed in production.',
-
+    '[careers] Dev mode: /api/careers/apply is not available. Submission payload below would be saved in production.',
   )
-
   console.info({
-
     ...payload,
-
     attachment: payload.attachment
-
       ? { filename: payload.attachment.filename, content: '[base64 omitted]' }
-
       : null,
-
   })
-
-  return { ok: true, dev: true, referenceId: null, confirmationSent: false }
+  return { ok: true, dev: true, referenceId: null }
 }
 
 

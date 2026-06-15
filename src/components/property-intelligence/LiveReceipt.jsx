@@ -100,7 +100,7 @@ export default function LiveReceipt({
             className="shrink-0 font-sans text-xs text-ink-faint hover:text-ink-secondary"
             aria-expanded={detailsOpen}
           >
-            {detailsOpen ? 'Hide' : 'Details'}
+            {detailsOpen ? 'Hide' : 'Itemized receipt'}
           </button>
         ) : null}
       </div>
@@ -147,24 +147,11 @@ export default function LiveReceipt({
             )}
           </ul>
           {totals ? (
-            <div className="space-y-1 border-t border-panel-border px-4 py-2 font-mono text-[10px]">
-              <div className="flex justify-between text-ink-muted">
-                <span>Loaded cost</span>
-                <span className="tabular-nums">{formatUsd(totals.loaded_cost_usd)}</span>
-              </div>
-              <div className="flex justify-between text-ink-muted">
-                <span>Margin</span>
-                <span className="tabular-nums">×{totals.margin_multiplier ?? 2.5}</span>
-              </div>
+            <div className="border-t border-panel-border px-4 py-2 font-mono text-[10px]">
               <div className="flex justify-between text-white">
-                <span>User price</span>
+                <span>{isFinal ? 'Total charged' : 'Estimated total'}</span>
                 <span className="tabular-nums">{formatUsd(totals.user_price_usd)}</span>
               </div>
-              {!isFinal ? (
-                <p className="pt-1 font-mono text-[9px] leading-relaxed text-ink-faint">
-                  Dry run, wallet billing not enabled
-                </p>
-              ) : null}
             </div>
           ) : null}
           {quote?.warnings?.length > 0 ? (

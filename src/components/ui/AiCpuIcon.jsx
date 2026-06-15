@@ -1,7 +1,7 @@
 import { Cpu } from 'lucide-react'
 
 /**
- * AXIOM “AI CPU” icon — matches Insurance Manager toolbar / model picker styling.
+ * AXIOM “AI CPU” icon, matches Insurance Manager toolbar / model picker styling.
  * Lucide outline microchip, amber glow, subtle pulse. Use inside `.axiom-ai-cpu-btn`.
  */
 export default function AiCpuIcon({ size = 14, strokeWidth = 1.75, className = '' }) {

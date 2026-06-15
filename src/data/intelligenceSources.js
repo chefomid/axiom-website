@@ -3,16 +3,16 @@ export const INTELLIGENCE_SOURCE_GROUPS = [
     id: 'vendors',
     label: 'Licensed property APIs',
     intro:
-      'Carrier-trusted vendors supply normalized building attributes, ownership, and valuation fields used in underwriting workflows.',
+      'Licensed vendors supply normalized building attributes, ownership, and valuation fields commonly used in underwriting workflows.',
     sources: [
       {
         id: 'attom',
         chipLabel: 'ATTOM',
         name: 'ATTOM Data',
         summary:
-          'Insurance-grade property characteristics: construction type, roof, stories, lot size, ownership, and peril scores normalized for underwriting.',
+          'Licensed property characteristics: construction type, roof, stories, lot size, ownership, and peril scores mapped for COPE workflows.',
         credibility:
-          'Used by carriers and MGAs for defensible COPE snapshots. AXIOM maps ATTOM fields into Construction, Occupancy, and Exposure sections.',
+          'Widely used in property intelligence and underwriting. AXIOM maps ATTOM fields into Construction, Occupancy, and Exposure sections.',
         website: 'https://www.attomdata.com',
       },
       {
@@ -32,7 +32,7 @@ export const INTELLIGENCE_SOURCE_GROUPS = [
         summary:
           'Fast residential profile: square footage, year built, beds and baths, property type, and recent sale history.',
         credibility:
-          'Affordable enrichment for triage and comparison before escalating to insurance-grade sources. Ideal for quick COPE baselines.',
+          'Affordable enrichment for triage and comparison before escalating to licensed data. Ideal for quick COPE baselines.',
         website: 'https://www.rentcast.io',
       },
       {

@@ -1,8 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { isCareersOrganizeLlmEnabled } from '../../config/features'
-import { organizeThoughts, fetchOrganizeModelInfo } from '../../services/careersApi'
-import { shouldUseLlmOrganize } from '../../utils/careersOrganize'
-import AiCpuIcon from '../ui/AiCpuIcon'
 
 const INPUT_CLASS =
   'w-full rounded-lg border border-panel-border bg-panel-surface/60 px-4 py-3 text-sm text-ink-primary placeholder:text-ink-faint transition-colors focus:border-command-live/50 focus:outline-none focus:ring-1 focus:ring-command-live/25'
@@ -250,7 +246,6 @@ export function SelectInput({ field, value, error, onChange, onOtherChange, othe
 
 export function TextAreaInput({ field, value, error, onChange }) {
   const dictation = useSpeechDictation(value, onChange)
-  const [polishing, setPolishing] = useState(false)
 
   return (
     <FieldShell field={field} error={error}>
@@ -262,15 +257,9 @@ export function TextAreaInput({ field, value, error, onChange }) {
         onChange={e => dictation.handleManualChange(e.target.value)}
         className={`careers-textarea ${INPUT_CLASS} resize-y leading-relaxed ${error ? INPUT_ERROR_CLASS : ''} ${
           dictation.listening ? 'border-command-stable/40 ring-1 ring-command-stable/15' : ''
-        } ${polishing ? 'careers-textarea--polishing' : ''}`.trim()}
+        }`.trim()}
       />
-      <SpeechDictationControl
-        dictation={dictation}
-        value={value}
-        question={field.label}
-        onOrganized={onChange}
-        onPolishingChange={setPolishing}
-      />
+      <SpeechDictationControl dictation={dictation} />
     </FieldShell>
   )
 }
@@ -295,7 +284,6 @@ function useSpeechDictation(value, onChange) {
   const [listening, setListening] = useState(false)
   const [supported] = useState(() => Boolean(getSpeechRecognitionCtor()))
   const [speechError, setSpeechError] = useState(null)
-  const [readyToOrganize, setReadyToOrganize] = useState(false)
   const [pendingRestart, setPendingRestart] = useState(false)
 
   onChangeRef.current = onChange
@@ -308,7 +296,6 @@ function useSpeechDictation(value, onChange) {
     recognitionRef.current?.stop()
     recognitionRef.current = null
     setListening(false)
-    setReadyToOrganize(true)
   }
 
   function composeSessionText(base, finalized, interim) {
@@ -330,7 +317,6 @@ function useSpeechDictation(value, onChange) {
     setSpeechError(null)
     if (clearContent) {
       onChangeRef.current('')
-      setReadyToOrganize(false)
       sessionBaseRef.current = ''
     } else {
       sessionBaseRef.current = value ?? ''
@@ -355,7 +341,6 @@ function useSpeechDictation(value, onChange) {
     recognition.onend = () => {
       setListening(false)
       recognitionRef.current = null
-      setReadyToOrganize(true)
     }
 
     recognition.onerror = event => {
@@ -397,26 +382,19 @@ function useSpeechDictation(value, onChange) {
 
   function handleManualChange(next) {
     if (listening) stop()
-    if (!String(next).trim()) setReadyToOrganize(false)
     onChangeRef.current(next)
-  }
-
-  function clearReadyToOrganize() {
-    setReadyToOrganize(false)
   }
 
   return {
     listening,
     supported,
     speechError,
-    readyToOrganize,
     pendingRestart,
     toggle,
     stop,
     handleManualChange,
     confirmRestart,
     cancelRestart,
-    clearReadyToOrganize,
   }
 }
 
@@ -489,130 +467,18 @@ function DictationRestartDialog({ onConfirm, onCancel }) {
   )
 }
 
-function SpeechDictationControl({
-  dictation,
-  value,
-  question,
-  onOrganized,
-  onPolishingChange,
-  className = '',
-}) {
+function SpeechDictationControl({ dictation, className = '' }) {
   const {
     listening,
     supported,
     speechError,
-    readyToOrganize,
     pendingRestart,
     toggle,
     confirmRestart,
     cancelRestart,
   } = dictation
-  const [polishing, setPolishing] = useState(false)
-  const [organizeFeedback, setOrganizeFeedback] = useState(null)
-  const [organizeModelLabel, setOrganizeModelLabel] = useState(null)
-  const polishRunRef = useRef(0)
-  const feedbackTimerRef = useRef(null)
-  const lastOrganizedTextRef = useRef(null)
-
-  const showOrganize =
-    readyToOrganize &&
-    !listening &&
-    isCareersOrganizeLlmEnabled() &&
-    shouldUseLlmOrganize(value)
-
-  function clearFeedbackTimer() {
-    if (feedbackTimerRef.current) {
-      clearTimeout(feedbackTimerRef.current)
-      feedbackTimerRef.current = null
-    }
-  }
-
-  function showFeedback(kind) {
-    clearFeedbackTimer()
-    setOrganizeFeedback(kind)
-    feedbackTimerRef.current = setTimeout(() => {
-      setOrganizeFeedback(null)
-      feedbackTimerRef.current = null
-    }, 4000)
-  }
-
-  useEffect(() => {
-    if (!isCareersOrganizeLlmEnabled()) return
-    let cancelled = false
-    fetchOrganizeModelInfo().then(label => {
-      if (!cancelled) setOrganizeModelLabel(label)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    return () => clearFeedbackTimer()
-  }, [])
-
-  useEffect(() => {
-    if (listening) {
-      clearFeedbackTimer()
-      setOrganizeFeedback(null)
-      lastOrganizedTextRef.current = null
-    }
-  }, [listening])
-
-  useEffect(() => {
-    if (polishing) return
-    const current = String(value ?? '')
-    if (
-      organizeFeedback &&
-      lastOrganizedTextRef.current !== null &&
-      current !== lastOrganizedTextRef.current
-    ) {
-      clearFeedbackTimer()
-      setOrganizeFeedback(null)
-      lastOrganizedTextRef.current = null
-    }
-  }, [value, polishing, organizeFeedback])
-
-  function runOrganize() {
-    const trimmed = String(value ?? '').trim()
-    if (!trimmed || polishing) return
-
-    const runId = ++polishRunRef.current
-    clearFeedbackTimer()
-    setOrganizeFeedback('polishing')
-    setPolishing(true)
-    onPolishingChange?.(true)
-
-    organizeThoughts(trimmed, { question })
-      .then(result => {
-        if (polishRunRef.current !== runId) return
-        const organized = result?.text ?? trimmed
-        onOrganized(organized)
-        lastOrganizedTextRef.current = organized
-        showFeedback(organized === trimmed ? 'unchanged' : 'tidied')
-      })
-      .catch(() => {
-        if (polishRunRef.current !== runId) return
-        onOrganized(trimmed)
-        lastOrganizedTextRef.current = trimmed
-        showFeedback('error')
-      })
-      .finally(() => {
-        if (polishRunRef.current !== runId) return
-        setPolishing(false)
-        onPolishingChange?.(false)
-      })
-  }
 
   if (!supported) return null
-
-  const modelLabel = organizeModelLabel ?? 'Nemotron Mini'
-  const organizeTooltip = polishing
-    ? `Organizing with ${modelLabel}\u2026`
-    : `Organize thoughts \u00b7 ${modelLabel}`
-  const organizeAriaLabel = polishing
-    ? `Organizing your answer with ${modelLabel}`
-    : `Organize thoughts with ${modelLabel}`
 
   return (
     <>
@@ -637,49 +503,9 @@ function SpeechDictationControl({
               {listening ? 'Listening\u2026 tap to stop' : 'Dictate instead of typing'}
             </span>
           </button>
-          {showOrganize || polishing ? (
-            <button
-              type="button"
-              onClick={runOrganize}
-              disabled={polishing}
-              aria-busy={polishing}
-              aria-label={organizeAriaLabel}
-              className={`field-icon-tooltip-btn axiom-ai-cpu-btn ${
-                polishing ? 'axiom-ai-cpu-btn--busy' : ''
-              }`}
-            >
-              <AiCpuIcon size={20} strokeWidth={1.85} />
-              <span className="field-icon-tooltip field-icon-tooltip--model" role="tooltip">
-                {organizeTooltip}
-              </span>
-            </button>
-          ) : null}
         </div>
         {listening ? (
           <p className="mt-1.5 text-xs text-ink-muted">Words appear as you speak.</p>
-        ) : null}
-        {showOrganize && !polishing && !organizeFeedback ? (
-          <p className="mt-1.5 text-xs text-ink-muted">
-            Tap the CPU icon to tidy your wording without adding new details.
-          </p>
-        ) : null}
-        {organizeFeedback === 'polishing' || polishing ? (
-          <p className="mt-1.5 text-xs text-ink-muted">Organizing your answer\u2026</p>
-        ) : null}
-        {organizeFeedback === 'tidied' ? (
-          <p className="mt-1.5 text-xs text-ink-muted" role="status">
-            Answer tidied.
-          </p>
-        ) : null}
-        {organizeFeedback === 'unchanged' ? (
-          <p className="mt-1.5 text-xs text-ink-muted" role="status">
-            Looks good — no changes needed.
-          </p>
-        ) : null}
-        {organizeFeedback === 'error' ? (
-          <p className="mt-1.5 text-xs text-command-critical" role="alert">
-            Could not reach organize — your words are unchanged.
-          </p>
         ) : null}
         {speechError ? (
           <p className="mt-1.5 text-xs text-command-critical" role="alert">
@@ -933,7 +759,7 @@ export function YesNoGroupInput({ field, value, error, onChange }) {
   )
 }
 
-/** Fill-in-the-blank commitment sentences. value: { [itemId]: string } */
+/** Fill-in-the-blank sentence prompts. value: { [itemId]: string } */
 export function SentenceGroupInput({ field, value, error, onChange }) {
   const answers = value ?? {}
 
@@ -970,12 +796,7 @@ function SentenceDictationField({ item, field, value, onChange }) {
         onChange={event => dictation.handleManualChange(event.target.value)}
         className={`${INPUT_CLASS} mt-2 ${dictation.listening ? 'border-command-stable/40 ring-1 ring-command-stable/15' : ''}`.trim()}
       />
-      <SpeechDictationControl
-        dictation={dictation}
-        value={value}
-        question={item.prefix}
-        onOrganized={onChange}
-      />
+      <SpeechDictationControl dictation={dictation} />
     </div>
   )
 }

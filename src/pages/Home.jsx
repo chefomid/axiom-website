@@ -136,7 +136,7 @@ function Hero() {
         custom={2}
         className="text-ink-muted text-base leading-relaxed max-w-3xl mt-6"
       >
-        AXIOM&apos;s purpose is to move risk management beyond administration. By unifying digital intelligence, physical technology, and operational insight, AXIOM aims to help organizations understand their exposures more clearly, strengthen protection, and make faster, more confident decisions across their operations.
+        AXIOM&apos;s purpose is to move risk management beyond administration. By unifying digital intelligence, physical technology, emerging technologies, and operational insight, AXIOM aims to help organizations understand their exposures more clearly, strengthen protection, and make faster, more confident decisions across their operations.
       </motion.p>
 
       <motion.div

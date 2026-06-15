@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 
 
-import { discoverSourceUrls, fetchBillingPacks, fetchPropertyEnvStatus, formatUsd, isPaymentRequiredError, sourcesNeedingUrlIds } from '../../services/propertyApi'
+import { discoverSourceUrls, fetchBillingPacks, fetchCheckoutPreview, fetchPropertyEnvStatus, formatUsd, isPaymentRequiredError, sourcesNeedingUrlIds, startQuoteCheckout } from '../../services/propertyApi'
+import { formatRateLimitMessage, isRateLimitError } from '../../utils/apiErrors'
+import { useCheckoutPay } from '../../hooks/useCheckoutPay'
 
 
 
@@ -62,6 +64,8 @@ export default function PublicSourcePanel({
 
   onPaymentRequired,
 
+  billingEnabled: billingEnabledProp = null,
+
   variant = 'sidebar',
 
 }) {
@@ -86,7 +90,14 @@ export default function PublicSourcePanel({
 
   const [discovered, setDiscovered] = useState(null)
 
-  const [billingEnabled, setBillingEnabled] = useState(false)
+  const [billingEnabledLocal, setBillingEnabledLocal] = useState(false)
+
+  const [discoverPreview, setDiscoverPreview] = useState(null)
+
+  const [payLoading, setPayLoading] = useState(false)
+
+  const billingEnabled = billingEnabledProp ?? billingEnabledLocal
+  const { presentCheckout } = useCheckoutPay()
 
   const autoDiscoverKeyRef = useRef('')
 
@@ -134,9 +145,11 @@ export default function PublicSourcePanel({
 
   useEffect(() => {
 
+    if (billingEnabledProp != null) return undefined
+
     if (!apiOnline) {
 
-      setBillingEnabled(false)
+      setBillingEnabledLocal(false)
 
       return undefined
 
@@ -148,13 +161,13 @@ export default function PublicSourcePanel({
 
       .then(data => {
 
-        if (!cancelled) setBillingEnabled(Boolean(data.billing_enabled))
+        if (!cancelled) setBillingEnabledLocal(Boolean(data.billing_enabled))
 
       })
 
       .catch(() => {
 
-        if (!cancelled) setBillingEnabled(false)
+        if (!cancelled) setBillingEnabledLocal(false)
 
       })
 
@@ -164,7 +177,51 @@ export default function PublicSourcePanel({
 
     }
 
-  }, [apiOnline])
+  }, [apiOnline, billingEnabledProp])
+
+
+
+  useEffect(() => {
+
+    if (!billingEnabled || !locationLocked || !address?.trim()) {
+
+      setDiscoverPreview(null)
+
+      return undefined
+
+    }
+
+    let cancelled = false
+
+    fetchCheckoutPreview({
+
+      purpose: 'discover',
+
+      address,
+
+      selectedSources,
+
+    })
+
+      .then(data => {
+
+        if (!cancelled) setDiscoverPreview(data)
+
+      })
+
+      .catch(() => {
+
+        if (!cancelled) setDiscoverPreview(null)
+
+      })
+
+    return () => {
+
+      cancelled = true
+
+    }
+
+  }, [billingEnabled, locationLocked, address, selectedSources])
 
 
 
@@ -276,7 +333,11 @@ export default function PublicSourcePanel({
 
           message: billingEnabled
 
-            ? 'Insufficient credits, add credits to preview discovery.'
+            ? discoverPreview && !discoverPreview.sufficient
+
+              ? `Pay ${formatUsd(discoverPreview.charge_usd)} below to preview discovery.`
+
+              : 'Insufficient credits, add credits to preview discovery.'
 
             : 'Dry run, wallet billing not configured on the server.',
 
@@ -285,6 +346,22 @@ export default function PublicSourcePanel({
         })
 
         onPaymentRequired?.(err)
+
+      } else if (isRateLimitError(err)) {
+
+        const { title, safetyNote } = formatRateLimitMessage(err.rateLimit)
+
+        setDiscoverStatus({
+
+          tone: 'watch',
+
+          message: title,
+
+          safetyNote,
+
+          warnings: [],
+
+        })
 
       } else {
 
@@ -306,7 +383,59 @@ export default function PublicSourcePanel({
 
     }
 
-  }, [address, selectedSources, sourceUrls, onSourceUrlsChange, onPaymentRequired, billingEnabled])
+  }, [address, selectedSources, sourceUrls, onSourceUrlsChange, onPaymentRequired, billingEnabled, discoverPreview])
+
+
+
+  const handlePayAndDiscover = useCallback(() => {
+    if (!address?.trim()) return
+
+    presentCheckout({
+      title: 'AI URL discovery preview',
+      charge_usd: discoverPreview?.charge_usd,
+      credits_to_add: discoverPreview?.credits_to_add,
+      fetchPreview:
+        discoverPreview?.credits_to_add != null
+          ? undefined
+          : () =>
+              fetchCheckoutPreview({
+                purpose: 'discover',
+                address,
+                selectedSources,
+              }),
+      fetchSession: embedded =>
+        startQuoteCheckout({
+          purpose: 'discover',
+          address,
+          selectedSources,
+          resumeContext: {
+            address: address.trim(),
+            selectedSources,
+            sourceUrls,
+          },
+          embedded,
+        }),
+      onComplete: () => {
+        window.dispatchEvent(new CustomEvent('axiom:billing-resume-discover'))
+      },
+    })
+  }, [address, selectedSources, sourceUrls, discoverPreview, presentCheckout])
+
+
+
+  useEffect(() => {
+
+    const onResume = () => {
+
+      handleDiscover()
+
+    }
+
+    window.addEventListener('axiom:billing-resume-discover', onResume)
+
+    return () => window.removeEventListener('axiom:billing-resume-discover', onResume)
+
+  }, [handleDiscover])
 
 
 
@@ -332,7 +461,11 @@ export default function PublicSourcePanel({
 
   const receipt = discovered?.receipt
 
-  const discoverDisabled = !locationLocked || disabled || discovering
+  const discoverDisabled = !locationLocked || disabled || discovering || payLoading
+
+  const needsDiscoverPay =
+
+    billingEnabled && discoverPreview && !discoverPreview.sufficient && discoverPreview.charge_usd > 0
 
   const isHud = variant === 'hud'
 
@@ -386,7 +519,7 @@ export default function PublicSourcePanel({
 
             type="button"
 
-            onClick={handleDiscover}
+            onClick={needsDiscoverPay ? handlePayAndDiscover : handleDiscover}
 
             disabled={discoverDisabled}
 
@@ -394,7 +527,19 @@ export default function PublicSourcePanel({
 
           >
 
-            {discovering ? '…' : 'Preview'}
+            {payLoading
+
+              ? '…'
+
+              : discovering
+
+                ? '…'
+
+                : needsDiscoverPay
+
+                  ? `Pay ${formatUsd(discoverPreview.charge_usd)} & Preview`
+
+                  : 'Preview'}
 
           </button>
 
@@ -408,19 +553,33 @@ export default function PublicSourcePanel({
 
         {discoverStatus ? (
 
-          <p
+          <div className="mt-2">
 
-            className={`mt-2 font-mono text-[9px] leading-relaxed ${
+            <p
 
-              discoverStatus.tone === 'stable' ? 'text-command-stable' : 'text-command-watch'
+              className={`font-mono text-[9px] leading-relaxed ${
 
-            }`}
+                discoverStatus.tone === 'stable' ? 'text-command-stable' : 'text-command-watch'
 
-          >
+              }`}
 
-            {discoverStatus.message}
+            >
 
-          </p>
+              {discoverStatus.message}
+
+            </p>
+
+            {discoverStatus.safetyNote ? (
+
+              <p className="mt-1 font-mono text-[8px] leading-snug text-ink-faint">
+
+                {discoverStatus.safetyNote}
+
+              </p>
+
+            ) : null}
+
+          </div>
 
         ) : null}
 
