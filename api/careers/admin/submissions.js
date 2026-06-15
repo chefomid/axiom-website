@@ -1,4 +1,4 @@
-import { isCareersStorageEnabled, listSubmissions } from '../store.js'
+import { ensureStorageReady, isCareersStorageEnabled, listSubmissions } from '../store.js'
 import { requireAdminToken } from '../adminAuth.js'
 import { parseQuery, serializeSubmission } from '../adminUtils.js'
 
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
   const q = params.get('q')?.trim() || undefined
 
   try {
+    await ensureStorageReady()
     const rows = await listSubmissions({ status, q })
     res.status(200).json({
       submissions: rows.map(row => serializeSubmission(row)),

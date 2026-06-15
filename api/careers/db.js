@@ -4,14 +4,23 @@ export const SUBMISSION_STATUSES = ['new', 'reviewing', 'contacted', 'archived']
 
 let sqlClient = null
 
+export function getCareersDatabaseUrl() {
+  return (
+    process.env.CAREERS_DATABASE_URL?.trim() ||
+    process.env.POSTGRES_URL?.trim() ||
+    process.env.DATABASE_URL?.trim() ||
+    ''
+  )
+}
+
 export function isCareersDbEnabled() {
-  return Boolean(process.env.CAREERS_DATABASE_URL?.trim())
+  return Boolean(getCareersDatabaseUrl())
 }
 
 function getSql() {
   if (!isCareersDbEnabled()) return null
   if (!sqlClient) {
-    sqlClient = neon(process.env.CAREERS_DATABASE_URL.trim())
+    sqlClient = neon(getCareersDatabaseUrl())
   }
   return sqlClient
 }

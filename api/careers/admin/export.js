@@ -1,4 +1,4 @@
-import { exportSubmissionsCsv, isCareersStorageEnabled } from '../store.js'
+import { ensureStorageReady, exportSubmissionsCsv, isCareersStorageEnabled } from '../store.js'
 import { requireAdminToken } from '../adminAuth.js'
 import { parseQuery } from '../adminUtils.js'
 
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
   const q = params.get('q')?.trim() || undefined
 
   try {
+    await ensureStorageReady()
     const csv = await exportSubmissionsCsv({ status, q })
     res.status(200)
     res.setHeader('Content-Type', 'text/csv; charset=utf-8')

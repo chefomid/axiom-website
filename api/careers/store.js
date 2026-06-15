@@ -31,7 +31,7 @@ export function isCareersStorageEnabled() {
 
 export function careersStorageNotConfiguredMessage() {
   if (process.env.NODE_ENV === 'production') {
-    return 'Application storage is not configured. Set CAREERS_DATABASE_URL in the Vercel project settings.'
+    return 'Application storage is not configured. Set CAREERS_DATABASE_URL or connect Neon Postgres on Vercel.'
   }
   return 'Application storage is not configured. Run the Vite dev server locally or set CAREERS_DATABASE_URL.'
 }

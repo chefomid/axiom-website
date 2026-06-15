@@ -1,4 +1,4 @@
-import { getSubmissionByReference, isCareersStorageEnabled, updateSubmission } from '../store.js'
+import { ensureStorageReady, getSubmissionByReference, isCareersStorageEnabled, updateSubmission } from '../store.js'
 import { requireAdminToken } from '../adminAuth.js'
 import { parseQuery, serializeSubmission } from '../adminUtils.js'
 
@@ -19,6 +19,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
+      await ensureStorageReady()
       const row = await getSubmissionByReference(referenceId)
       if (!row) {
         res.status(404).json({ detail: 'Submission not found.' })
@@ -43,6 +44,7 @@ export default async function handler(req, res) {
     }
 
     try {
+      await ensureStorageReady()
       const row = await updateSubmission(referenceId, { status, adminNotes })
       if (!row) {
         res.status(404).json({ detail: 'Submission not found.' })
