@@ -3,6 +3,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { SUBMISSION_STATUSES } from './db.js'
+import { CAREERS_OPEN_ROLE } from './roles.js'
 
 const DATA_ROOT = path.join(process.cwd(), '.careers-data')
 const SUBMISSIONS_DIR = path.join(DATA_ROOT, 'submissions')
@@ -221,7 +222,7 @@ export async function exportLocalSubmissionsCsv({ status, q } = {}) {
     lines.push(
       [
         row.reference_id,
-        row.role_applied ?? row.payload?.applicant?.roleApplied ?? 'Project Manager',
+        row.role_applied ?? row.payload?.applicant?.roleApplied ?? CAREERS_OPEN_ROLE,
         row.applicant_name,
         row.applicant_email,
         row.applicant_phone,

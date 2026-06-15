@@ -1,4 +1,6 @@
-const DEFAULT_ROLE = 'Project Manager'
+import { CAREERS_OPEN_ROLE } from './roles.js'
+
+const DEFAULT_ROLE = CAREERS_OPEN_ROLE
 
 function resolveRoleApplied(row) {
   if (row?.role_applied) return String(row.role_applied)

@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless'
+import { CAREERS_OPEN_ROLE } from './roles.js'
 
 export const SUBMISSION_STATUSES = ['new', 'reviewing', 'contacted', 'archived']
 
@@ -248,7 +249,7 @@ export async function exportSubmissionsCsv({ status, q } = {}) {
     lines.push(
       [
         row.reference_id,
-        row.role_applied ?? 'Project Manager',
+        row.role_applied ?? CAREERS_OPEN_ROLE,
         row.applicant_name,
         row.applicant_email,
         row.applicant_phone,

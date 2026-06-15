@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
 import SiteFooter from '../components/SiteFooter'
 import { GhostButton, PrimaryButton } from '../components/ui/CommandControls'
+import { APPLICATION_ROLE } from '../components/careers/applicationSchema'
 import {
   SUBMISSION_STATUSES,
   clearAdminToken,
@@ -59,7 +60,7 @@ function groupApplicants(submissions) {
       map.set(key, {
         email: item.applicantEmail,
         name: item.applicantName,
-        roleApplied: item.roleApplied ?? 'Project Manager',
+        roleApplied: item.roleApplied ?? APPLICATION_ROLE,
         phone: item.applicantPhone ?? '',
         location: item.applicantLocation ?? '',
         submissions: [item],
@@ -78,7 +79,7 @@ function groupApplicants(submissions) {
       return {
         email: latest.applicantEmail,
         name: latest.applicantName,
-        roleApplied: latest.roleApplied ?? 'Project Manager',
+        roleApplied: latest.roleApplied ?? APPLICATION_ROLE,
         phone: latest.applicantPhone ?? '',
         location: latest.applicantLocation ?? '',
         submissions: sorted,
@@ -224,7 +225,7 @@ function SubmissionDetail({ submission, onUpdated, onUnauthorized }) {
             {submission.referenceId}
           </p>
           <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-command-live/90">
-            {submission.roleApplied ?? 'Project Manager'}
+            {submission.roleApplied ?? APPLICATION_ROLE}
           </p>
           <h2 className="mt-2 font-display text-xl font-medium text-white">
             {submission.applicantName}
@@ -330,7 +331,7 @@ function PersonProfilePanel({
         </p>
         <h2 className="mt-2 font-display text-xl font-medium text-white">{profile.name}</h2>
         <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-command-live/90">
-          {profile.roleApplied ?? 'Project Manager'}
+          {profile.roleApplied ?? APPLICATION_ROLE}
         </p>
         <p className="mt-1 text-sm text-ink-secondary">{profile.email}</p>
         <p className="mt-1 text-xs text-ink-muted">
@@ -600,7 +601,7 @@ export default function CareersAdmin() {
                             </p>
                         <p className="mt-1 truncate text-sm text-white">{item.applicantName}</p>
                         <p className="truncate font-mono text-[10px] text-command-live/80">
-                          {item.roleApplied ?? 'Project Manager'}
+                          {item.roleApplied ?? APPLICATION_ROLE}
                         </p>
                         <p className="truncate text-xs text-ink-muted">{item.applicantEmail}</p>
                           </div>

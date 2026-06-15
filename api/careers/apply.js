@@ -25,7 +25,9 @@ export const config = {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-const OPEN_ROLE = 'Project Manager'
+import { CAREERS_OPEN_ROLE } from './roles.js'
+
+const OPEN_ROLE = CAREERS_OPEN_ROLE
 
 function badPayload(body) {
   if (!body || typeof body !== 'object') return 'Invalid payload.'
