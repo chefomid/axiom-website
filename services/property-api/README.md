@@ -80,6 +80,7 @@ Sessions expire after 15 minutes (`REPORT_SESSION_TTL_SECONDS`, default 900).
 | `REPORT_SESSION_TTL_SECONDS` | `900` | Session cache TTL |
 | `OPENAI_API_KEY` | — | AI URL discovery (`POST /discover-source-urls`) |
 | `STRIPE_SECRET_KEY` | — | Enables billing; omit for dry-run receipts only |
+| `STRIPE_PUBLISHABLE_KEY` | — | Embedded checkout / Apple Pay on web (desktop modal) |
 | `STRIPE_WEBHOOK_SECRET` | — | Verifies `POST /billing/stripe-webhook` |
 | `DATABASE_URL` | — | Postgres in production; local dev uses SQLite under `data/billing.sqlite` |
 | Vendor keys | — | `ATTOM_API_KEY`, `RENTCAST_API_KEY`, etc. — see `.env.example` |

@@ -129,7 +129,13 @@ def _inspection_imagery_gallery(vision: dict[str, Any]) -> str:
             continue
         label = cap.get("label") or cap.get("image_id") or "Capture"
         heading = cap.get("heading")
-        meta = f" @ {heading}°" if heading is not None else ""
+        pitch = cap.get("pitch")
+        meta_parts = []
+        if heading is not None:
+            meta_parts.append(f" @ {heading}°")
+        if pitch is not None and pitch != 0:
+            meta_parts.append(f" pitch {pitch}°")
+        meta = "".join(meta_parts)
         selected = " report-imagery-card--selected" if cap.get("selected") else ""
         cells.append(
             f"""

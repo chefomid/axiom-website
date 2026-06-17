@@ -103,7 +103,7 @@ CSS: `.map-workflow-hud*` in `src/index.css`.
 
 ### Source tier badges
 
-`SourceTierBadge.jsx` — labels sources as free / standard / insurance-grade.
+`SourceTierBadge.jsx` — labels sources as public / standard / insurance-grade.
 
 ---
 

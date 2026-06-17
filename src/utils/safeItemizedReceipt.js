@@ -1,64 +1,68 @@
-import { PRESET_OPTIONAL_ADDONS, batchLocationPrice, formatUsd, quoteLineItem } from '../services/propertyApi'
+import { PRESET_OPTIONAL_ADDONS, batchLocationPrice, formatUsd } from '../services/propertyApi'
+import {
+  isLicensedReceiptLine,
+  licensedReceiptLineAmount,
+} from './receiptLicensedLines'
 
 const ADDON_SET = new Set(PRESET_OPTIONAL_ADDONS)
-
-function categoryLabel(catalog, categoryId) {
-  return catalog?.categories?.find(c => c.id === categoryId)?.label ?? 'Data services'
-}
 
 function billableLineItems(lineItems) {
   return (lineItems ?? []).filter(item => {
     if (item.source_id === 'geocode_census') return false
-    const price = item.user_price_usd ?? 0
-    return item.billable !== false || price > 0
+    if (item.billable === false) return false
+    return true
   })
-}
-
-function aggregateCoreByCategory(catalog, lineItems) {
-  const groups = new Map()
-  for (const item of billableLineItems(lineItems)) {
-    if (ADDON_SET.has(item.source_id)) continue
-    const src = catalog?.sources?.find(s => s.id === item.source_id)
-    const label = categoryLabel(catalog, src?.category)
-    groups.set(label, (groups.get(label) ?? 0) + (item.user_price_usd ?? 0))
-  }
-  return [...groups.entries()]
-    .filter(([, amount]) => amount > 0)
-    .map(([label, amount]) => ({ label, amount: roundUsd(amount) }))
-}
-
-function addonLines(catalog, lineItems, selectedSources) {
-  return (selectedSources ?? [])
-    .filter(id => ADDON_SET.has(id))
-    .map(id => {
-      const item = lineItems?.find(row => row.source_id === id) ?? quoteLineItem(catalog, { line_items: lineItems }, id)
-      if (!item) return null
-      const price = item.user_price_usd ?? 0
-      if (price <= 0 && !item.billable) return null
-      return {
-        label: item.label ?? id,
-        amount: roundUsd(price),
-      }
-    })
-    .filter(Boolean)
 }
 
 function roundUsd(value) {
   return Math.round(Number(value) * 100) / 100
 }
 
-function reconciliationLine(label, targetTotal, lineSum) {
-  const delta = roundUsd(targetTotal - lineSum)
-  if (Math.abs(delta) < 0.01) return null
-  return {
-    label,
-    amount: delta,
-    kind: delta < 0 ? 'discount' : 'adjustment',
+function buildTransparentPricingLines(lineItems, totals, { multiplier = 1 } = {}) {
+  const lines = []
+  const items = billableLineItems(lineItems)
+
+  for (const item of items) {
+    if (ADDON_SET.has(item.source_id)) continue
+    const apiCost = Number(item.api_cost_usd ?? 0)
+    if (apiCost > 0) {
+      if (!isLicensedReceiptLine(item)) continue
+      const amount = roundUsd(licensedReceiptLineAmount(item) * multiplier)
+      lines.push({
+        key: `licensed-${item.source_id}`,
+        label: `${item.label} · licensed API`,
+        amount,
+        kind: 'line',
+      })
+      continue
+    }
+    lines.push({
+      key: `public-${item.source_id}`,
+      label: `${item.label} · public feed`,
+      amount: 0,
+      kind: 'line',
+    })
   }
+
+  const serviceFee = roundUsd(Number(totals?.platform_service_fee_usd ?? 0) * multiplier)
+  if (serviceFee > 0) {
+    lines.push({
+      key: 'platform-service',
+      label: 'AXIOM aggregation service',
+      amount: serviceFee,
+      kind: 'line',
+    })
+  }
+
+  return lines
+}
+
+function usesTransparentPricing(totals) {
+  return totals?.platform_service_fee_usd != null
 }
 
 /**
- * Competitor-safe receipt: category groupings and add-on labels only, no vendor API costs or margins.
+ * Itemized receipt: public feeds at $0 vendor, single aggregation service fee.
  */
 export function buildSafeItemizedReceipt({
   catalog,
@@ -74,8 +78,6 @@ export function buildSafeItemizedReceipt({
 
   if (scheduleMode && batchQuote?.totals) {
     const n = batchQuote.totals.location_count ?? 0
-    const sampleQuote = batchQuote.locations?.find(loc => loc.status === 'valid')?.quote
-    const lineItems = sampleQuote?.line_items ?? []
     const lines = []
 
     lines.push({
@@ -85,23 +87,12 @@ export function buildSafeItemizedReceipt({
       kind: 'section',
     })
 
-    for (const row of aggregateCoreByCategory(catalog, lineItems)) {
-      lines.push({
-        key: `core-${row.label}`,
-        label: row.label,
-        amount: roundUsd(row.amount * n),
-        kind: 'line',
-      })
-    }
-
-    for (const row of addonLines(catalog, lineItems, selectedSources)) {
-      lines.push({
-        key: `addon-${row.label}`,
-        label: row.label,
-        amount: roundUsd(row.amount * n),
-        kind: 'line',
-      })
-    }
+    lines.push({
+      key: 'batch-subtotal',
+      label: `Subtotal · ${n} location${n === 1 ? '' : 's'}`,
+      amount: batchQuote.totals.subtotal_user_usd,
+      kind: 'line',
+    })
 
     if (batchQuote.totals.volume_savings_usd > 0) {
       lines.push({
@@ -111,12 +102,6 @@ export function buildSafeItemizedReceipt({
         kind: 'discount',
       })
     }
-
-    const lineSum = lines
-      .filter(row => row.kind === 'line' || row.kind === 'discount')
-      .reduce((sum, row) => sum + (row.amount ?? 0), 0)
-    const reconcile = reconciliationLine('Batch platform adjustment', batchQuote.totals.user_price_usd, lineSum)
-    if (reconcile) lines.push({ key: 'adjustment', ...reconcile })
 
     const locationLines = (batchQuote.locations ?? [])
       .filter(loc => loc.status === 'valid')
@@ -133,11 +118,12 @@ export function buildSafeItemizedReceipt({
       totalLabel: 'Schedule total',
       locationLines,
       footnote:
-        'Per-location amounts include shared platform minimums and volume pricing. Vendor and API cost details are not shown.',
+        'Public feeds have no vendor API cost. Licensed API lines show pass-through premium with margin. The aggregation service fee covers orchestration, compute, and hosting.',
     }
   }
 
   const lineItems = quote?.line_items ?? []
+  const totals = quote?.totals ?? {}
   const lines = []
 
   lines.push({
@@ -147,36 +133,18 @@ export function buildSafeItemizedReceipt({
     kind: 'section',
   })
 
-  for (const row of aggregateCoreByCategory(catalog, lineItems)) {
-    lines.push({
-      key: `core-${row.label}`,
-      label: row.label,
-      amount: row.amount,
-      kind: 'line',
-    })
+  if (usesTransparentPricing(totals)) {
+    lines.push(...buildTransparentPricingLines(lineItems, totals))
   }
-
-  for (const row of addonLines(catalog, lineItems, selectedSources)) {
-    lines.push({
-      key: `addon-${row.label}`,
-      label: row.label,
-      amount: row.amount,
-      kind: 'line',
-    })
-  }
-
-  const totalUsd = quote?.totals?.user_price_usd
-  const lineSum = lines.filter(row => row.kind === 'line').reduce((sum, row) => sum + (row.amount ?? 0), 0)
-  const reconcile = reconciliationLine('Platform minimum adjustment', totalUsd, lineSum)
-  if (reconcile) lines.push({ key: 'adjustment', ...reconcile })
 
   return {
     title: quote?.isFinal ? 'Final receipt' : 'Estimate',
     lines,
-    totalUsd,
+    totalUsd: totals.user_price_usd,
     totalLabel: quote?.isFinal ? 'Total charged' : 'Estimated total',
     locationLines: null,
-    footnote: 'Summary pricing by data category. Vendor, API, and margin details are not shown.',
+    footnote:
+      'Public feeds have no vendor API cost. Licensed API lines show pass-through premium with margin. The aggregation service fee covers orchestration, compute, and hosting.',
   }
 }
 

@@ -140,6 +140,32 @@ def _sqlite_get_balance(anon_id: str) -> int:
         conn.close()
 
 
+async def ledger_reference_exists(reference_id: str) -> bool:
+    if not _ready or not reference_id.strip():
+        return False
+    ref = reference_id.strip()
+    if _use_postgres:
+        async with _pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT 1 FROM ledger WHERE reference_id = $1 LIMIT 1",
+                ref,
+            )
+            return row is not None
+    return await asyncio.to_thread(_sqlite_ledger_reference_exists, ref)
+
+
+def _sqlite_ledger_reference_exists(reference_id: str) -> bool:
+    conn = _sqlite_connect()
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM ledger WHERE reference_id = ? LIMIT 1",
+            (reference_id,),
+        ).fetchone()
+        return row is not None
+    finally:
+        conn.close()
+
+
 async def add_credits(
     anon_id: str,
     credits: int,
@@ -150,6 +176,8 @@ async def add_credits(
     if credits <= 0:
         return await get_balance(anon_id)
     aid = anon_id.strip()
+    if reference_id and await ledger_reference_exists(reference_id):
+        return await get_balance(aid)
     if _use_postgres:
         async with _pool.acquire() as conn:
             async with conn.transaction():

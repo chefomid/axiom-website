@@ -119,11 +119,7 @@ export default function IntelligencePanelContent({
 
         <div className="flex items-center justify-between gap-2">
 
-          <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#9AA0A8]">
-
-            Intelligence Panel
-
-          </span>
+          <span className="side-panel-title mb-0">Intelligence Panel</span>
 
           <div className="flex items-center gap-2">
 

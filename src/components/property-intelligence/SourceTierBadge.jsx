@@ -7,7 +7,7 @@ const TIER_STYLES = {
 }
 
 const TIER_LABELS = {
-  free: 'Free',
+  free: 'Public',
   osint: 'OSINT',
   standard: 'Standard',
   insurance: 'Licensed',

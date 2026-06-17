@@ -15,12 +15,19 @@ import httpx
 from pathlib import Path
 from typing import Any
 
-from billing.config import billing_enabled, billing_status
-from billing.credits import discovery_credits_cost, enrich_credits_cost
+from billing.config import billing_enabled, billing_status, stripe_publishable_key
+from billing.credits import batch_enrich_credits_cost, discovery_credits_cost, enrich_credits_cost
 from billing import db as billing_db
 from billing.gate import require_and_spend
 from billing.packs import CREDIT_PACKS
-from billing.stripe_service import create_checkout_session, handle_webhook_payload
+from billing.stripe_service import (
+    create_checkout_session,
+    create_quote_checkout_session,
+    get_checkout_status,
+    get_embed_checkout_credentials,
+    handle_webhook_payload,
+)
+from billing.quote_checkout import compute_checkout_pricing
 from env_loader import env_status_payload, load_project_env
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,6 +38,7 @@ from geocode import geocode_address, search_addresses
 from merger.cope import build_cope_snapshot_from_trusted
 from merger.trust import collect_observations_from_results, resolve_all
 from planner.quote import _api_key_configured, build_quote, warnings_for_selection
+from planner.batch_quote import build_batch_quote
 from engine.executor import merge_source_urls
 from planner.runner import run_report
 from source_discovery.discover import discover_source_urls
@@ -39,8 +47,9 @@ from source_discovery.cache import get_discovery
 from registry_loader import (
     default_selected_ids,
     get_categories,
+    get_infra_breakeven_usd,
     get_margin_multiplier,
-    get_minimum_charge,
+    get_platform_margin_usd,
     get_presets,
     get_source_by_id,
     get_sources,
@@ -55,6 +64,8 @@ from report_pdf import (
     pdf_response,
     pdf_response_for_document,
 )
+from rate_limit import limiter, rate_limit_handler
+from slowapi.errors import RateLimitExceeded
 
 load_project_env()
 
@@ -70,6 +81,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AXIOM Property Intelligence API", version="0.4.0", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
 CORS_ORIGINS = [
     "http://localhost:5173",
@@ -81,6 +94,7 @@ CORS_ORIGINS = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -112,17 +126,73 @@ class DiscoverSourceUrlsResponse(BaseModel):
 class CheckoutRequest(BaseModel):
     anon_id: str = Field(..., min_length=8, max_length=128)
     pack_id: str = Field(..., min_length=3, max_length=64)
+    embedded: bool = False
 
 
 class CheckoutResponse(BaseModel):
-    url: str
+    url: str | None = None
+    client_secret: str | None = None
     session_id: str
+    charge_usd: float | None = None
+    credits_to_add: int | None = None
+    phone_pay_url: str | None = None
+
+
+class CheckoutQuoteResponse(BaseModel):
+    url: str | None = None
+    client_secret: str | None = None
+    session_id: str
+    charge_usd: float
+    credits_to_add: int
+    phone_pay_url: str | None = None
+
+
+class CheckoutPreviewResponse(BaseModel):
+    sufficient: bool
+    purpose: str
+    user_price_usd: float
+    needed_credits: int
+    balance_credits: int
+    gap_credits: int
+    charge_usd: float
+    credits_to_add: int
+    billing_enabled: bool
+
+
+class CheckoutQuoteRequest(BaseModel):
+    anon_id: str = Field(..., min_length=8, max_length=128)
+    purpose: str = Field(..., pattern="^(enrich|discover|batch_enrich)$")
+    address: str = Field(default="", max_length=500)
+    addresses: list[str] = Field(default_factory=list)
+    selected_sources: list[str] = Field(default_factory=list)
+    confirmed_price_usd: float | None = None
+    embedded: bool = False
+
+
+class BatchCheckoutPreviewRequest(BaseModel):
+    anon_id: str = Field(..., min_length=8, max_length=128)
+    addresses: list[str] = Field(..., min_length=1, max_length=100)
+    selected_sources: list[str] = Field(default_factory=list)
 
 
 class BalanceResponse(BaseModel):
     anon_id: str
     balance_credits: int
     billing_enabled: bool
+
+
+class CheckoutStatusResponse(BaseModel):
+    status: str
+    balance_credits: int
+    credits_added: int
+
+
+class CheckoutEmbedResponse(BaseModel):
+    client_secret: str
+    session_id: str
+    status: str
+    charge_usd: float | None = None
+    stripe_publishable_key: str
 
 
 class QuoteRequest(BaseModel):
@@ -160,6 +230,28 @@ class EnrichResponse(BaseModel):
     statement_of_values: dict[str, Any] | None = None
     sov_digest_md: str | None = None
     sov_analysis: dict[str, Any] | None = None
+
+
+class BatchQuoteRequest(BaseModel):
+    addresses: list[str] = Field(..., min_length=1, max_length=100)
+    selected_sources: list[str] = Field(default_factory=list)
+
+
+class BatchEnrichRequest(BaseModel):
+    addresses: list[str] = Field(..., min_length=1, max_length=100)
+    selected_sources: list[str] = Field(default_factory=list)
+    confirmed_price_usd: float | None = None
+    anon_id: str | None = Field(default=None, max_length=128)
+
+
+class BatchEnrichResponse(BaseModel):
+    batch_id: str
+    selected_sources: list[str]
+    locations: list[dict[str, Any]]
+    totals: dict[str, Any]
+    warnings: list[str] = Field(default_factory=list)
+    status: str
+    message: str | None = None
 
 
 class ReportSessionCreate(BaseModel):
@@ -245,7 +337,8 @@ def _catalog_payload() -> dict[str, Any]:
         "vendors": get_vendors(),
         "default_selected": [s for s in default_selected_ids() if s != "geocode_census"],
         "margin_multiplier": get_margin_multiplier(),
-        "minimum_charge_usd": get_minimum_charge(),
+        "infra_breakeven_usd": get_infra_breakeven_usd(),
+        "platform_margin_usd": get_platform_margin_usd(),
     }
 
 
@@ -292,11 +385,6 @@ def _build_final_receipt(
 
     loaded = api_charged + service_charged
     user_price = round(loaded * multiplier, 2)
-    min_charge = quote["totals"].get("minimum_charge_usd") or get_minimum_charge()
-    minimum_charge_applied = False
-    if api_charged > 0 and user_price < min_charge:
-        user_price = min_charge
-        minimum_charge_applied = True
 
     wallet_on = billing_enabled() and billing_db.is_ready()
     if wallet_on and credits_charged > 0:
@@ -318,8 +406,6 @@ def _build_final_receipt(
             "service_cost_usd": round(service_charged, 2),
             "loaded_cost_usd": round(loaded, 2),
             "margin_multiplier": multiplier,
-            "minimum_charge_usd": min_charge,
-            "minimum_charge_applied": minimum_charge_applied,
             "user_price_usd": user_price,
             "credits_charged": credits_charged,
             "charged": charged_flag,
@@ -341,7 +427,11 @@ async def health():
 
 @app.get("/billing/packs")
 async def billing_packs():
-    return {"packs": CREDIT_PACKS, "billing_enabled": billing_enabled()}
+    return {
+        "packs": CREDIT_PACKS,
+        "billing_enabled": billing_enabled(),
+        "stripe_publishable_key": stripe_publishable_key() if billing_enabled() else "",
+    }
 
 
 @app.get("/billing/balance", response_model=BalanceResponse)
@@ -357,19 +447,201 @@ async def billing_balance(anon_id: str = ""):
     )
 
 
-@app.post("/billing/checkout", response_model=CheckoutResponse)
-async def billing_checkout(body: CheckoutRequest):
+@app.get("/billing/checkout-status", response_model=CheckoutStatusResponse)
+@limiter.limit("60/minute")
+async def billing_checkout_status(
+    request: Request,
+    session_id: str = "",
+    anon_id: str = "",
+):
+    sid = session_id.strip()
+    aid = anon_id.strip()
+    if not sid:
+        raise HTTPException(status_code=400, detail="session_id query parameter required")
+    if not aid:
+        raise HTTPException(status_code=400, detail="anon_id query parameter required")
     if not billing_enabled():
         raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
     if not billing_db.is_ready():
         raise HTTPException(status_code=503, detail="Billing database not ready")
     try:
-        session = create_checkout_session(anon_id=body.anon_id, pack_id=body.pack_id)
+        result = await get_checkout_status(sid, aid)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+    return CheckoutStatusResponse(**result)
+
+
+@app.get("/billing/checkout-embed", response_model=CheckoutEmbedResponse)
+@limiter.limit("30/minute")
+async def billing_checkout_embed(
+    request: Request,
+    session_id: str = "",
+    anon_id: str = "",
+):
+    sid = session_id.strip()
+    aid = anon_id.strip()
+    if not sid:
+        raise HTTPException(status_code=400, detail="session_id query parameter required")
+    if not aid:
+        raise HTTPException(status_code=400, detail="anon_id query parameter required")
+    if not billing_enabled():
+        raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
+    try:
+        result = await get_embed_checkout_credentials(sid, aid)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+    pk = stripe_publishable_key()
+    if not pk:
+        raise HTTPException(status_code=503, detail="STRIPE_PUBLISHABLE_KEY not configured")
+    return CheckoutEmbedResponse(
+        **result,
+        stripe_publishable_key=pk,
+    )
+
+
+@app.post("/billing/checkout", response_model=CheckoutResponse)
+@limiter.limit("5/minute")
+async def billing_checkout(request: Request, body: CheckoutRequest):
+    if not billing_enabled():
+        raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
+    if not billing_db.is_ready():
+        raise HTTPException(status_code=503, detail="Billing database not ready")
+    try:
+        session = create_checkout_session(
+            anon_id=body.anon_id,
+            pack_id=body.pack_id,
+            embedded=body.embedded,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
     return CheckoutResponse(**session)
+
+
+@app.get("/billing/checkout-preview", response_model=CheckoutPreviewResponse)
+@limiter.limit("30/minute")
+async def billing_checkout_preview(
+    request: Request,
+    anon_id: str = "",
+    purpose: str = "enrich",
+    address: str = "",
+    selected_sources: str = "",
+):
+    aid = anon_id.strip()
+    addr = address.strip()
+    if not aid:
+        raise HTTPException(status_code=400, detail="anon_id query parameter required")
+    if not addr:
+        raise HTTPException(status_code=400, detail="address query parameter required")
+    if purpose not in ("enrich", "discover", "batch_enrich"):
+        raise HTTPException(status_code=400, detail="purpose must be enrich, discover, or batch_enrich")
+
+    sources = [s.strip() for s in selected_sources.split(",") if s.strip()] if selected_sources else []
+    batch_addresses = [a.strip() for a in address.split("|") if a.strip()] if purpose == "batch_enrich" else None
+    try:
+        pricing = await compute_checkout_pricing(
+            purpose=purpose,
+            address=addr,
+            selected_sources=sources,
+            anon_id=aid,
+            addresses=batch_addresses,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return CheckoutPreviewResponse(**pricing)
+
+
+@app.post("/billing/batch-checkout-preview", response_model=CheckoutPreviewResponse)
+@limiter.limit("20/minute")
+async def billing_batch_checkout_preview(request: Request, body: BatchCheckoutPreviewRequest):
+    aid = body.anon_id.strip()
+    cleaned = [a.strip() for a in body.addresses if a and a.strip()]
+    if not aid:
+        raise HTTPException(status_code=400, detail="anon_id required")
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="At least one address is required.")
+    try:
+        pricing = await compute_checkout_pricing(
+            purpose="batch_enrich",
+            address=cleaned[0],
+            selected_sources=body.selected_sources,
+            anon_id=aid,
+            addresses=cleaned,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return CheckoutPreviewResponse(**pricing)
+
+
+@app.post("/billing/checkout-quote", response_model=CheckoutQuoteResponse)
+@limiter.limit("5/minute")
+async def billing_checkout_quote(request: Request, body: CheckoutQuoteRequest):
+    if not billing_enabled():
+        raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
+    if not billing_db.is_ready():
+        raise HTTPException(status_code=503, detail="Billing database not ready")
+
+    addr = body.address.strip()
+    addrs = [a.strip() for a in body.addresses if a and a.strip()]
+    if body.purpose == "batch_enrich":
+        if not addrs:
+            raise HTTPException(status_code=400, detail="addresses required for batch_enrich")
+    elif not addr:
+        raise HTTPException(status_code=400, detail="address required")
+
+    try:
+        pricing = await compute_checkout_pricing(
+            purpose=body.purpose,
+            address=addr or (addrs[0] if addrs else ""),
+            selected_sources=body.selected_sources,
+            anon_id=body.anon_id,
+            addresses=addrs if body.purpose == "batch_enrich" else None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if pricing["sufficient"]:
+        raise HTTPException(status_code=400, detail="Sufficient credits, no checkout needed")
+
+    if body.confirmed_price_usd is not None and body.purpose in ("enrich", "batch_enrich"):
+        expected = pricing["user_price_usd"]
+        if abs(body.confirmed_price_usd - expected) > 0.01:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Quote stale: expected ${expected:.2f}, got ${body.confirmed_price_usd:.2f}",
+            )
+
+    charge_usd = pricing["charge_usd"]
+    credits_to_add = pricing["credits_to_add"]
+    if body.purpose == "batch_enrich":
+        desc_addr = f"{len(addrs)} locations"
+    else:
+        desc_addr = addr[:80]
+    description = (
+        f"{desc_addr} — {credits_to_add} credits"
+        if body.purpose in ("enrich", "batch_enrich")
+        else f"AI URL discovery — {credits_to_add} credits"
+    )
+
+    try:
+        session = create_quote_checkout_session(
+            anon_id=body.anon_id,
+            charge_usd=charge_usd,
+            credits_to_add=credits_to_add,
+            purpose=body.purpose,
+            description=description,
+            embedded=body.embedded,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+    return CheckoutQuoteResponse(**session)
 
 
 @app.post("/billing/stripe-webhook")
@@ -397,7 +669,8 @@ async def catalog():
 
 
 @app.get("/suggest")
-async def suggest(q: str = "", limit: int = 5, country: str = "US"):
+@limiter.limit("80/minute")
+async def suggest(request: Request, q: str = "", limit: int = 5, country: str = "US"):
     query = q.strip()
     if len(query) < 4:
         return {"results": []}
@@ -409,7 +682,8 @@ async def suggest(q: str = "", limit: int = 5, country: str = "US"):
 
 
 @app.post("/discover-source-urls", response_model=DiscoverSourceUrlsResponse)
-async def discover_urls(body: DiscoverSourceUrlsRequest):
+@limiter.limit("10/minute")
+async def discover_urls(request: Request, body: DiscoverSourceUrlsRequest):
     resolved = resolve_selected_sources(body.selected_sources or None)
     crawl_ids = [
         sid
@@ -429,12 +703,6 @@ async def discover_urls(body: DiscoverSourceUrlsRequest):
         )
 
     cached = get_discovery(body.address.strip(), crawl_ids)
-    if billing_enabled() and not cached:
-        await require_and_spend(
-            body.anon_id,
-            discovery_credits_cost(),
-            action="discover_source_urls",
-        )
 
     headers = {"User-Agent": "AXIOM-PropertyIntelligence/0.3"}
     async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
@@ -450,31 +718,33 @@ async def discover_urls(body: DiscoverSourceUrlsRequest):
 
 
 @app.post("/quote")
-async def quote(body: QuoteRequest):
+@limiter.limit("40/minute")
+async def quote(request: Request, body: QuoteRequest):
     resolved = resolve_selected_sources(body.selected_sources or None)
-    country_hint = None
+    address = body.address.strip()
+    if not address:
+        raise HTTPException(status_code=400, detail="Address is required.")
+
+    country_hint = "US"
     display_name = None
     lat = None
     lng = None
 
     try:
-        geo = await geocode_address(body.address.strip())
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Geocoding service error: {exc}") from exc
-
-    if geo:
-        display_name = geo.get("display_name")
-        lat = geo.get("lat")
-        lng = geo.get("lng")
-        country_hint = _country_hint_from_geo(geo)
-    else:
-        raise HTTPException(
-            status_code=404,
-            detail="Address could not be geocoded. Use a full street address with city, state, and ZIP.",
-        )
+        geo = await geocode_address(address)
+        if geo:
+            display_name = geo.get("display_name")
+            lat = geo.get("lat")
+            lng = geo.get("lng")
+            hint = _country_hint_from_geo(geo)
+            if hint:
+                country_hint = hint
+    except Exception:
+        # Pricing is source-driven; geocode refines country availability only.
+        pass
 
     quote_data = build_quote(
-        address_input=body.address.strip(),
+        address_input=address,
         selected_sources=resolved,
         display_name=display_name,
         lat=lat,
@@ -485,12 +755,20 @@ async def quote(body: QuoteRequest):
     return quote_data
 
 
-@app.post("/enrich", response_model=EnrichResponse)
-async def enrich(body: EnrichRequest):
-    resolved = resolve_selected_sources(body.selected_sources or None)
+async def _execute_enrich(
+    *,
+    address: str,
+    selected_sources: list[str] | None,
+    anon_id: str | None = None,
+    source_url: str | None = None,
+    source_urls: dict[str, str] | None = None,
+    charge_credits: bool = True,
+    report_id: str | None = None,
+) -> EnrichResponse:
+    resolved = resolve_selected_sources(selected_sources or None)
 
     try:
-        geo = await geocode_address(body.address.strip())
+        geo = await geocode_address(address.strip())
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Geocoding service error: {exc}") from exc
 
@@ -501,7 +779,7 @@ async def enrich(body: EnrichRequest):
         )
 
     quote_data = build_quote(
-        address_input=body.address.strip(),
+        address_input=address.strip(),
         selected_sources=resolved,
         display_name=geo.get("display_name"),
         lat=geo["lat"],
@@ -510,24 +788,22 @@ async def enrich(body: EnrichRequest):
     )
 
     enrich_cost = enrich_credits_cost(quote_data)
-    report_id = f"AX-{uuid.uuid4().hex[:8].upper()}"
-    await require_and_spend(
-        body.anon_id,
-        enrich_cost,
-        action="enrich",
-        reference_id=report_id,
-    )
+    rid = report_id or f"AX-{uuid.uuid4().hex[:8].upper()}"
+    if charge_credits:
+        await require_and_spend(
+            anon_id,
+            enrich_cost,
+            action="enrich",
+            reference_id=rid,
+        )
 
-    source_url_str = str(body.source_url) if body.source_url else None
     crawl_ids = [
-        sid
-        for sid in resolved
-        if (get_source_by_id(sid) or {}).get("needs_source_url")
+        sid for sid in resolved if (get_source_by_id(sid) or {}).get("needs_source_url")
     ]
-    raw_urls = {k: str(v) for k, v in (body.source_urls or {}).items()}
+    raw_urls = dict(source_urls or {})
     merged_urls = merge_source_urls(
         source_urls=raw_urls,
-        legacy_source_url=source_url_str,
+        legacy_source_url=source_url,
         crawl_source_ids=crawl_ids,
     )
     crawl_excerpt: str | None = None
@@ -538,7 +814,7 @@ async def enrich(body: EnrichRequest):
     async with httpx.AsyncClient(headers=headers, follow_redirects=True) as discovery_client:
         if crawl_ids:
             merged_urls, discovery_warnings = await auto_resolve_crawl_urls(
-                address=body.address.strip(),
+                address=address.strip(),
                 geo=geo,
                 crawl_source_ids=crawl_ids,
                 existing_urls=merged_urls,
@@ -556,9 +832,9 @@ async def enrich(body: EnrichRequest):
             return excerpt, meta
 
         geo_result, run_results = await run_report(
-            address=body.address.strip(),
+            address=address.strip(),
             selected_sources=resolved,
-            source_url=source_url_str,
+            source_url=source_url,
             source_urls=merged_urls,
             crawl_fn=crawl_fn if has_crawl_urls else None,
             extract_fn=extract_simple_facts,
@@ -594,11 +870,10 @@ async def enrich(body: EnrichRequest):
     receipt = _build_final_receipt(
         quote_data,
         run_results,
-        report_id=report_id,
-        credits_charged=enrich_cost,
+        report_id=rid,
+        credits_charged=enrich_cost if charge_credits else 0,
     )
 
-    field_dicts = [f.model_dump() for f in all_fields]
     cope_snapshot = None
     conflicts: list[dict[str, Any]] = []
     statement_of_values: dict[str, Any] | None = None
@@ -623,13 +898,13 @@ async def enrich(body: EnrichRequest):
 
     if success_count <= 1 and fail_count > 0:
         status = "partial"
-        message = f"Report {report_id}: {fail_count} source(s) failed."
+        message = f"Report {rid}: {fail_count} source(s) failed."
     elif fail_count > 0:
         status = "partial"
-        message = f"Report {report_id}: completed with {fail_count} skipped or failed source(s)."
+        message = f"Report {rid}: completed with {fail_count} skipped or failed source(s)."
     else:
         status = "enriched"
-        message = f"Report {report_id}: {success_count} source(s) completed."
+        message = f"Report {rid}: {success_count} source(s) completed."
 
     warnings = [*warnings_for_selection(resolved), *discovery_warnings]
 
@@ -639,8 +914,8 @@ async def enrich(body: EnrichRequest):
         vision_analysis = vision_run.analysis
 
     return EnrichResponse(
-        report_id=report_id,
-        address_input=body.address.strip(),
+        report_id=rid,
+        address_input=address.strip(),
         display_name=geo_result.get("display_name"),
         lat=geo_result["lat"],
         lng=geo_result["lng"],
@@ -650,7 +925,7 @@ async def enrich(body: EnrichRequest):
         status=status,
         message=message,
         crawl_markdown_excerpt=crawl_excerpt,
-        crawl_source_url=source_url_str or (next(iter(merged_urls.values()), None) if merged_urls else None),
+        crawl_source_url=source_url or (next(iter(merged_urls.values()), None) if merged_urls else None),
         receipt=receipt,
         warnings=warnings,
         cope=cope_snapshot,
@@ -659,6 +934,127 @@ async def enrich(body: EnrichRequest):
         statement_of_values=statement_of_values,
         sov_digest_md=sov_digest_md,
         sov_analysis=sov_analysis,
+    )
+
+
+@app.post("/quote/batch")
+@limiter.limit("10/minute")
+async def quote_batch(request: Request, body: BatchQuoteRequest):
+    cleaned = [a.strip() for a in body.addresses if a and a.strip()]
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="At least one address is required.")
+    try:
+        return await build_batch_quote(addresses=cleaned, selected_sources=body.selected_sources)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/enrich", response_model=EnrichResponse)
+@limiter.limit("6/minute")
+async def enrich(request: Request, body: EnrichRequest):
+    source_url_str = str(body.source_url) if body.source_url else None
+    raw_urls = {k: str(v) for k, v in (body.source_urls or {}).items()}
+    return await _execute_enrich(
+        address=body.address.strip(),
+        selected_sources=body.selected_sources,
+        anon_id=body.anon_id,
+        source_url=source_url_str,
+        source_urls=raw_urls,
+        charge_credits=True,
+    )
+
+
+@app.post("/enrich/batch", response_model=BatchEnrichResponse)
+@limiter.limit("3/minute")
+async def enrich_batch(request: Request, body: BatchEnrichRequest):
+    cleaned = [a.strip() for a in body.addresses if a and a.strip()]
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="At least one address is required.")
+
+    try:
+        batch_quote_data = await build_batch_quote(
+            addresses=cleaned,
+            selected_sources=body.selected_sources,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    valid_locs = [loc for loc in batch_quote_data["locations"] if loc.get("status") == "valid"]
+    if not valid_locs:
+        raise HTTPException(status_code=400, detail="No valid locations in schedule.")
+
+    batch_cost = batch_enrich_credits_cost(batch_quote_data)
+    batch_id = f"BX-{uuid.uuid4().hex[:8].upper()}"
+    await require_and_spend(
+        body.anon_id,
+        batch_cost,
+        action="batch_enrich",
+        reference_id=batch_id,
+    )
+
+    results: list[dict[str, Any]] = []
+    success_count = 0
+    fail_count = 0
+
+    for loc in batch_quote_data["locations"]:
+        if loc.get("status") != "valid":
+            results.append(loc)
+            continue
+        try:
+            enrich_result = await _execute_enrich(
+                address=loc["address_input"],
+                selected_sources=body.selected_sources,
+                charge_credits=False,
+            )
+            success_count += 1
+            results.append(
+                {
+                    **loc,
+                    "status": "enriched",
+                    "report_id": enrich_result.report_id,
+                    "enrich_status": enrich_result.status,
+                    "receipt": enrich_result.receipt,
+                    "record": enrich_result.model_dump(),
+                }
+            )
+        except HTTPException as exc:
+            fail_count += 1
+            results.append(
+                {
+                    **loc,
+                    "status": "failed",
+                    "error": str(exc.detail),
+                }
+            )
+        except Exception as exc:
+            fail_count += 1
+            results.append(
+                {
+                    **loc,
+                    "status": "failed",
+                    "error": str(exc),
+                }
+            )
+
+    batch_quote_data["totals"]["credits_charged"] = batch_cost
+    if fail_count and success_count:
+        status = "partial"
+        message = f"Batch {batch_id}: {success_count} enriched, {fail_count} failed."
+    elif fail_count:
+        status = "failed"
+        message = f"Batch {batch_id}: all locations failed."
+    else:
+        status = "enriched"
+        message = f"Batch {batch_id}: {success_count} location(s) enriched."
+
+    return BatchEnrichResponse(
+        batch_id=batch_id,
+        selected_sources=batch_quote_data["selected_sources"],
+        locations=results,
+        totals=batch_quote_data["totals"],
+        warnings=batch_quote_data.get("warnings") or [],
+        status=status,
+        message=message,
     )
 
 
@@ -674,14 +1070,16 @@ async def reports_health():
 
 
 @app.post("/reports/pdf")
-async def generate_pdf_direct(body: ReportSessionCreate):
+@limiter.limit("10/minute")
+async def generate_pdf_direct(request: Request, body: ReportSessionCreate):
     if not body.document:
         raise HTTPException(status_code=400, detail="Report document is required.")
     return await pdf_response_for_document(body.document)
 
 
 @app.post("/reports/sessions", response_model=ReportSessionResponse)
-async def create_report_session(body: ReportSessionCreate):
+@limiter.limit("10/minute")
+async def create_report_session(request: Request, body: ReportSessionCreate):
     if not body.document:
         raise HTTPException(status_code=400, detail="Report document is required.")
     session_id = create_session(body.document)
@@ -699,5 +1097,6 @@ async def render_report_session(session_id: str):
 
 
 @app.post("/reports/sessions/{session_id}/pdf")
-async def generate_report_pdf(session_id: str):
+@limiter.limit("10/minute")
+async def generate_report_pdf(request: Request, session_id: str):
     return await pdf_response(session_id)

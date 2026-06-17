@@ -41,6 +41,26 @@ def main() -> int:
         if bal.get("balance_credits", -1) != 0:
             errors.append(f"new wallet expected 0 credits, got {bal}")
 
+    preview_params = {
+        "anon_id": anon,
+        "purpose": "discover",
+        "address": "123 Main St, Austin, TX 78701",
+    }
+    r = client.get("/billing/checkout-preview", params=preview_params)
+    if r.status_code != 200:
+        errors.append(f"/billing/checkout-preview -> {r.status_code}")
+    else:
+        preview = r.json()
+        for key in (
+            "sufficient",
+            "charge_usd",
+            "needed_credits",
+            "balance_credits",
+            "billing_enabled",
+        ):
+            if key not in preview:
+                errors.append(f"/billing/checkout-preview missing {key}")
+
     if errors:
         for e in errors:
             print(f"FAIL: {e}")
@@ -48,10 +68,14 @@ def main() -> int:
 
     packs = client.get("/billing/packs").json()
     enabled = packs.get("billing_enabled")
+    publishable = (packs.get("stripe_publishable_key") or "").strip()
     print(f"OK: health, packs ({len(packs.get('packs', []))} packs), balance for anon_id")
     print(f"    billing_enabled={enabled}")
+    print("    checkout-preview OK")
     if not enabled:
         print("    (Stripe not configured — checkout disabled; set STRIPE_SECRET_KEY to test Checkout)")
+    elif not publishable:
+        print("    WARN: STRIPE_PUBLISHABLE_KEY missing — desktop Apple Pay in-modal needs pk_test_/pk_live_")
     return 0
 
 

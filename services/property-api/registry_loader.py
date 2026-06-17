@@ -26,8 +26,12 @@ def get_margin_multiplier() -> float:
     return float(load_sources_config().get("margin_multiplier", 2.5))
 
 
-def get_minimum_charge() -> float:
-    return float(load_sources_config().get("minimum_charge_usd", 0.99))
+def get_infra_breakeven_usd() -> float:
+    return float(load_sources_config().get("infra_breakeven_usd", 0.45))
+
+
+def get_platform_margin_usd() -> float:
+    return float(load_sources_config().get("platform_margin_usd", 1.0))
 
 
 def get_categories() -> list[dict[str, Any]]:

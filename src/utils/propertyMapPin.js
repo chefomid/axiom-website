@@ -29,3 +29,24 @@ export function setPropertyMapPinPending(el, pending) {
   if (!el) return
   el.classList.toggle('property-target-marker--pending', Boolean(pending))
 }
+
+/** Compact numbered pin for schedule / portfolio locations on the map. */
+export function createScheduleMapPinElement({ index, highlighted = false, invalid = false } = {}) {
+  const el = document.createElement('button')
+  el.type = 'button'
+  el.className = [
+    'schedule-map-pin',
+    highlighted ? 'schedule-map-pin--highlighted' : '',
+    invalid ? 'schedule-map-pin--invalid' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+  el.setAttribute('aria-label', `Location ${index}`)
+  el.innerHTML = `<span class="schedule-map-pin__dot" aria-hidden="true"></span><span class="schedule-map-pin__label">${index}</span>`
+  return el
+}
+
+export function setScheduleMapPinHighlighted(el, highlighted) {
+  if (!el) return
+  el.classList.toggle('schedule-map-pin--highlighted', Boolean(highlighted))
+}

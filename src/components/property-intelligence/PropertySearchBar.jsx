@@ -9,7 +9,7 @@ const PHASE_COPY = {
   searching: 'Searching addresses…',
   locating: 'Finding your location…',
   resolving: 'Please wait: Placing property on the map…',
-  locked: 'Property located, ready to generate',
+  locked: 'Select a package',
   error: '',
 }
 
@@ -70,8 +70,18 @@ export default function PropertySearchBar({
   const suppressDropdown =
     locationLocked || geolocateCommitting || locationPhase === 'locating' || locationPhase === 'resolving'
 
+  const lockedCompact = compact && (locationLocked || isLocked)
+
   return (
-    <div className={`flex flex-col ${compact ? 'gap-3.5' : 'h-full min-h-0 justify-center gap-3'}`}>
+    <div
+      className={`flex flex-col ${
+        compact
+          ? lockedCompact
+            ? 'gap-2'
+            : 'gap-3.5'
+          : 'h-full min-h-0 justify-center gap-3'
+      }`}
+    >
       <AddressGeocodeInput
         value={address}
         onChange={onAddressChange}
@@ -145,33 +155,28 @@ export default function PropertySearchBar({
       ) : null}
 
       {statusText ? (
-        <div
-          className={`flex flex-col gap-1 ${compact ? 'text-left' : 'items-center text-center'}`}
-        >
+        <div className={`flex flex-col ${lockedCompact ? 'gap-0.5' : 'gap-1'} ${compact ? 'text-left' : 'items-center text-center'}`}>
           <p
-            className={`font-mono text-[10px] leading-relaxed ${
+            className={`font-mono leading-snug ${
+              lockedCompact ? 'text-[9px]' : 'text-[10px] leading-relaxed'
+            } ${
               locationError
                 ? 'text-command-critical'
                 : isLocked || locateSuccess
                   ? 'text-command-watch'
                   : locationPhase === 'resolving'
                     ? 'text-command-watch'
-                  : locationPhase === 'composing' || locationPhase === 'searching'
-                    ? 'text-command-live'
-                    : 'text-ink-muted'
+                    : locationPhase === 'composing' || locationPhase === 'searching'
+                      ? 'text-command-live'
+                      : 'text-ink-muted'
             }`}
           >
             {statusText}
           </p>
-          {isLocked ? (
-            <p className="font-sans text-[9px] leading-snug text-ink-faint">
-              Pin may vary slightly. GPS and public map data only approximate street addresses.
-            </p>
-          ) : null}
         </div>
       ) : null}
 
-      {locationError ? (
+      {locationError && !locationLocked ? (
         <div className="flex justify-center">
           <button
             type="button"
@@ -183,25 +188,27 @@ export default function PropertySearchBar({
         </div>
       ) : null}
 
-      <div>
-        <button
-          type="button"
-          onClick={onMyLocation}
-          disabled={loading || isLocating}
-          className={`${WORKFLOW_CTL} w-full ${WORKFLOW_CTL_NEUTRAL} ${
-            isLocating ? 'pi-locate-pulse border-command-live/40 text-command-live' : ''
-          } disabled:cursor-not-allowed disabled:opacity-40`}
-        >
-          {isLocating ? (
-            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-command-live/30 border-t-command-live" aria-hidden />
-          ) : locateSuccess ? (
-            <CheckIcon className="h-3.5 w-3.5 text-command-watch" />
-          ) : (
-            <LocationIcon className="h-3.5 w-3.5" />
-          )}
-          {isLocating ? 'Finding you…' : locateSuccess ? 'Location found' : 'Use my location'}
-        </button>
-      </div>
+      {!locationLocked && !isLocked ? (
+        <div>
+          <button
+            type="button"
+            onClick={onMyLocation}
+            disabled={loading || isLocating}
+            className={`${WORKFLOW_CTL} w-full ${WORKFLOW_CTL_NEUTRAL} ${
+              isLocating ? 'pi-locate-pulse border-command-live/40 text-command-live' : ''
+            } disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            {isLocating ? (
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-command-live/30 border-t-command-live" aria-hidden />
+            ) : locateSuccess ? (
+              <CheckIcon className="h-3.5 w-3.5 text-command-watch" />
+            ) : (
+              <LocationIcon className="h-3.5 w-3.5" />
+            )}
+            {isLocating ? 'Finding you…' : locateSuccess ? 'Location found' : 'Use my location'}
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }

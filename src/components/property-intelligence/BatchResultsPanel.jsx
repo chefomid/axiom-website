@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { formatUsd } from '../../services/propertyApi'
 import { downloadBatchCopeExcel } from '../../utils/copeReportExcel'
 import ReportResultsPanel from './ReportResultsPanel'
@@ -11,6 +11,7 @@ export default function BatchResultsPanel({
   expanded = false,
   onToggleExpand,
   onClose,
+  onPreviewLocation,
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [exportingExcel, setExportingExcel] = useState(false)
@@ -22,6 +23,12 @@ export default function BatchResultsPanel({
   )
 
   const activeRecord = enriched[activeIndex]?.record ?? null
+
+  useEffect(() => {
+    const loc = enriched[activeIndex]
+    if (!loc || !onPreviewLocation) return
+    onPreviewLocation(loc)
+  }, [activeIndex, enriched, onPreviewLocation])
 
   if (loading) {
     return (
@@ -105,21 +112,27 @@ export default function BatchResultsPanel({
           <p className="mt-1 font-mono text-[9px] text-command-critical">{exportError}</p>
         ) : null}
         {enriched.length > 1 ? (
-          <div className="mt-3 flex flex-wrap gap-1">
-            {enriched.map((loc, index) => (
-              <button
-                key={loc.report_id ?? loc.row_index}
-                type="button"
-                onClick={() => setActiveIndex(index)}
-                className={`max-w-[14rem] truncate rounded border px-2 py-1 font-mono text-[9px] ${
-                  index === activeIndex
-                    ? 'border-command-live/50 bg-command-live/10 text-white'
-                    : 'border-panel-border text-ink-muted hover:text-white'
-                }`}
-              >
-                {loc.display_name ?? loc.address_input}
-              </button>
-            ))}
+          <div className="mt-3">
+            <p className="mb-1.5 font-mono text-[8px] uppercase tracking-wider text-ink-faint">
+              Jump to location
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {enriched.map((loc, index) => (
+                <button
+                  key={loc.report_id ?? loc.row_index}
+                  type="button"
+                  onClick={() => setActiveIndex(index)}
+                  className={`max-w-[14rem] truncate rounded border px-2 py-1 font-mono text-[9px] transition ${
+                    index === activeIndex
+                      ? 'border-command-live/50 bg-command-live/10 text-white'
+                      : 'border-panel-border text-ink-muted hover:border-command-live/30 hover:text-white'
+                  }`}
+                >
+                  {loc.row_index ? `${loc.row_index}. ` : ''}
+                  {loc.display_name ?? loc.address_input}
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
       </div>

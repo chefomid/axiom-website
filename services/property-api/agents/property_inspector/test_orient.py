@@ -32,3 +32,17 @@ def test_capture_plan_no_street_when_unavailable():
         street_metadata=StreetViewMetadata(status="ZERO_RESULTS"),
     )
     assert plan.capture_specs == []
+
+
+def test_floor_scan_specs_use_selected_heading():
+    from agents.property_inspector.orient import build_floor_scan_specs
+
+    specs = build_floor_scan_specs(109)
+    assert len(specs) == 3
+    assert all(s.heading == 109 for s in specs)
+    pitches = {s.pitch for s in specs}
+    assert pitches == {-30, -15, 10}
+    ids = {s.image_id for s in specs}
+    assert "floor_scan_up30" in ids
+    assert "floor_scan_up15" in ids
+    assert "floor_scan_down10" in ids

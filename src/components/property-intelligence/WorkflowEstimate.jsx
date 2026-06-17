@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { formatUsd, formatLineItemPrice } from '../../services/propertyApi'
+import { receiptAmountClass, platformServiceFeeUsd, licensedReceiptLineItems, licensedReceiptLineAmount } from './workflowReceiptUtils'
 
 export default function WorkflowEstimate({
   quote,
@@ -29,7 +30,7 @@ export default function WorkflowEstimate({
         <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-muted">
           {isFinal ? 'Final' : 'Estimate'}
         </span>
-        <span className="font-mono text-[10px] font-medium tabular-nums text-white">
+        <span className={`font-mono text-[10px] font-medium tabular-nums ${receiptAmountClass(totals?.user_price_usd)}`}>
           {loading && !totals ? '…' : formatUsd(totals?.user_price_usd)}
         </span>
         {items.length > 0 ? (
@@ -73,7 +74,7 @@ export default function WorkflowEstimate({
                       </p>
                     ) : null}
                   </div>
-                  <span className="shrink-0 font-mono text-[8px] tabular-nums text-ink-faint">
+                  <span className={`shrink-0 font-mono text-[8px] tabular-nums ${receiptAmountClass(item.user_price_usd ?? 0)}`}>
                     {formatLineItemPrice(item)}
                   </span>
                 </li>
@@ -82,13 +83,38 @@ export default function WorkflowEstimate({
           </ul>
           {totals ? (
             <div className="space-y-0.5 border-t border-panel-border px-3 py-2 font-mono text-[9px]">
-              <div className="flex justify-between text-ink-muted">
-                <span>Loaded</span>
-                <span className="tabular-nums">{formatUsd(totals.loaded_cost_usd)}</span>
-              </div>
+              {totals.platform_service_fee_usd != null ? (
+                <>
+                  <div className="flex justify-between text-ink-muted">
+                    <span>Public feeds (vendor)</span>
+                    <span className={`tabular-nums ${receiptAmountClass(0)}`}>{formatUsd(0)}</span>
+                  </div>
+                  {licensedReceiptLineItems(quote).map(item => (
+                    <div key={item.source_id} className="flex justify-between text-ink-muted">
+                      <span className="min-w-0 truncate pr-2">{item.label}</span>
+                      <span className={`shrink-0 tabular-nums ${receiptAmountClass(licensedReceiptLineAmount(item))}`}>
+                        {formatUsd(licensedReceiptLineAmount(item))}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-ink-muted">
+                    <span>Aggregation service</span>
+                    <span className={`tabular-nums ${receiptAmountClass(platformServiceFeeUsd(totals))}`}>
+                      {formatUsd(platformServiceFeeUsd(totals))}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between text-ink-muted">
+                  <span>Loaded</span>
+                  <span className="tabular-nums">{formatUsd(totals.loaded_cost_usd)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-white">
                 <span>Total</span>
-                <span className="tabular-nums">{formatUsd(totals.user_price_usd)}</span>
+                <span className={`tabular-nums ${receiptAmountClass(totals.user_price_usd)}`}>
+                  {formatUsd(totals.user_price_usd)}
+                </span>
               </div>
             </div>
           ) : null}

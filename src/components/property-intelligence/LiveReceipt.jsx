@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { formatUsd, formatLineItemPrice } from '../../services/propertyApi'
-import { emptyHint } from './workflowReceiptUtils'
+import { emptyHint, receiptAmountClass, platformServiceFeeUsd, licensedReceiptLineItems, licensedReceiptLineAmount } from './workflowReceiptUtils'
 import WorkflowEstimate from './WorkflowEstimate'
 import WorkflowGenerateButton from './WorkflowGenerateButton'
 
@@ -73,7 +73,7 @@ export default function LiveReceipt({
           <p className="font-display text-sm font-medium text-ink-secondary">
             {isFinal ? 'Final total' : 'Estimated total'}
           </p>
-          <p className="font-display text-xl tabular-nums text-white">
+          <p className={`font-display text-xl tabular-nums ${receiptAmountClass(totals?.user_price_usd)}`}>
             {loading && !totals ? '…' : formatUsd(totals?.user_price_usd)}
           </p>
         </div>
@@ -135,7 +135,7 @@ export default function LiveReceipt({
                       </p>
                     ) : null}
                   </div>
-                  <span className="shrink-0 font-mono text-[9px] tabular-nums text-ink-faint">
+                  <span className={`shrink-0 font-mono text-[9px] tabular-nums ${receiptAmountClass(item.user_price_usd ?? 0)}`}>
                     {item.charged === false && item.run_status ? (
                       <span className="line-through">{formatLineItemPrice(item)}</span>
                     ) : (
@@ -147,10 +147,34 @@ export default function LiveReceipt({
             )}
           </ul>
           {totals ? (
-            <div className="border-t border-panel-border px-4 py-2 font-mono text-[10px]">
+            <div className="border-t border-panel-border px-4 py-2 font-mono text-[10px] space-y-0.5">
+              {totals.platform_service_fee_usd != null ? (
+                <>
+                  <div className="flex justify-between text-ink-muted">
+                    <span>Public feeds (vendor)</span>
+                    <span className={`tabular-nums ${receiptAmountClass(0)}`}>{formatUsd(0)}</span>
+                  </div>
+                  {licensedReceiptLineItems(quote).map(item => (
+                    <div key={item.source_id} className="flex justify-between text-ink-muted">
+                      <span className="min-w-0 truncate pr-2">{item.label}</span>
+                      <span className={`shrink-0 tabular-nums ${receiptAmountClass(licensedReceiptLineAmount(item))}`}>
+                        {formatUsd(licensedReceiptLineAmount(item))}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-ink-muted">
+                    <span>Aggregation service</span>
+                    <span className={`tabular-nums ${receiptAmountClass(platformServiceFeeUsd(totals))}`}>
+                      {formatUsd(platformServiceFeeUsd(totals))}
+                    </span>
+                  </div>
+                </>
+              ) : null}
               <div className="flex justify-between text-white">
                 <span>{isFinal ? 'Total charged' : 'Estimated total'}</span>
-                <span className="tabular-nums">{formatUsd(totals.user_price_usd)}</span>
+                <span className={`tabular-nums ${receiptAmountClass(totals.user_price_usd)}`}>
+                  {formatUsd(totals.user_price_usd)}
+                </span>
               </div>
             </div>
           ) : null}

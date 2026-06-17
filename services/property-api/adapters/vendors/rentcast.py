@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from adapters.base import failed_result, success_result
+from adapters.base import api_key_configured, failed_result, skipped_result, success_result
 from engine.adapter import BaseAdapter
 from engine.models import SourceContext, SourceRunResult
 
@@ -55,6 +55,8 @@ class RentCastPropertyAdapter(BaseAdapter):
     source_id = "rentcast_property"
 
     async def fetch(self, ctx: SourceContext, client: httpx.AsyncClient, **kwargs) -> SourceRunResult:
+        if not api_key_configured(self.source_id):
+            return skipped_result(self.source_id, "RENTCAST_API_KEY not configured")
         key = os.environ.get("RENTCAST_API_KEY", "").strip()
         try:
             r = await client.get(

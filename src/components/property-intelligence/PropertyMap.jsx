@@ -23,6 +23,7 @@ import {
   STREET_PITCH_STEP,
 } from '../../services/propertyImagery'
 import StreetViewControls from './StreetViewControls'
+import ScheduleMapLayer from './ScheduleMapLayer'
 
 const MAP_STYLE_FALLBACK = 'https://demotiles.maplibre.org/style.json'
 
@@ -101,6 +102,13 @@ export default function PropertyMap({
   locationLocked = false,
   locationPhase = 'idle',
   onMapReady,
+  scheduleLocations = null,
+  scheduleFocusRowIndex = null,
+  scheduleFitAllSignal = 0,
+  scheduleValidCount = 0,
+  scheduleInvalidCount = 0,
+  onScheduleLocationSelect,
+  onScheduleFitAll,
 }) {
   const pin = useMemo(() => {
     const la = parseCoord(lat)
@@ -111,7 +119,9 @@ export default function PropertyMap({
 
   const pinPending = locationPhase === 'composing' || locationPhase === 'searching'
   const showLocatingOverlay = locationPhase === 'resolving' || locationPhase === 'locating'
+  const scheduleModeActive = Boolean(scheduleLocations?.length)
   const hasPin =
+    !scheduleModeActive &&
     pin != null &&
     (locationLocked || pinPending || locationPhase === 'resolving' || locationPhase === 'locating')
 
@@ -132,6 +142,7 @@ export default function PropertyMap({
   pinPendingRef.current = pinPending
 
   const [mapReady, setMapReady] = useState(false)
+  const [mapInstance, setMapInstance] = useState(null)
   const [mapInitError, setMapInitError] = useState(null)
   const [mapMode, setMapMode] = useState('map')
 
@@ -235,6 +246,7 @@ export default function PropertyMap({
         ensureAnalysisSatelliteImagery(map)
         void setAnalysisSatelliteImagery(map, false, { animate: false })
         setMapReady(true)
+        setMapInstance(map)
         map.resize()
         onMapReady?.(map)
       })
@@ -260,6 +272,7 @@ export default function PropertyMap({
       map?.remove()
       mapRef.current = null
       setMapReady(false)
+      setMapInstance(null)
       onMapReady?.(null)
     }
   }, [onMapReady])
@@ -456,7 +469,7 @@ export default function PropertyMap({
     <div className="command-map-host property-map-host relative h-full min-h-[280px] w-full bg-[#050505]">
       <div ref={mapContainerRef} className="absolute inset-0" />
 
-      {hasPin && mapMode !== 'street' ? (
+      {(hasPin || scheduleModeActive) && mapMode !== 'street' ? (
         <div
           className="property-map-mode-bar absolute left-3 top-3 z-20 flex max-w-[calc(100%-5rem)] flex-wrap items-center gap-2"
           role="toolbar"
@@ -465,10 +478,24 @@ export default function PropertyMap({
           <MapModeBar
             mapMode={mapMode}
             setMapMode={setMapMode}
-            streetAvailable={streetAvailable}
-            checkingStreet={checkingStreet}
+            streetAvailable={scheduleModeActive ? false : streetAvailable}
+            checkingStreet={scheduleModeActive ? false : checkingStreet}
           />
         </div>
+      ) : null}
+
+      {scheduleModeActive && mapMode !== 'street' ? (
+        <ScheduleMapLayer
+          map={mapInstance}
+          mapReady={mapReady}
+          locations={scheduleLocations}
+          focusRowIndex={scheduleFocusRowIndex}
+          fitAllSignal={scheduleFitAllSignal}
+          validCount={scheduleValidCount}
+          invalidCount={scheduleInvalidCount}
+          onLocationSelect={onScheduleLocationSelect}
+          onFitAll={onScheduleFitAll}
+        />
       ) : null}
 
       {showStreetOverlay ? (

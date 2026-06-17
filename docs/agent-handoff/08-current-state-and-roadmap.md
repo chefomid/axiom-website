@@ -86,7 +86,7 @@ These are **inferred priorities**, not confirmed by the product owner. Validate 
 ### Immediate
 
 1. **Review and commit in-flight PI work** — large uncommitted diff across frontend and backend
-2. **Smoke test Vendor comparison preset** on 2–3 US addresses with configured keys
+2. **Smoke test Property dossier preset** on 2–3 US addresses with configured keys
 3. **Verify PDF + Excel export** after any merger changes
 
 ### Launch
@@ -118,7 +118,7 @@ These are **inferred priorities**, not confirmed by the product owner. Validate 
 From [../PROPERTY-INTELLIGENCE.md](../PROPERTY-INTELLIGENCE.md):
 
 1. `npm run check:property-keys`
-2. Open `/property-intelligence` → **Vendor comparison** under *More packages*
+2. Open `/property-intelligence` → **Property dossier** (or **Publicly available**)
 3. Enter full US address → confirm live quote → **Generate**
 4. Review tabs: COPE, Sources, Hazards, Conflicts
 5. **Export COPE PDF** (needs Playwright: `python -m playwright install chromium`)

@@ -282,7 +282,7 @@ export function formatUsd(amount) {
   return `$${Number(amount).toFixed(2)}`
 }
 
-/** Per-location price after batch minimum, volume discount, and margin floor are allocated. */
+/** Per-location price after batch volume discount and margin floor are allocated. */
 export function batchLocationPrice(location) {
   if (location?.allocated_price_usd != null) return location.allocated_price_usd
   return location?.quote?.totals?.user_price_usd
@@ -332,7 +332,7 @@ export function quoteLineItem(catalog, quote, sourceId) {
   return quote?.line_items?.find(item => item.source_id === sourceId) ?? null
 }
 
-/** Estimate user-facing price for a catalog source (before minimum-charge bundle adjustment). */
+/** Estimate user-facing price for a catalog source (pass-through premium with margin). */
 export function estimateSourceUserPrice(source, catalog) {
   if (!source) return null
   if (source.requires_api_key && source.configured === false) return null
@@ -345,9 +345,18 @@ export function estimateSourceUserPrice(source, catalog) {
 export function formatLineItemPrice(item) {
   if (!item) return '-'
   if (item.user_price_usd != null && item.user_price_usd > 0) return formatUsd(item.user_price_usd)
+  if (Number(item.api_cost_usd ?? 0) <= 0) return formatUsd(0)
   const loaded = Number(item.api_cost_usd ?? 0) + Number(item.service_cost_usd ?? 0)
-  if (loaded <= 0) return 'free'
+  if (loaded <= 0) return formatUsd(0)
   return formatUsd(loaded)
+}
+
+/** Vendor API pass-through column in source catalog (public feeds are $0). */
+export function formatVendorApiCost(source) {
+  if (!source) return '-'
+  const api = Number(source.api_cost_usd ?? 0)
+  if (api <= 0) return formatUsd(0)
+  return formatUsd(api)
 }
 
 export function groupSourcesByCategory(catalog) {
@@ -363,13 +372,10 @@ export function groupSourcesByCategory(catalog) {
     .filter(g => g.sources.length > 0)
 }
 
-/** Source IDs for a preset after insurance-key filtering. */
+/** Source IDs for a preset; drops licensed sources when their API key is not configured. */
 export function presetSourceIds(catalog, preset) {
   if (!preset?.source_ids) return []
-  if (preset.highlight === 'insurance' || preset.id === 'cope_insurance') {
-    return filterPresetSources(catalog, preset.source_ids)
-  }
-  return preset.source_ids
+  return filterPresetSources(catalog, preset.source_ids)
 }
 
 /** Mirror backend resolve_selected_sources using catalog depends_on edges. */
@@ -393,6 +399,73 @@ export function resolveSelectedSources(catalog, selectedSources) {
     if (sourceId !== 'geocode_census') add(sourceId)
   }
   return resolved
+}
+
+function roundUsd(value) {
+  return Math.round(Number(value) * 100) / 100
+}
+
+/** Instant estimate from catalog — mirrors backend compute_totals without geocoding. */
+export function estimateQuoteFromCatalog(catalog, selectedSources, addressInput = '') {
+  if (!catalog?.sources?.length || !selectedSources?.length) return null
+
+  const byId = Object.fromEntries(catalog.sources.map(src => [src.id, src]))
+  const resolved = resolveSelectedSources(catalog, selectedSources)
+  const multiplier = Number(catalog.margin_multiplier ?? 2.5)
+  const infra = Number(catalog.infra_breakeven_usd ?? 0.45)
+  const platformMargin = Number(catalog.platform_margin_usd ?? 1.0)
+
+  const lineItems = []
+  for (const sourceId of resolved) {
+    const src = byId[sourceId]
+    if (!src) continue
+    const apiCost = Number(src.api_cost_usd ?? 0)
+    const serviceCost = Number(src.service_cost_usd ?? 0)
+    const keyOk = !src.requires_api_key || src.configured !== false
+    const billable = keyOk
+    const lineUserPrice = billable && apiCost > 0 ? roundUsd(apiCost * multiplier) : 0
+    lineItems.push({
+      source_id: sourceId,
+      label: src.label,
+      description: src.description,
+      category: src.category,
+      tier: src.tier,
+      api_cost_usd: apiCost,
+      service_cost_usd: serviceCost,
+      loaded_cost_usd: roundUsd(apiCost + serviceCost),
+      user_price_usd: lineUserPrice,
+      billable,
+      configured: keyOk,
+      available: true,
+    })
+  }
+
+  const billableItems = lineItems.filter(item => item.billable)
+  const apiCost = billableItems.reduce((sum, item) => sum + item.api_cost_usd, 0)
+  const serviceCost = billableItems.reduce((sum, item) => sum + item.service_cost_usd, 0)
+  const breakeven = roundUsd(infra + serviceCost)
+  const platformServiceFee = roundUsd(breakeven + platformMargin)
+  let vendorCharges = roundUsd(apiCost * multiplier)
+  const userPrice = roundUsd(platformServiceFee + vendorCharges)
+
+  return {
+    address_input: addressInput,
+    selected_sources: resolved,
+    line_items: lineItems,
+    totals: {
+      api_cost_usd: roundUsd(apiCost),
+      service_cost_usd: roundUsd(serviceCost),
+      loaded_cost_usd: roundUsd(apiCost + serviceCost),
+      infra_breakeven_usd: infra,
+      breakeven_usd: breakeven,
+      platform_margin_usd: platformMargin,
+      platform_service_fee_usd: platformServiceFee,
+      vendor_charges_usd: vendorCharges,
+      margin_multiplier: multiplier,
+      user_price_usd: userPrice,
+    },
+    estimate: true,
+  }
 }
 
 export function sourcesMatchQuote(selectedSources, quoteSources, catalog) {

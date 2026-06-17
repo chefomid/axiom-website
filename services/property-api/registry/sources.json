@@ -1,6 +1,7 @@
 {
   "margin_multiplier": 2.5,
-  "minimum_charge_usd": 0.99,
+  "infra_breakeven_usd": 0.45,
+  "platform_margin_usd": 1.0,
   "vendors": {
     "corelogic": {
       "name": "CoreLogic",
@@ -10,8 +11,8 @@
     },
     "attom": {
       "name": "ATTOM Data",
-      "tagline": "Insurance-grade property characteristics",
-      "credibility": "Normalized building attributes, ownership, and peril scores used in underwriting workflows.",
+      "tagline": "Licensed property characteristics",
+      "credibility": "Normalized building attributes, ownership, and peril scores mapped for COPE workflows.",
       "website": "https://www.attomdata.com"
     },
     "melissa": {
@@ -41,10 +42,10 @@
   },
   "categories": [
     { "id": "foundation", "label": "Foundation", "description": "Required for every report" },
-    { "id": "osint_free", "label": "Free OSINT & public records", "description": "Open data, county GIS, and crawlers — no vendor API fee" },
+    { "id": "osint_free", "label": "Public OSINT & open records", "description": "Open data, county GIS, and crawlers — no vendor API fee" },
     { "id": "hazards_environment", "label": "Hazards & environment", "description": "Live government peril feeds (Exposure)" },
     { "id": "property_standard", "label": "Property data — standard", "description": "Affordable third-party property records" },
-    { "id": "property_insurance", "label": "Insurance-grade data", "description": "Carrier-trusted sources for defensible COPE underwriting" },
+    { "id": "property_insurance", "label": "Licensed data", "description": "Third-party property records mapped for COPE workflows" },
     { "id": "intelligence", "label": "Intelligence & export", "description": "AI mapping, conflict resolution, and deliverables" }
   ],
   "sources": [
@@ -299,7 +300,7 @@
       "vendor": "rentcast",
       "label": "RentCast property record",
       "description": "Sqft, year built, beds/baths, property type, last sale.",
-      "marketing_note": "Great starting point before insurance-grade data.",
+      "marketing_note": "Great starting point before licensed data.",
       "api_cost_usd": 0.2,
       "service_cost_usd": 0,
       "coverage": "US",
@@ -370,8 +371,8 @@
       "tier": "insurance",
       "vendor": "attom",
       "label": "ATTOM property detail",
-      "description": "Construction class, stories, roof, occupancy use code, owner — underwriting-ready.",
-      "marketing_note": "Recommended for COPE Construction & Occupancy. Cited on carrier submissions.",
+      "description": "Construction class, stories, roof, occupancy use code, owner — mapped for COPE workflows.",
+      "marketing_note": "Recommended for COPE Construction & Occupancy with source citations in the dossier.",
       "featured": true,
       "api_cost_usd": 0.75,
       "service_cost_usd": 0,
@@ -395,7 +396,7 @@
       "tier": "insurance",
       "vendor": "attom",
       "label": "ATTOM hazard / peril",
-      "description": "Carrier-style natural hazard scores aligned with ATTOM property records.",
+      "description": "Vendor natural hazard scores aligned with ATTOM property records.",
       "marketing_note": "Pairs with ATTOM property for unified peril + building profile.",
       "featured": true,
       "api_cost_usd": 0.25,
@@ -499,8 +500,8 @@
       "id": "web_property_research",
       "category": "intelligence",
       "tier": "service",
-      "label": "AI web property research",
-      "description": "OpenAI web search for public assessor, permit, and listing data beyond ATTOM.",
+      "label": "Public records search",
+      "description": "Searches public assessor, permit, and listing records for additional property details.",
       "api_cost_usd": 0.04,
       "service_cost_usd": 0.1,
       "coverage": "global",
@@ -557,7 +558,7 @@
       "category": "intelligence",
       "tier": "service",
       "label": "SOV orchestrator",
-      "description": "Reconcile vendor API, online public, and Property Inspector visual AI into an enriched Statement of Values.",
+      "description": "Reconcile vendor API, public web, and optional image-analysis lanes into one enriched Statement of Values.",
       "api_cost_usd": 0.01,
       "service_cost_usd": 0.08,
       "coverage": "global",

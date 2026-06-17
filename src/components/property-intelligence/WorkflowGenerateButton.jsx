@@ -10,6 +10,20 @@ function blockMessage({ address, locationLocked, generateBlockReason, hint, sche
   return generateBlockReason ?? hint
 }
 
+function LoadingButtonContent({ label, variant = 'intelligence' }) {
+  const spinnerClass =
+    variant === 'intelligence'
+      ? 'h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-[rgba(232,168,56,0.22)] border-t-[rgba(232,168,56,0.9)]'
+      : 'h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-command-live/30 border-t-command-live'
+
+  return (
+    <span className="inline-flex items-center justify-center gap-2">
+      <span className={spinnerClass} aria-hidden />
+      <span>{label}</span>
+    </span>
+  )
+}
+
 export default function WorkflowGenerateButton({
   quote,
   loading,
@@ -57,10 +71,16 @@ export default function WorkflowGenerateButton({
   }
 
   if (loadingReport || (enrichStatus && enrichStatus !== 'idle')) {
+    const runningLabel = scheduleMode ? 'Analyzing schedule…' : 'Running report…'
     if (isIntelligence) {
       return (
-        <button type="button" disabled className={`workflow-footer-cta ${widthClass} opacity-70`}>
-          Running Report…
+        <button
+          type="button"
+          disabled
+          aria-busy="true"
+          className={`workflow-footer-cta workflow-footer-cta--busy ${widthClass}`}
+        >
+          <LoadingButtonContent label={runningLabel} variant="intelligence" />
         </button>
       )
     }
@@ -68,9 +88,10 @@ export default function WorkflowGenerateButton({
       <button
         type="button"
         disabled
+        aria-busy="true"
         className={`${WORKFLOW_CTL} ${widthClass} border-command-live/40 bg-command-live/10 text-command-live`}
       >
-        Running…
+        <LoadingButtonContent label="Running…" variant="default" />
       </button>
     )
   }
@@ -78,8 +99,13 @@ export default function WorkflowGenerateButton({
   if (payLoading) {
     if (isIntelligence) {
       return (
-        <button type="button" disabled className={`workflow-footer-cta ${widthClass} opacity-70`}>
-          Opening checkout…
+        <button
+          type="button"
+          disabled
+          aria-busy="true"
+          className={`workflow-footer-cta workflow-footer-cta--busy ${widthClass}`}
+        >
+          <LoadingButtonContent label="Opening checkout…" variant="intelligence" />
         </button>
       )
     }
@@ -87,9 +113,10 @@ export default function WorkflowGenerateButton({
       <button
         type="button"
         disabled
+        aria-busy="true"
         className={`${WORKFLOW_CTL} ${widthClass} border-command-live/40 bg-command-live/10 text-command-live`}
       >
-        Opening checkout…
+        <LoadingButtonContent label="Opening checkout…" variant="default" />
       </button>
     )
   }

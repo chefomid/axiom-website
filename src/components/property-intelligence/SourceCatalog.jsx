@@ -1,4 +1,4 @@
-import { groupSourcesByCategory } from '../../services/propertyApi'
+import { groupSourcesByCategory, formatVendorApiCost } from '../../services/propertyApi'
 import SourceTierBadge, { tierSortOrder } from './SourceTierBadge'
 
 function sortSources(sources) {
@@ -85,7 +85,7 @@ export default function SourceCatalog({
                           <SourceTierBadge tier={src.tier} badge={src.badge} featured={src.featured} />
                           <span className="ml-auto flex shrink-0 items-center gap-2">
                             <span className="font-mono text-[9px] tabular-nums text-ink-faint">
-                              {src.api_cost_usd > 0 ? `$${src.api_cost_usd.toFixed(2)}` : 'free'}
+                              {formatVendorApiCost(src)}
                             </span>
                             <span
                               className={`rounded border px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider ${

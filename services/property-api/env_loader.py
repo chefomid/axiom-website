@@ -17,6 +17,37 @@ ENV_FILES = (
     API_DIR / ".env",
 )
 
+STRIPE_TXT = REPO_ROOT / "stripe.txt"
+
+
+def _load_stripe_txt() -> bool:
+    """Load Stripe keys from repo-root stripe.txt when not set in .env files."""
+    if not STRIPE_TXT.is_file():
+        return False
+    loaded = False
+    for raw_line in STRIPE_TXT.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" in line:
+            key, value = line.split("=", 1)
+            name = key.strip().upper()
+            val = value.strip().strip('"').strip("'")
+            if name == "STRIPE_SECRET_KEY" and val and not os.environ.get("STRIPE_SECRET_KEY", "").strip():
+                os.environ["STRIPE_SECRET_KEY"] = val
+                loaded = True
+            elif name == "STRIPE_PUBLISHABLE_KEY" and val and not os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip():
+                os.environ["STRIPE_PUBLISHABLE_KEY"] = val
+                loaded = True
+            continue
+        if line.startswith("sk_") and not os.environ.get("STRIPE_SECRET_KEY", "").strip():
+            os.environ["STRIPE_SECRET_KEY"] = line
+            loaded = True
+        elif line.startswith("pk_") and not os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip():
+            os.environ["STRIPE_PUBLISHABLE_KEY"] = line
+            loaded = True
+    return loaded
+
 
 def load_project_env() -> list[Path]:
     loaded: list[Path] = []
@@ -24,6 +55,8 @@ def load_project_env() -> list[Path]:
         if path.is_file():
             load_dotenv(path, override=True)
             loaded.append(path)
+    if _load_stripe_txt():
+        loaded.append(STRIPE_TXT)
     return loaded
 
 

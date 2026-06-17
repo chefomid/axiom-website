@@ -12,7 +12,7 @@ AXIOM is a **property & casualty insurance technology** company. This repository
 |---------|-------|-----------|
 | **Home** | `/` | Marketing landing page; modals for COI Tracker and Insurance Manager (separate products, not routed here) |
 | **Public Data Command** | `/public-data-command` | Live government hazard feeds on a dark command-center map — **no portfolios, no SOV uploads**, public data only |
-| **Property Intelligence** | `/property-intelligence` | À la carte **COPE underwriting dossiers** for a single address — free OSINT and government data first, escalate to paid vendor APIs |
+| **Property Intelligence** | `/property-intelligence` | À la carte **COPE underwriting dossiers** for a single address — public OSINT and government data first, escalate to licensed vendor APIs |
 
 ### Public Data Command
 
@@ -34,7 +34,7 @@ AXIOM is a **property & casualty insurance technology** company. This repository
 
 | Tier | Examples | Cost |
 |------|----------|------|
-| Free / OSINT | Census geocode, FEMA, USGS, NWS, OSM, hydrant/fire GIS, Crawl4AI | $0 API |
+| Public / OSINT | Census geocode, FEMA, USGS, NWS, OSM, hydrant/fire GIS, Crawl4AI | No vendor API fee |
 | Standard paid | RentCast, Regrid, Melissa | Per-call vendor fees |
 | Insurance-grade | ATTOM (CoreLogic optional later), First Street | Higher vendor fees |
 | Intelligence services | COPE mapper, conflict resolution, PDF dossier, OpenAI web research | Service fees |
@@ -71,12 +71,11 @@ flowchart LR
 
 | Preset ID | Label | Best for |
 |-----------|-------|----------|
-| `publicly_available` | Publicly available | Free OSINT + government hazards + COPE mapper |
+| `publicly_available` | Publicly available | Public OSINT + government hazards + COPE mapper |
 | `cope_insurance` | COPE — insurance grade | ATTOM + protection GIS + PDF dossier; optional web search add-on |
 | `property_basics` | Property basics | RentCast + FEMA + USGS |
-| `vendor_comparison` | Vendor comparison | RentCast + Melissa + ATTOM side-by-side with conflict resolution |
 
-**Vendor comparison** is the recommended preset for testing multi-source COPE completeness with configured API keys.
+**Property dossier** (`cope_insurance`) is the recommended preset for testing licensed COPE completeness with configured API keys.
 
 ---
 

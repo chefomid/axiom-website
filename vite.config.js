@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
     target: 'es2022',
   },
   server: {
-    host: '127.0.0.1',
+    host: true,
     proxy: {
       '/api/nws': {
         target: 'https://api.weather.gov',

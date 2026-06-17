@@ -1,6 +1,6 @@
 # Property Intelligence
 
-À la carte **COPE underwriting** dossiers: free OSINT and government data first, escalate to **ATTOM** for carrier-credible property intelligence (CoreLogic/Cotality optional later).
+À la carte **COPE underwriting** dossiers: public OSINT and government data first, escalate to **ATTOM** for carrier-credible property intelligence (CoreLogic/Cotality optional later).
 
 ## Route
 
@@ -12,7 +12,7 @@
 |-------|------------|
 | UI | Property imagery (satellite + Street View) + source catalog + live receipt + COPE results |
 | API | FastAPI + source registry + COPE merger + quote/enrich pipeline |
-| Free | Census geocode, FEMA, USGS, NWS, OSM, hydrant/fire GIS, Crawl4AI |
+| Public | Census geocode, FEMA, USGS, NWS, OSM, hydrant/fire GIS, Crawl4AI |
 | Standard paid | RentCast, Regrid, Melissa |
 | Insurance-grade | ATTOM (CoreLogic/Cotality when enabled), First Street |
 | Intelligence | COPE mapper, conflict resolution, PDF dossier, optional AI web property research |
@@ -81,7 +81,7 @@ AI discovery requires `OPENAI_API_KEY` on the server. Users do not need to log i
 
 ## AI web property research (insurance-grade add-on)
 
-When **COPE (insurance-grade)** is selected and `OPENAI_API_KEY` is configured, an optional **Add web search** checkbox appears. It runs OpenAI web search during report generation to pull public assessor, permit, and listing facts into COPE fields — complementary to ATTOM and separate from free OSINT GIS adapters (hydrants, fire stations, OSM).
+When **COPE (insurance-grade)** is selected and `OPENAI_API_KEY` is configured, an optional **Add web search** checkbox appears. It runs OpenAI web search during report generation to pull public assessor, permit, and listing facts into COPE fields — complementary to ATTOM and separate from public OSINT GIS adapters (hydrants, fire stations, OSM).
 
 This is distinct from **Find with AI** (assessor/permit portal URL discovery for crawl sources). Web property research enriches COPE values directly and participates in conflict resolution when multiple sources disagree.
 
@@ -164,7 +164,7 @@ For internal demos, run `npm run dev:all` without `STRIPE_SECRET_KEY`. Enrichmen
 ### Demo checklist
 
 1. `npm run check:property-keys` — confirm RentCast, ATTOM, Melissa, OpenAI (optional: Google Maps in `.env.local`)
-2. Open `/property-intelligence` and pick **Vendor comparison** under *More packages*
+2. Open `/property-intelligence` and pick **Property dossier** (or **Publicly available** for a no-vendor-fee demo)
 3. Enter a full US address → confirm live quote → **Generate**
 4. Review report tabs: **COPE**, **Sources**, **Hazards**, **Conflicts** (and **Image** when image analysis is enabled)
 5. Click **Export COPE PDF** (requires Playwright/Chromium: `python -m playwright install chromium` in `services/property-api`)
@@ -174,12 +174,11 @@ For internal demos, run `npm run dev:all` without `STRIPE_SECRET_KEY`. Enrichmen
 
 | Preset | Best for |
 |--------|----------|
-| **Publicly available** | Free OSINT + government hazards + EPA ECHO + COPE mapper |
+| **Publicly available** | Public OSINT + government hazards + EPA ECHO + COPE mapper |
 | **COPE (insurance-grade)** | ATTOM property + hazard + protection GIS + PDF dossier; optional OpenAI web search add-on |
 | **Property basics** | RentCast + FEMA + USGS |
-| **Vendor comparison** | RentCast + Melissa + ATTOM side-by-side with conflict resolution |
 
-Vendor comparison is the recommended preset when testing multi-source COPE completeness with your current API keys.
+**Property dossier** is the recommended preset when testing licensed COPE completeness with configured API keys.
 
 ## Report results UI
 

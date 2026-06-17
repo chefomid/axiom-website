@@ -1,0 +1,11 @@
+{
+  "max_locations": 100,
+  "min_bulk_margin_multiplier": 1.75,
+  "volume_discount_tiers": [
+    { "min_count": 51, "rate": 0.2 },
+    { "min_count": 16, "rate": 0.15 },
+    { "min_count": 6, "rate": 0.1 },
+    { "min_count": 2, "rate": 0.05 },
+    { "min_count": 1, "rate": 0.0 }
+  ]
+}

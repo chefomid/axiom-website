@@ -34,6 +34,12 @@ export default function PropertyWorkflowHud({
 
   onPreviewScheduleLocation,
 
+  onFitAllScheduleOnMap,
+
+  selectedScheduleRowIndex = null,
+
+  scheduleMapReady = false,
+
   locationLocked,
 
   locationPhase,
@@ -84,8 +90,6 @@ export default function PropertyWorkflowHud({
 
   onSourceUrlsChange,
 
-  onPaymentRequired,
-
   billingEnabled = false,
 
   checkoutPreview = null,
@@ -126,13 +130,14 @@ export default function PropertyWorkflowHud({
 
   const sourceCount = selectedSources?.length ?? 0
 
-  const readyForGenerate = scheduleMode ? scheduleReady : locationLocked
+  const readyForGenerate = scheduleMode ? scheduleReady : locationLocked && Boolean(activePresetId)
 
   const showPricing = Boolean(
     activePresetId &&
+      selectedSources?.length &&
       (scheduleMode
-        ? scheduleRows.length > 0 && (loadingQuote || Boolean(batchQuote?.totals))
-        : locationLocked && (quoteSynced ? displayQuote : quote)?.totals),
+        ? scheduleRows.length > 0 && (loadingBatchQuote || Boolean(batchQuote?.totals))
+        : Boolean((quoteSynced ? displayQuote : quote)?.totals)),
   )
 
   const pricingQuote = scheduleMode ? { totals: batchQuote?.totals } : quoteSynced ? displayQuote : quote
@@ -230,7 +235,10 @@ export default function PropertyWorkflowHud({
 
 
 
-        <section className="side-panel-section shrink-0 border-b-0 pb-2" aria-label="Property location">
+        <section
+          className={`side-panel-section shrink-0 border-b-0 ${locationLocked && inputMode === 'single' ? 'pb-1' : 'pb-2'}`}
+          aria-label="Property location"
+        >
 
           <h2 className="side-panel-title">Property Input</h2>
 
@@ -286,13 +294,8 @@ export default function PropertyWorkflowHud({
 
 
 
-          <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
-            <div
-              className={
-                inputMode !== 'single' ? 'invisible pointer-events-none' : ''
-              }
-              aria-hidden={inputMode !== 'single'}
-            >
+          {inputMode === 'single' ? (
+            <div>
               {!locationLocked ? (
                 <p className="side-panel-copy mb-2">
                   Enter an address or use your location. The map unlocks once the property is locked.
@@ -315,13 +318,8 @@ export default function PropertyWorkflowHud({
                 compact
               />
             </div>
-
-            <div
-              className={
-                inputMode !== 'schedule' ? 'invisible pointer-events-none' : ''
-              }
-              aria-hidden={inputMode !== 'schedule'}
-            >
+          ) : (
+            <div>
               <p className="side-panel-copy mb-2">
                 Upload up to 100 locations, then choose a package to validate and price the schedule.
               </p>
@@ -332,9 +330,12 @@ export default function PropertyWorkflowHud({
                 loadingQuote={loadingQuote}
                 onOpenSchedule={onOpenSchedule}
                 onPreviewLocation={onPreviewScheduleLocation}
+                onFitAllOnMap={onFitAllScheduleOnMap}
+                selectedRowIndex={selectedScheduleRowIndex}
+                scheduleMapReady={scheduleMapReady}
               />
             </div>
-          </div>
+          )}
 
         </section>
 
@@ -425,10 +426,6 @@ export default function PropertyWorkflowHud({
               sourceUrls={sourceUrls}
 
               onSourceUrlsChange={onSourceUrlsChange}
-
-              onPaymentRequired={onPaymentRequired}
-
-              billingEnabled={billingEnabled}
 
               variant="sidebar"
 

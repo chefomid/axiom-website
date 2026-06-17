@@ -17,6 +17,14 @@ class CaptureSpec:
     fov: int = 85
 
 
+# Vertical pitch scans at the selected heading — negative pitch tilts up to reveal upper floors.
+FLOOR_SCAN_PITCHES: tuple[tuple[int, str, str], ...] = (
+    (-30, "floor_scan_up30", "Street View (pitch -30°, look up)"),
+    (-15, "floor_scan_up15", "Street View (pitch -15°, look up)"),
+    (10, "floor_scan_down10", "Street View (pitch +10°, look down)"),
+)
+
+
 @dataclass
 class OrientPlan:
     property_lat: float
@@ -100,3 +108,12 @@ def build_capture_plan(
         osm_levels=list(osm_levels or [])[:3],
         osm_building_count=osm_building_count,
     )
+
+
+def build_floor_scan_specs(heading: int) -> list[CaptureSpec]:
+    """Build upward/downward pitch captures at the selected facade heading for story counting."""
+    h = normalize_heading(heading)
+    return [
+        CaptureSpec(image_id=image_id, label=label, heading=h, pitch=pitch)
+        for pitch, image_id, label in FLOOR_SCAN_PITCHES
+    ]

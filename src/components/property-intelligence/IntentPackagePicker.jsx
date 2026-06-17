@@ -10,7 +10,7 @@ const PRIMARY_INTENTS = [
   {
     id: 'publicly_available',
     title: 'Publicly available',
-    description: 'Free public records, hazards, COPE map',
+    description: 'Public records, hazards, COPE map',
     accent:
       'border-panel-border bg-panel-surface/40 hover:border-[#333] hover:bg-panel-surface/60 active:scale-[0.99]',
     active: 'border-command-live/60 bg-command-live/12',
@@ -126,20 +126,15 @@ function PackageButton({ intent, selected, disabled, warning, onClick, stacked =
   )
 }
 
-const MORE_INTENT_IDS = ['property_basics', 'vendor_comparison']
+const MORE_INTENT_IDS = ['property_basics']
 
 const SECONDARY_INTENTS = {
   property_basics: {
+    tag: 'Licensed',
     accent:
       'border-panel-border bg-panel-surface/40 hover:border-[#333] hover:bg-panel-surface/60 active:scale-[0.99]',
     active: 'border-command-live/60 bg-command-live/12',
     selectedMark: 'border-command-live bg-command-live/20 text-command-live',
-  },
-  vendor_comparison: {
-    accent:
-      'border-panel-border bg-panel-surface/40 hover:border-[#333] hover:bg-panel-surface/60 active:scale-[0.99]',
-    active: 'border-command-watch/60 bg-command-watch/12',
-    selectedMark: 'border-command-watch bg-command-watch/20 text-command-watch',
   },
 }
 
@@ -182,7 +177,7 @@ function OptionalAddonRow({
           disabled={disabled}
           onChange={() => onToggle?.(id)}
         />
-        <span className="flex items-start gap-3">
+        <span className="flex items-center gap-3">
           <span
             className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
               selected
@@ -207,7 +202,7 @@ function OptionalAddonRow({
     >
       <input
         type="checkbox"
-        className="accent-command-watch"
+        className="shrink-0 self-center accent-command-watch"
         checked={selected}
         disabled={disabled}
         onChange={() => onToggle?.(id)}
@@ -316,9 +311,16 @@ export default function IntentPackagePicker({
         })}
       </ul>
 
+      {hasLocationInput ? (
+        <p className="font-mono text-[9px] leading-relaxed text-ink-faint">
+          Public API feeds are $0 at the vendor. Licensed APIs show pass-through premium on the
+          receipt. Aggregation service covers orchestration, compute, and hosting.
+        </p>
+      ) : null}
+
       {showAddons ? (
         <div className={stacked ? 'flex flex-col gap-2 border-t border-panel-border/60 pt-3' : 'space-y-2 border-t border-panel-border/60 pt-2'}>
-          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted">Add-ons</p>
+          <p className="side-panel-title mb-0">Add-ons</p>
           <OptionalAddonRow
             id={WEB_SEARCH_SOURCE_ID}
             label="Public records search"
@@ -334,7 +336,7 @@ export default function IntentPackagePicker({
           />
           <OptionalAddonRow
             id={VISION_SOURCE_ID}
-            label="Add image analysis"
+            label="Image analysis"
             description={
               hasLocationInput
                 ? 'AI estimates construction type and ISO class from satellite and Street View imagery.'

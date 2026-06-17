@@ -7,7 +7,7 @@ const EXAMPLE_ROWS = [
     notes: 'Main office',
   },
   {
-    address: '825 NE Multnomah St, Portland, OR 97232',
+    address: '456 Oak St, Portland, OR 97205',
     locationId: 'LOC-002',
     notes: '',
   },

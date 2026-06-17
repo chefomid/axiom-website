@@ -8,6 +8,7 @@ import {
   PRESET_OPTIONAL_ADDONS,
   presetSourceIds,
   quoteProperty,
+  estimateQuoteFromCatalog,
   sourcesMatchPreset,
 } from '../services/propertyApi'
 import { formatRateLimitMessage, isRateLimitError } from '../utils/apiErrors'
@@ -95,7 +96,6 @@ export default function usePropertyReport() {
         setCatalog(data)
         const saved = savedStateRef.current
         if (saved?.selectedSources?.length) setSelectedSources(saved.selectedSources)
-        else setSelectedSources(data.default_selected ?? [])
       })
       .catch(() => {
         if (!cancelled) setError('Could not load source catalog')
@@ -120,16 +120,27 @@ export default function usePropertyReport() {
     })
   }, [selectedSources, quote, record, error, presetNotice, activePresetId])
 
-  const toggleSource = useCallback(sourceId => {
-    setSelectedSources(prev =>
-      prev.includes(sourceId) ? prev.filter(id => id !== sourceId) : [...prev, sourceId],
-    )
-    if (!PRESET_OPTIONAL_ADDONS.includes(sourceId)) {
-      setActivePresetId(null)
-    }
-    setRecord(null)
-    setQuote(prev => resetQuoteToEstimate(prev))
-  }, [])
+  const toggleSource = useCallback(
+    sourceId => {
+      setSelectedSources(prev => {
+        const next = prev.includes(sourceId)
+          ? prev.filter(id => id !== sourceId)
+          : [...prev, sourceId]
+        if (catalog?.sources?.length && next.length) {
+          setQuote(estimateQuoteFromCatalog(catalog, next))
+        } else {
+          setQuote(null)
+        }
+        return next
+      })
+      if (!PRESET_OPTIONAL_ADDONS.includes(sourceId)) {
+        setActivePresetId(null)
+      }
+      setRecord(null)
+      setQuoteError(null)
+    },
+    [catalog],
+  )
 
   const applyPreset = useCallback(
     presetId => {
@@ -138,11 +149,13 @@ export default function usePropertyReport() {
       if (!ids.length) return
       setSelectedSources(prev => {
         const keptAddons = prev.filter(id => PRESET_OPTIONAL_ADDONS.includes(id))
-        return [...ids, ...keptAddons.filter(id => !ids.includes(id))]
+        const next = [...ids, ...keptAddons.filter(id => !ids.includes(id))]
+        setQuote(estimateQuoteFromCatalog(catalog, next))
+        return next
       })
       setActivePresetId(presetId)
       setRecord(null)
-      setQuote(prev => resetQuoteToEstimate(prev))
+      setQuoteError(null)
       setPresetNotice(buildPresetApplyNotice(catalog, preset, ids))
     },
     [catalog],
@@ -168,12 +181,11 @@ export default function usePropertyReport() {
         })
         .catch(err => {
           if (requestId !== quoteRequestSeq.current) return
-          setQuote(null)
           if (isRateLimitError(err)) {
             const { title, safetyNote } = formatRateLimitMessage(err.rateLimit)
             setQuoteError(safetyNote ? `${title}\n${safetyNote}` : title)
           } else {
-            setQuoteError(err?.message ?? 'Could not calculate estimate')
+            setQuoteError(err?.message ?? 'Could not refresh estimate')
           }
         })
         .finally(() => {
@@ -194,17 +206,16 @@ export default function usePropertyReport() {
       skipNextScheduleRef.current = true
       setSelectedSources(nextSources)
       setRecord(null)
-      setQuote(prev => resetQuoteToEstimate(prev))
+      setQuote(estimateQuoteFromCatalog(catalog, nextSources, trimmed))
+      setQuoteError(null)
 
       if (trimmed.length >= 3 && nextSources.length > 0) {
         refreshQuote(trimmed, nextSources)
       } else {
-        setQuote(null)
-        setQuoteError(null)
         setLoadingQuote(false)
       }
     },
-    [selectedSources, refreshQuote],
+    [selectedSources, refreshQuote, catalog],
   )
 
   const scheduleQuote = useCallback(
@@ -278,7 +289,7 @@ export default function usePropertyReport() {
     setQuoteError(null)
     setError(null)
     setActivePresetId(null)
-    if (catalog?.default_selected) setSelectedSources(catalog.default_selected)
+    setSelectedSources([])
   }, [catalog])
 
   const resolvedPresetId =

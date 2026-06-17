@@ -18,7 +18,7 @@ from adapters.services.vision_schema import (
 )
 from agents.property_inspector.analyze import analyze_facade
 from agents.property_inspector.digest import render_inspection_digest
-from agents.property_inspector.orient import build_capture_plan
+from agents.property_inspector.orient import build_capture_plan, build_floor_scan_specs
 from agents.property_inspector.select_view import select_best_view
 from agents.property_inspector.tools.satellite import fetch_satellite_image
 from agents.property_inspector.tools.streetview import (
@@ -297,6 +297,45 @@ async def run_property_inspector(ctx: SourceContext, client: httpx.AsyncClient) 
         "pitch": selected.pitch if selected else 0,
     }
 
+    # Phase 2b — vertical pitch scans at selected heading for floor counting
+    floor_scan_images: list[InspectorImage] = []
+    scan_heading = selected.heading if selected and selected.heading is not None else plan.bearing_deg
+    if gkey and street_metadata and street_metadata.status == "OK" and scan_heading is not None:
+        t_scan = time.monotonic()
+        for spec in build_floor_scan_specs(scan_heading):
+            if spec.image_id in images_by_id:
+                continue
+            img = await fetch_street_view_image(
+                client,
+                lat=property_lat,
+                lng=property_lng,
+                api_key=gkey,
+                image_id=spec.image_id,
+                label=spec.label,
+                heading=spec.heading,
+                pitch=spec.pitch,
+                fov=spec.fov,
+            )
+            if img:
+                floor_scan_images.append(img)
+                images_by_id[img.image_id] = img
+                agent_trace["captures"].append(
+                    {"image_id": img.image_id, "heading": img.heading, "pitch": img.pitch}
+                )
+        if floor_scan_images:
+            agent_trace["phases"].append(
+                {
+                    "name": "floor_scan",
+                    "latency_ms": int((time.monotonic() - t_scan) * 1000),
+                    "detail": (
+                        f"Captured {len(floor_scan_images)} vertical pitch view(s) "
+                        f"at heading {scan_heading}°"
+                    ),
+                }
+            )
+
+    all_street_images = street_images + floor_scan_images
+
     # Phase 3 — analyze (skip deep analysis if satellite-only without street confirmation)
     vision: dict[str, Any] = {
         "summary": "Satellite-only context — limited construction cues.",
@@ -314,6 +353,7 @@ async def run_property_inspector(ctx: SourceContext, client: httpx.AsyncClient) 
                 lat=property_lat,
                 lng=property_lng,
                 selected=selected,
+                floor_scan_images=floor_scan_images,
                 satellite=satellite,
                 prior_note=prior_note,
                 subject_description=selection.get("subject_description"),
@@ -350,6 +390,7 @@ async def run_property_inspector(ctx: SourceContext, client: httpx.AsyncClient) 
                 lat=property_lat,
                 lng=property_lng,
                 selected=satellite,
+                floor_scan_images=[],
                 satellite=None,
                 prior_note=prior_note,
                 subject_description="building footprint at pin (satellite only)",
@@ -395,7 +436,7 @@ async def run_property_inspector(ctx: SourceContext, client: httpx.AsyncClient) 
                 selection=selection,
             ),
             images_by_id=images_by_id,
-            street_images=street_images,
+            street_images=all_street_images,
             selected_image_id=selected_id,
         )
         return SourceRunResult(
@@ -455,7 +496,7 @@ async def run_property_inspector(ctx: SourceContext, client: httpx.AsyncClient) 
             "subject_description": selection.get("subject_description"),
         },
         images_by_id=images_by_id,
-        street_images=street_images,
+        street_images=all_street_images,
         selected_image_id=selected_id,
     )
 

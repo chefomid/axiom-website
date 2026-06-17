@@ -4,7 +4,7 @@ import SourceCatalog from './SourceCatalog'
 
 const FILTERS = [
   { id: 'all', label: 'All' },
-  { id: 'free', label: 'Free' },
+  { id: 'public', label: 'Public' },
   { id: 'licensed', label: 'Licensed' },
 ]
 
@@ -30,7 +30,7 @@ export default function SourceCatalogPanel({
     const base = { ...catalog, sources: withoutPackageAddons }
     if (filter === 'all') return base
     const sources = withoutPackageAddons.filter(src => {
-      if (filter === 'free') return !src.requires_api_key && src.tier !== 'insurance'
+      if (filter === 'public') return !src.requires_api_key && src.tier !== 'insurance'
       if (filter === 'licensed') return src.requires_api_key || src.tier === 'insurance'
       return true
     })
@@ -49,7 +49,7 @@ export default function SourceCatalogPanel({
       <div className="shrink-0 border-b border-panel-border/70 bg-panel-surface/30 px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Data sources</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Vendor API</p>
             <p className="mt-0.5 font-mono text-[10px] text-ink-secondary">
               {count} active{presetLabel ? ` · ${presetLabel}` : ''}
             </p>

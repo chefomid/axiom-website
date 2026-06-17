@@ -46,12 +46,33 @@ Anonymous users buy **credit packs** via Stripe Checkout (Apple Pay / Google Pay
 
 6. In the UI: open Property Intelligence → **Credits** in the header → buy a test pack → return with `?billing=success`.
 
+### QR / phone checkout (desktop → scan on phone)
+
+When you pay via QR on your phone while developing locally, two extra steps are required:
+
+1. **`stripe listen` must be running** — without it, the desktop never receives payment confirmation and stays on "Waiting for payment…". The API also polls Stripe session status as a fallback, but webhooks are still recommended.
+
+2. **Use your PC's LAN IP for `FRONTEND_URL`** — the default `http://127.0.0.1:5173` is unreachable from your phone after Apple Pay. Find your IPv4 address (`ipconfig` on Windows) and set:
+
+   ```env
+   FRONTEND_URL=http://192.168.x.x:5173
+   ```
+
+   Vite is configured to listen on all interfaces (`host: true`), so your phone can load the success page on the same Wi‑Fi network.
+
+3. **Replay a missed webhook** if you paid before `stripe listen` was running:
+
+   ```powershell
+   stripe events list --limit 5
+   stripe events resend evt_...   # checkout.session.completed for your payment
+   ```
+
 ## Apple Pay on desktop (embedded checkout)
 
 On desktop, checkout opens an embedded Stripe form with **Pay here** (default) and **Pay on phone** (QR) tabs.
 
 - **Pay here** — Apple Pay, Google Pay, or card in the modal. On Chrome/Windows, Apple Pay shows an iOS 18+ **Scan with iPhone** code when the customer taps Apple Pay.
-- **Pay on phone** — QR code opens hosted Stripe Checkout on the phone (same as before).
+- **Pay on phone** — QR code opens an AXIOM checkout page on your phone with **Apple Pay** as the primary option (not the generic Stripe website). Falls back to Stripe hosted checkout if embedded mode is unavailable.
 
 One-time Stripe Dashboard setup:
 
@@ -128,6 +149,8 @@ The repo already deploys [`services/property-api`](../services/property-api) via
 |--------|------|
 | GET | `/billing/packs` |
 | GET | `/billing/balance?anon_id=...` |
+| GET | `/billing/checkout-status?session_id=...&anon_id=...` |
+| GET | `/billing/checkout-embed?session_id=...&anon_id=...` |
 | GET | `/billing/checkout-preview?anon_id=&purpose=&address=&selected_sources=` |
 | POST | `/billing/checkout` — body `{ anon_id, pack_id, embedded? }` |
 | POST | `/billing/checkout-quote` — body `{ anon_id, purpose, address, selected_sources, confirmed_price_usd?, embedded? }` |

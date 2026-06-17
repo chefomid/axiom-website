@@ -157,7 +157,7 @@ export default function PropertyIntelligenceOverview({ comingSoon = true }) {
                 </h2>
               </div>
               <p className="max-w-sm text-sm leading-relaxed text-ink-faint">
-                Start with free government hazard data, then add licensed property APIs as needed.
+                Start with public government hazard data, then add licensed property APIs as needed.
               </p>
             </div>
 

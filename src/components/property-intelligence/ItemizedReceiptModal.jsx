@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatUsd } from '../../services/propertyApi'
+import { receiptAmountClass } from './workflowReceiptUtils'
 
 function ReceiptRow({ row }) {
   if (row.kind === 'section') {
@@ -10,17 +11,18 @@ function ReceiptRow({ row }) {
     )
   }
 
-  const amountClass =
-    row.kind === 'discount'
-      ? 'text-command-stable'
-      : row.kind === 'adjustment'
-        ? 'text-ink-secondary'
-        : 'text-ink-secondary'
+  if (row.amount == null) {
+    return (
+      <li className="py-1.5">
+        <span className="font-mono text-[10px] leading-snug text-ink-secondary">{row.label}</span>
+      </li>
+    )
+  }
 
   return (
     <li className="flex items-start justify-between gap-3 py-1.5">
       <span className="min-w-0 flex-1 font-mono text-[10px] leading-snug text-ink-secondary">{row.label}</span>
-      <span className={`shrink-0 font-mono text-[10px] tabular-nums ${amountClass}`}>
+      <span className={`shrink-0 font-mono text-[10px] tabular-nums ${receiptAmountClass(row.amount)}`}>
         {row.amount < 0 ? `-${formatUsd(Math.abs(row.amount))}` : formatUsd(row.amount)}
       </span>
     </li>
@@ -78,7 +80,9 @@ export default function ItemizedReceiptModal({ open, onClose, receipt, loading }
                             className="flex items-start justify-between gap-2 font-mono text-[9px] text-ink-faint"
                           >
                             <span className="min-w-0 truncate">{row.label}</span>
-                            <span className="shrink-0 tabular-nums">{formatUsd(row.amount)}</span>
+                            <span className={`shrink-0 tabular-nums ${receiptAmountClass(row.amount)}`}>
+                              {formatUsd(row.amount)}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -89,7 +93,7 @@ export default function ItemizedReceiptModal({ open, onClose, receipt, loading }
                     <span className="font-mono text-[10px] uppercase tracking-wider text-white">
                       {receipt.totalLabel}
                     </span>
-                    <span className="font-display text-lg tabular-nums text-white">
+                    <span className={`font-display text-lg tabular-nums ${receiptAmountClass(receipt.totalUsd)}`}>
                       {formatUsd(receipt.totalUsd)}
                     </span>
                   </div>

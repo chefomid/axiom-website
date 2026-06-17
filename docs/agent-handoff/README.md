@@ -22,7 +22,7 @@ npm run dev:all
 **Smoke test:**
 
 1. Open `/public-data-command` — confirm hazard feeds load on the map.
-2. Open `/property-intelligence` — enter a US address, pick **Vendor comparison**, **Generate**.
+2. Open `/property-intelligence` — enter a US address, pick **Property dossier**, **Generate**.
 3. Run `npm run check:property-keys` — confirm vendor keys are configured.
 
 Property Intelligence is **always enabled in local dev**. Production requires `VITE_PROPERTY_INTELLIGENCE_ENABLED=true` on Vercel.

@@ -9,12 +9,9 @@ from typing import Any
 import httpx
 
 from llm.openai_client import format_openai_http_error, openai_api_key, responses_with_web_search
-from registry_loader import get_margin_multiplier, get_minimum_charge, get_source_by_id
+from registry_loader import get_margin_multiplier, get_source_by_id
 from source_discovery.cache import get_discovery, set_discovery
 from source_discovery.url_validate import validate_public_https_url, verify_url_reachable
-
-DISCOVER_API_COST_USD = 0.03
-DISCOVER_SERVICE_COST_USD = 0.07
 
 SOURCE_LABELS: dict[str, str] = {
     "assessor_crawl": "County assessor page",
@@ -62,20 +59,13 @@ def _humanize_discovery_issue(source_id: str, detail: str) -> str:
 
 
 def discovery_receipt() -> dict[str, float]:
-    api_cost = DISCOVER_API_COST_USD
-    service_cost = DISCOVER_SERVICE_COST_USD
-    loaded = api_cost + service_cost
-    multiplier = get_margin_multiplier()
-    user_price = round(loaded * multiplier, 2)
-    min_charge = get_minimum_charge()
-    if api_cost > 0 and user_price < min_charge:
-        user_price = min_charge
+    """Preview discovery is complimentary; OpenAI cost is covered in report aggregation."""
     return {
-        "api_cost_usd": round(api_cost, 2),
-        "service_cost_usd": round(service_cost, 2),
-        "loaded_cost_usd": round(loaded, 2),
-        "margin_multiplier": multiplier,
-        "user_price_usd": user_price,
+        "api_cost_usd": 0.0,
+        "service_cost_usd": 0.0,
+        "loaded_cost_usd": 0.0,
+        "margin_multiplier": get_margin_multiplier(),
+        "user_price_usd": 0.0,
     }
 
 

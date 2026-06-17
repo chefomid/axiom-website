@@ -65,7 +65,7 @@ def unknown_field_note(field_id: str, *, sources_seen: set[str]) -> str:
                 "Hazard sources did not return this metric for this location — "
                 "check FEMA/USGS/ATTOM hazard status in the receipt."
             )
-        return "Run FEMA NFHL, USGS, NWS, or ATTOM hazard (included in COPE Insurance preset)."
+        return "Run FEMA NFHL, USGS, NWS, or ATTOM hazard (included in the COPE licensed vendor preset)."
 
     if field_id in PROTECTION_FIELD_IDS:
         return (
@@ -81,7 +81,7 @@ def unknown_field_note(field_id: str, *, sources_seen: set[str]) -> str:
     if has_attom:
         return "Not in the ATTOM property record for this address — try assessor crawl or CoreLogic."
 
-    return "Add ATTOM, assessor crawl, or CoreLogic for carrier-grade certainty."
+    return "Add ATTOM, assessor crawl, or CoreLogic for sourced values from licensed vendors."
 
 
 FIELD_ALIASES: dict[str, str] = {

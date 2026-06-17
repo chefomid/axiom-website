@@ -9,6 +9,10 @@ def stripe_secret_key() -> str:
     return os.environ.get("STRIPE_SECRET_KEY", "").strip()
 
 
+def stripe_publishable_key() -> str:
+    return os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip()
+
+
 def stripe_webhook_secret() -> str:
     return os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
 
@@ -32,6 +36,7 @@ def billing_status() -> dict:
     return {
         "enabled": billing_enabled(),
         "stripe_configured": bool(stripe_secret_key()),
+        "stripe_publishable_configured": bool(stripe_publishable_key()),
         "webhook_configured": bool(stripe_webhook_secret()),
         "database_url_set": bool(database_url()),
         "database_ready": billing_db.is_ready(),

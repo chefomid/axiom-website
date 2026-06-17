@@ -6,8 +6,9 @@ import os
 from typing import Any
 
 from registry_loader import (
+    get_infra_breakeven_usd,
     get_margin_multiplier,
-    get_minimum_charge,
+    get_platform_margin_usd,
     get_source_by_id,
     resolve_selected_sources,
     source_available_for_location,
@@ -42,6 +43,10 @@ def build_line_items(
         service_cost = float(src.get("service_cost_usd", 0))
         loaded = api_cost + service_cost
         billable = available and key_ok
+        if billable and api_cost > 0:
+            line_user_price = _round_usd(api_cost * multiplier)
+        else:
+            line_user_price = 0.0
         items.append(
             {
                 "source_id": source_id,
@@ -57,7 +62,7 @@ def build_line_items(
                 "api_cost_usd": api_cost,
                 "service_cost_usd": service_cost,
                 "loaded_cost_usd": _round_usd(loaded),
-                "user_price_usd": _round_usd(loaded * multiplier) if billable and loaded > 0 else 0.0,
+                "user_price_usd": line_user_price,
                 "billable": billable,
                 "enabled": True,
                 "selectable": bool(src.get("selectable", True)),
@@ -76,23 +81,27 @@ def _billable(item: dict[str, Any]) -> bool:
 
 
 def compute_totals(line_items: list[dict[str, Any]]) -> dict[str, float]:
-    api_cost = sum(i["api_cost_usd"] for i in line_items if _billable(i))
-    service_cost = sum(i["service_cost_usd"] for i in line_items if _billable(i))
+    billable_items = [i for i in line_items if _billable(i)]
+    api_cost = sum(i["api_cost_usd"] for i in billable_items)
+    service_cost = sum(i["service_cost_usd"] for i in billable_items)
     loaded = api_cost + service_cost
     multiplier = get_margin_multiplier()
-    user_price = _round_usd(loaded * multiplier)
-    min_charge = get_minimum_charge()
-    minimum_charge_applied = False
-    if api_cost > 0 and user_price < min_charge:
-        user_price = min_charge
-        minimum_charge_applied = True
+    infra = get_infra_breakeven_usd()
+    platform_margin = get_platform_margin_usd()
+    breakeven = _round_usd(infra + service_cost)
+    platform_service_fee = _round_usd(breakeven + platform_margin)
+    vendor_charges = _round_usd(api_cost * multiplier)
+    user_price = _round_usd(platform_service_fee + vendor_charges)
     return {
         "api_cost_usd": _round_usd(api_cost),
         "service_cost_usd": _round_usd(service_cost),
         "loaded_cost_usd": _round_usd(loaded),
+        "infra_breakeven_usd": infra,
+        "breakeven_usd": breakeven,
+        "platform_margin_usd": platform_margin,
+        "platform_service_fee_usd": platform_service_fee,
+        "vendor_charges_usd": vendor_charges,
         "margin_multiplier": multiplier,
-        "minimum_charge_usd": min_charge,
-        "minimum_charge_applied": minimum_charge_applied,
         "user_price_usd": user_price,
     }
 
@@ -165,7 +174,7 @@ def warnings_for_selection(selected_sources: list[str]) -> list[str]:
         )
     if "cope_map" in selected_sources and not configured_property:
         warnings.append(
-            "COPE snapshot will have gaps — add ATTOM for carrier-grade Construction & Occupancy."
+            "COPE snapshot will have gaps — add ATTOM for detailed Construction & Occupancy from licensed sources."
         )
     if "sov_orchestrator" in selected_sources and len(configured_property) < 2:
         warnings.append(
@@ -175,8 +184,8 @@ def warnings_for_selection(selected_sources: list[str]) -> list[str]:
         warnings.append("ATTOM hazard is typically paired with ATTOM property detail.")
     if selected_insurance and not insurance_configured:
         warnings.append(
-            "ATTOM is not configured on this server — insurance-grade sources will be skipped. "
-            "Add ATTOM_API_KEY to services/property-api/.env or use the free COPE preset."
+            "ATTOM is not configured on this server — licensed data sources will be skipped. "
+            "Add ATTOM_API_KEY to services/property-api/.env or use the public data preset."
         )
     else:
         for sid in selected_sources:

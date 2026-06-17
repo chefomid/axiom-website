@@ -41,7 +41,7 @@ Copy env templates if not present:
 - `.env.example` → `.env.local` (repo root)
 - `services/property-api/.env.example` → `services/property-api/.env`
 
-Add at minimum: `RENTCAST_API_KEY`, `ATTOM_API_KEY`, `MELISSA_LICENSE_KEY` (for Vendor comparison demo).
+Add at minimum: `RENTCAST_API_KEY`, `ATTOM_API_KEY`, `MELISSA_LICENSE_KEY` (for Property dossier demo).
 
 ---
 
@@ -81,7 +81,7 @@ If feeds fail: check browser console; dev proxies require network access.
 2. Dismiss intro modal if shown
 3. Enter a full US address (e.g. `123 Main St, Portland, OR 97201`)
 4. Lock map view (required before generate)
-5. Under *More packages*, select **Vendor comparison**
+5. Select **Property dossier** (or **Publicly available** for public-data-only)
 6. Confirm live receipt shows line items and total
 7. Click **Generate**
 8. When complete, review tabs:
@@ -122,7 +122,7 @@ If API offline: ensure `npm run dev:all` is running, not `npm run dev` alone.
 | Run everything | `npm run dev:all` |
 | Check API keys | `npm run check:property-keys` |
 | Billing smoke test | `npm run smoke:billing` |
-| PI demo preset | Vendor comparison |
+| PI demo preset | Property dossier |
 | Primary PI hook | `src/hooks/usePropertyReport.js` |
 | Enrich endpoint | `POST /enrich` in `services/property-api/main.py` |
 | Add data source | See [04-backend-architecture.md](./04-backend-architecture.md) |

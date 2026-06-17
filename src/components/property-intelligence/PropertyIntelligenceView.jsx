@@ -5,7 +5,7 @@ import { SEISMIC_COUNTRY_BBOX } from '../../data/commandMapData'
 
 import { resolveUsLocationFromCoords, inBbox } from '../../services/geocode'
 import { normalizeLatLng, normalizeSuggestion } from '../../utils/coords'
-import { sourcesNeedingUrlIds, fetchBillingPacks, fetchCheckoutPreview, fetchBatchCheckoutPreview, startQuoteCheckout, sourcesMatchQuote, formatUsd, isPaymentRequiredError } from '../../services/propertyApi'
+import { sourcesNeedingUrlIds, fetchBillingPacks, fetchCheckoutPreview, fetchBatchCheckoutPreview, startQuoteCheckout, sourcesMatchQuote, isPaymentRequiredError } from '../../services/propertyApi'
 import { loadBillingResume, clearBillingResume } from '../../utils/billingResume'
 import { adoptAnonIdFromSearchParams } from '../../utils/anonId'
 
@@ -57,6 +57,8 @@ export default function PropertyIntelligenceView() {
   const [inputMode, setInputMode] = useState('single')
   const [scheduleRows, setScheduleRows] = useState([])
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [scheduleFocusRowIndex, setScheduleFocusRowIndex] = useState(null)
+  const [scheduleFitAllSignal, setScheduleFitAllSignal] = useState(0)
 
   const {
     batchQuote,
@@ -134,12 +136,6 @@ export default function PropertyIntelligenceView() {
   } = usePropertyReport()
 
 
-
-  useEffect(() => {
-    if (scheduleMode) return
-    const quoteAddress = addressDraft.trim() || address.trim()
-    scheduleQuote(quoteAddress, selectedSources)
-  }, [scheduleMode, addressDraft, address, selectedSources, scheduleQuote])
 
   const handleToggleOptionalSource = useCallback(
     sourceId => {
@@ -256,13 +252,6 @@ export default function PropertyIntelligenceView() {
     }
   }, [apiOnline])
 
-  const paymentNotice =
-    billingEnabled && checkoutPreview && !checkoutPreview.sufficient
-      ? `Scan with your phone or continue on this computer to pay ${formatUsd(checkoutPreview.charge_usd)}.`
-      : billingEnabled
-        ? 'Add credits below the title, then try again.'
-        : 'Dry run, wallet billing not configured on the server.'
-
   const activeAddress = addressDraft.trim() || address.trim()
 
   const markAddressComposing = useCallback(() => {
@@ -338,6 +327,8 @@ export default function PropertyIntelligenceView() {
     setInputMode('single')
     setScheduleRows([])
     setScheduleModalOpen(false)
+    setScheduleFocusRowIndex(null)
+    setScheduleFitAllSignal(0)
 
   }, [clear, clearAddressComposing, clearBatch])
 
@@ -592,7 +583,7 @@ export default function PropertyIntelligenceView() {
     }
 
     const runAddress = activeAddress
-    if (!runAddress || !quote?.totals) return
+    if (!runAddress || !activePresetId || !quote?.totals) return
 
     if (billingEnabled) {
       const preview = checkoutPreview ?? (await resolveCheckoutPreview())
@@ -622,6 +613,7 @@ export default function PropertyIntelligenceView() {
     startBatchCheckout,
     runBatch,
     activeAddress,
+    activePresetId,
     quote,
     startEnrichCheckout,
     runReport,
@@ -642,21 +634,59 @@ export default function PropertyIntelligenceView() {
         clearBatch()
         setScheduleRows([])
         setScheduleModalOpen(false)
+        setScheduleFocusRowIndex(null)
+        setScheduleFitAllSignal(0)
       } else {
         clearReport()
         setReportPanelOpen(false)
+        setScheduleFocusRowIndex(null)
+        if (!scheduleRows.length) {
+          setScheduleModalOpen(true)
+        }
       }
     },
-    [clearBatch, clearReport],
+    [clearBatch, clearReport, scheduleRows.length],
   )
 
   const handleScheduleRowsChange = useCallback(
     rows => {
       setScheduleRows(rows)
       setBatchQuote(null)
+      setScheduleFocusRowIndex(null)
+      setScheduleFitAllSignal(0)
+      if (rows.length) {
+        setScheduleModalOpen(false)
+      }
     },
     [setBatchQuote],
   )
+
+  const scheduleMapLocations = useMemo(() => {
+    if (!scheduleMode || !batchQuote?.locations?.length) return null
+    return batchQuote.locations
+      .filter(loc => loc.status === 'valid' && loc.lat != null && loc.lng != null)
+      .map(loc => ({
+        row_index: loc.row_index,
+        lat: loc.lat,
+        lng: loc.lng,
+        label: loc.display_name ?? loc.address_input,
+        address_input: loc.address_input,
+        status: loc.status,
+      }))
+  }, [scheduleMode, batchQuote])
+
+  const scheduleMapStats = useMemo(() => {
+    const locations = batchQuote?.locations ?? []
+    return {
+      valid: locations.filter(loc => loc.status === 'valid').length,
+      invalid: locations.filter(loc => loc.status === 'invalid').length,
+    }
+  }, [batchQuote])
+
+  const triggerScheduleFitAll = useCallback(() => {
+    setScheduleFocusRowIndex(null)
+    setScheduleFitAllSignal(signal => signal + 1)
+  }, [])
 
   useEffect(() => {
     if (!scheduleMode || !activePresetId) return undefined
@@ -669,15 +699,12 @@ export default function PropertyIntelligenceView() {
       try {
         const data = await requestBatchQuote(addresses, selectedSources)
         if (cancelled) return
-        const firstValid = data.locations?.find(loc => loc.status === 'valid' && loc.lat && loc.lng)
-        if (firstValid) {
-          setMapView({
-            lat: firstValid.lat,
-            lng: firstValid.lng,
-            label: firstValid.display_name ?? firstValid.address_input,
-            immediate: true,
-            locked: false,
-          })
+        const plotted = data.locations?.filter(
+          loc => loc.status === 'valid' && loc.lat != null && loc.lng != null,
+        )
+        if (plotted?.length) {
+          setScheduleFocusRowIndex(null)
+          setScheduleFitAllSignal(signal => signal + 1)
         }
       } catch {
         /* surfaced in hook */
@@ -699,14 +726,16 @@ export default function PropertyIntelligenceView() {
 
   const handlePreviewScheduleLocation = useCallback(loc => {
     if (!loc?.lat || !loc?.lng) return
-    setMapView({
-      lat: loc.lat,
-      lng: loc.lng,
-      label: loc.display_name ?? loc.address_input,
-      immediate: true,
-      locked: false,
-    })
+    setScheduleFocusRowIndex(loc.row_index ?? null)
   }, [])
+
+  const handleScheduleMapLocationSelect = useCallback(loc => {
+    handlePreviewScheduleLocation(loc)
+  }, [handlePreviewScheduleLocation])
+
+  const handleScheduleFitAll = useCallback(() => {
+    triggerScheduleFitAll()
+  }, [triggerScheduleFitAll])
 
   const recordCoords = normalizeLatLng(record)
   const mapViewCoords = normalizeLatLng(mapView)
@@ -727,17 +756,18 @@ export default function PropertyIntelligenceView() {
   )
 
   useEffect(() => {
-    if (!locationLocked || !activeAddress || !selectedSources.length || loadingQuote) return
-    if (quote?.totals && sourcesMatchQuote(selectedSources, quote.selected_sources, catalog)) return
-    refreshQuote(activeAddress, selectedSources)
+    if (scheduleMode || !activePresetId || !locationLocked) return
+    const quoteAddress = addressDraft.trim() || address.trim()
+    if (quoteAddress.length < 3 || !selectedSources.length) return
+    scheduleQuote(quoteAddress, selectedSources)
   }, [
+    scheduleMode,
+    activePresetId,
     locationLocked,
-    activeAddress,
+    addressDraft,
+    address,
     selectedSources,
-    loadingQuote,
-    quote,
-    catalog,
-    refreshQuote,
+    scheduleQuote,
   ])
 
   const locationPhase = useMemo(() => {
@@ -788,6 +818,7 @@ export default function PropertyIntelligenceView() {
       return null
     }
     if (!activeAddress) return 'Add a property address to generate.'
+    if (!activePresetId) return 'Choose a package to continue.'
     if (selectedSources.length === 0) return 'Choose a package or at least one source.'
     if (!locationLocked) return 'Pick an address from suggestions or press Enter to lock the map.'
     if (loadingQuote) return null
@@ -947,6 +978,9 @@ export default function PropertyIntelligenceView() {
           batchQuote={batchQuote}
           onOpenSchedule={() => setScheduleModalOpen(true)}
           onPreviewScheduleLocation={handlePreviewScheduleLocation}
+          onFitAllScheduleOnMap={triggerScheduleFitAll}
+          selectedScheduleRowIndex={scheduleFocusRowIndex}
+          scheduleMapReady={Boolean(scheduleMapLocations?.length)}
           locationLocked={locationLocked}
           locationPhase={locationPhase}
           address={addressDraft}
@@ -964,7 +998,7 @@ export default function PropertyIntelligenceView() {
           activePresetId={activePresetId}
           selectedSources={selectedSources}
           quote={quote}
-          loadingQuote={scheduleMode ? loadingBatchQuote : loadingQuote || (!quoteSynced && Boolean(displayQuote))}
+          loadingQuote={scheduleMode ? loadingBatchQuote : loadingQuote}
           onToggleSource={handleToggleOptionalSource}
           onApply={applyPreset}
           disabled={loadingReport || loadingCatalog || loadingBatchRun}
@@ -972,7 +1006,6 @@ export default function PropertyIntelligenceView() {
           requiredUrlIds={requiredUrlIds}
           sourceUrls={sourceUrls}
           onSourceUrlsChange={setSourceUrls}
-          onPaymentRequired={() => setBillingNotice(paymentNotice)}
           onGenerate={handleGenerate}
           billingEnabled={billingEnabled}
           checkoutPreview={activeCheckoutPreview}
@@ -1008,7 +1041,29 @@ export default function PropertyIntelligenceView() {
             locationLocked={Boolean(mapCoords) && (locationLocked || scheduleMode)}
             locationPhase={mapCoords ? (scheduleMode || locationLocked ? 'locked' : locationPhase) : locationPhase}
             onMapReady={setMapInstance}
+            scheduleLocations={scheduleMapLocations}
+            scheduleFocusRowIndex={scheduleFocusRowIndex}
+            scheduleFitAllSignal={scheduleFitAllSignal}
+            scheduleValidCount={scheduleMapStats.valid}
+            scheduleInvalidCount={scheduleMapStats.invalid}
+            onScheduleLocationSelect={handleScheduleMapLocationSelect}
+            onScheduleFitAll={handleScheduleFitAll}
           />
+
+          {scheduleMode && scheduleRows.length > 0 && !scheduleMapLocations?.length ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-4">
+              <div className="max-w-md rounded-lg border border-panel-border/90 bg-black/85 px-4 py-3 text-center shadow-lg backdrop-blur-sm">
+                <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted">
+                  {loadingBatchQuote ? 'Validating schedule' : 'Schedule queued'}
+                </p>
+                <p className="mt-1 font-mono text-[11px] leading-relaxed text-white">
+                  {loadingBatchQuote
+                    ? `Plotting ${scheduleRows.length} location${scheduleRows.length === 1 ? '' : 's'} on the map…`
+                    : `${scheduleRows.length} location${scheduleRows.length === 1 ? '' : 's'} ready — choose a package to validate and plot on the map.`}
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {showReportPanel ? (
@@ -1031,6 +1086,7 @@ export default function PropertyIntelligenceView() {
                   setReportPanelOpen(false)
                   setReportExpanded(false)
                 }}
+                onPreviewLocation={handlePreviewScheduleLocation}
               />
             ) : (
               <ReportResultsPanel
