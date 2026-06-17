@@ -36,10 +36,10 @@ export default function PremiumSourceCallout({
         </li>
       </ul>
 
-      {!keysConfigured ? (
+      {!keysConfigured && import.meta.env.DEV ? (
         <p className="mt-3 font-mono text-[9px] leading-relaxed text-command-watch">
-          ATTOM_API_KEY not configured, preset will run public hazard feeds and COPE until the key is added
-          to the server.
+          Licensed vendor keys are not configured on this dev server — the preset will use public hazard
+          feeds until keys are added.
         </p>
       ) : null}
 

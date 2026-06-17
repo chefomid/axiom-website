@@ -13,6 +13,7 @@ from registry_loader import (
     resolve_selected_sources,
     source_available_for_location,
 )
+from public_messages import is_production_deploy, public_warning_message
 
 
 def _round_usd(value: float) -> float:
@@ -182,14 +183,15 @@ def warnings_for_selection(selected_sources: list[str]) -> list[str]:
         )
     if "attom_hazard" in selected_sources and "attom_property" not in selected_sources:
         warnings.append("ATTOM hazard is typically paired with ATTOM property detail.")
-    if selected_insurance and not insurance_configured:
-        warnings.append(
-            "ATTOM is not configured on this server — licensed data sources will be skipped. "
-            "Add ATTOM_API_KEY to services/property-api/.env or use the public data preset."
-        )
-    else:
-        for sid in selected_sources:
-            src = get_source_by_id(sid)
-            if src and src.get("requires_api_key") and not _api_key_configured(src):
-                warnings.append(f"{src['label']} requires an API key (not configured on server).")
-    return warnings
+    if not is_production_deploy():
+        if selected_insurance and not insurance_configured:
+            warnings.append(
+                "ATTOM is not configured on this server — licensed data sources will be skipped. "
+                "Add ATTOM_API_KEY to services/property-api/.env or use the public data preset."
+            )
+        else:
+            for sid in selected_sources:
+                src = get_source_by_id(sid)
+                if src and src.get("requires_api_key") and not _api_key_configured(src):
+                    warnings.append(f"{src['label']} requires an API key (not configured on server).")
+    return [w for w in warnings if public_warning_message(w)]

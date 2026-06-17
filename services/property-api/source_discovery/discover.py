@@ -117,10 +117,16 @@ async def discover_source_urls(
         }
 
     if not api_key:
+        from public_messages import is_production_deploy
+
         return {
             "urls": {},
             "discover_available": False,
-            "message": "AI discovery unavailable — add OPENAI_API_KEY to server .env",
+            "message": (
+                "AI discovery is temporarily unavailable."
+                if is_production_deploy()
+                else "AI discovery unavailable — add OPENAI_API_KEY to server .env"
+            ),
             "warnings": [],
             "receipt": receipt,
             "cached": False,

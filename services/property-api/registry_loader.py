@@ -116,6 +116,30 @@ def resolve_selected_sources(selected: list[str] | None) -> list[str]:
     return resolved
 
 
+def filter_configured_source_ids(source_ids: list[str]) -> list[str]:
+    """Drop licensed sources that are not wired on this deployment."""
+    from adapters.base import api_key_configured
+
+    filtered: list[str] = []
+    for sid in source_ids:
+        src = get_source_by_id(sid)
+        if not src:
+            continue
+        if src.get("requires_api_key") and not api_key_configured(sid):
+            continue
+        filtered.append(sid)
+    return filtered
+
+
+def resolve_selected_sources_for_request(selected: list[str] | None) -> list[str]:
+    from public_messages import is_production_deploy
+
+    resolved = resolve_selected_sources(selected)
+    if is_production_deploy():
+        return filter_configured_source_ids(resolved)
+    return resolved
+
+
 def source_available_for_location(src: dict[str, Any], country_hint: str | None) -> bool:
     coverage = src.get("coverage", "global")
     if coverage == "global":

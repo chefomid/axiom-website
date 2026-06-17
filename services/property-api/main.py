@@ -46,6 +46,7 @@ from source_discovery.resolve import auto_resolve_crawl_urls
 from source_discovery.cache import get_discovery
 from registry_loader import (
     default_selected_ids,
+    filter_configured_source_ids,
     get_categories,
     get_infra_breakeven_usd,
     get_margin_multiplier,
@@ -54,8 +55,9 @@ from registry_loader import (
     get_source_by_id,
     get_sources,
     get_vendors,
-    resolve_selected_sources,
+    resolve_selected_sources_for_request,
 )
+from public_messages import public_run_message
 from report_html import render_report_html
 from report_pdf import (
     check_playwright_ready,
@@ -330,10 +332,15 @@ def _catalog_sources() -> list[dict[str, Any]]:
 
 
 def _catalog_payload() -> dict[str, Any]:
+    presets = []
+    for preset in get_presets():
+        item = dict(preset)
+        item["source_ids"] = filter_configured_source_ids(preset.get("source_ids") or [])
+        presets.append(item)
     return {
         "categories": get_categories(),
         "sources": _catalog_sources(),
-        "presets": get_presets(),
+        "presets": presets,
         "vendors": get_vendors(),
         "default_selected": [s for s in default_selected_ids() if s != "geocode_census"],
         "margin_multiplier": get_margin_multiplier(),
@@ -379,7 +386,7 @@ def _build_final_receipt(
                 "service_cost_usd": svc_cost,
                 "loaded_cost_usd": round(loaded_line, 2),
                 "user_price_usd": user_line,
-                "message": run.message if run else None,
+                "message": public_run_message(run.message if run else None),
             }
         )
 
@@ -684,7 +691,7 @@ async def suggest(request: Request, q: str = "", limit: int = 5, country: str = 
 @app.post("/discover-source-urls", response_model=DiscoverSourceUrlsResponse)
 @limiter.limit("10/minute")
 async def discover_urls(request: Request, body: DiscoverSourceUrlsRequest):
-    resolved = resolve_selected_sources(body.selected_sources or None)
+    resolved = resolve_selected_sources_for_request(body.selected_sources or None)
     crawl_ids = [
         sid
         for sid in resolved
@@ -720,7 +727,7 @@ async def discover_urls(request: Request, body: DiscoverSourceUrlsRequest):
 @app.post("/quote")
 @limiter.limit("40/minute")
 async def quote(request: Request, body: QuoteRequest):
-    resolved = resolve_selected_sources(body.selected_sources or None)
+    resolved = resolve_selected_sources_for_request(body.selected_sources or None)
     address = body.address.strip()
     if not address:
         raise HTTPException(status_code=400, detail="Address is required.")
@@ -765,7 +772,7 @@ async def _execute_enrich(
     charge_credits: bool = True,
     report_id: str | None = None,
 ) -> EnrichResponse:
-    resolved = resolve_selected_sources(selected_sources or None)
+    resolved = resolve_selected_sources_for_request(selected_sources or None)
 
     try:
         geo = await geocode_address(address.strip())

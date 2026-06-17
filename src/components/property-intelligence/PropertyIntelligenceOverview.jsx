@@ -41,7 +41,7 @@ function OverviewBackground() {
   )
 }
 
-function MobileHeader() {
+function MobileHeader({ comingSoon = true }) {
   return (
     <header className="mobile-feed-sticky shrink-0 border-b border-panel-border bg-[#060606]/95 px-4 py-2.5 lg:hidden">
       <div className="flex items-center justify-between gap-3">
@@ -73,7 +73,10 @@ function MobileHeader() {
             </p>
           </div>
         </div>
-        <StatusChip label="Preview" status="stable" />
+        <StatusChip
+          label={comingSoon ? 'Preview' : 'Desktop only'}
+          status={comingSoon ? 'stable' : 'watch'}
+        />
       </div>
     </header>
   )
@@ -95,11 +98,12 @@ function SourcePanel({ label, note, children }) {
 
 export default function PropertyIntelligenceOverview({ comingSoon = true }) {
   const isLgUp = useIsLgUp()
+  const desktopOnly = !comingSoon && !isLgUp
 
   return (
     <div className="relative isolate flex min-h-[100dvh] flex-col bg-black font-sans text-ink-primary">
       <OverviewBackground />
-      {isLgUp ? <Nav /> : <MobileHeader />}
+      {isLgUp ? <Nav /> : <MobileHeader comingSoon={comingSoon} />}
 
       <main
         className={`sleek-scrollbar flex-1 overflow-y-auto px-6 pb-10 sm:px-8 md:px-12 ${
@@ -110,14 +114,30 @@ export default function PropertyIntelligenceOverview({ comingSoon = true }) {
           <section className="border-b border-[#1a1a1a] pb-10 md:pb-14">
             <div className="flex flex-wrap items-center gap-3">
               <StatusChip
-                label={comingSoon ? 'Coming soon' : 'Live'}
-                status={comingSoon ? 'watch' : 'stable'}
-                pulse={!comingSoon}
+                label={comingSoon ? 'Coming soon' : desktopOnly ? 'Desktop required' : 'Live'}
+                status={comingSoon ? 'watch' : desktopOnly ? 'watch' : 'stable'}
+                pulse={!comingSoon && isLgUp}
               />
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
-                {comingSoon ? 'Desktop workspace in development' : 'Address-level COPE enrichment'}
+                {comingSoon
+                  ? 'Desktop workspace in development'
+                  : desktopOnly
+                    ? 'Open on desktop to access'
+                    : 'Address-level COPE enrichment'}
               </p>
             </div>
+
+            {desktopOnly ? (
+              <div className="mt-6 rounded-lg border border-command-watch/35 bg-command-watch/[0.06] px-4 py-4 sm:px-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-command-watch">
+                  Desktop access required
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
+                  Property Intelligence is live on desktop. Visit this page on a computer with a screen at
+                  least 1024px wide to search addresses, build reports, and run enrichment.
+                </p>
+              </div>
+            ) : null}
 
             <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-end lg:gap-14">
               <div className="max-w-2xl">
@@ -236,12 +256,6 @@ export default function PropertyIntelligenceOverview({ comingSoon = true }) {
               ))}
             </ol>
           </section>
-
-          {!comingSoon && !isLgUp ? (
-            <p className="border-t border-[#141414] pt-8 text-sm leading-relaxed text-ink-muted">
-              The full workspace runs on desktop (1024px or wider).
-            </p>
-          ) : null}
 
           {comingSoon && isLgUp ? (
             <p className="text-sm text-ink-faint">Launching on desktop first.</p>

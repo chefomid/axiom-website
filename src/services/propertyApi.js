@@ -261,18 +261,27 @@ export function buildPresetApplyNotice(catalog, preset, appliedIds) {
   if (!skipped.length) return null
 
   const byId = Object.fromEntries((catalog?.sources ?? []).map(s => [s.id, s]))
+  const allUnconfigured = skipped.every(id => {
+    const src = byId[id]
+    return src?.requires_api_key && src?.configured === false
+  })
+  if (allUnconfigured) return null
+
   const parts = skipped.map(id => {
     const src = byId[id]
     if (!src) return id
-    if (src.requires_api_key && src.configured === false) {
+    if (import.meta.env.DEV && src.requires_api_key && src.configured === false) {
       const key = src.env_key ?? 'API key'
       return `${src.label} (add ${key})`
     }
-    if (id === 'sov_orchestrator' && src?.requires_api_key && src.configured === false) {
-      return `${src.label} (optional, add OPENAI_API_KEY for multi-lane reconciliation)`
+    if (id === 'sov_orchestrator' && src?.requires_api_key && src?.configured === false) {
+      return import.meta.env.DEV
+        ? `${src.label} (optional, add OPENAI_API_KEY for multi-lane reconciliation)`
+        : src.label
     }
     return src.label
   })
+  if (import.meta.env.PROD) return null
   return `Skipped: ${parts.join('; ')}. Loaded the rest of this preset.`
 }
 
