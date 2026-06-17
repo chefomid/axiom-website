@@ -16,11 +16,21 @@ import { getOrCreateAnonId } from '../utils/anonId'
 
 const STORAGE_KEY = 'axiom:property-intelligence:report-state'
 
+function sanitizePresetNotice(notice) {
+  if (!notice || typeof notice !== 'string') return null
+  if (/skipped:|api[_\s-]?key|add [a-z0-9_]+/i.test(notice)) return null
+  return notice
+}
+
 function loadSavedState() {
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    if (parsed?.presetNotice) {
+      parsed.presetNotice = sanitizePresetNotice(parsed.presetNotice)
+    }
+    return parsed
   } catch {
     return null
   }
@@ -77,7 +87,9 @@ export default function usePropertyReport() {
     if (savedStateRef.current?.quote) setQuote(savedStateRef.current.quote)
     if (savedStateRef.current?.record) setRecord(savedStateRef.current.record)
     if (savedStateRef.current?.error) setError(savedStateRef.current.error)
-    if (savedStateRef.current?.presetNotice) setPresetNotice(savedStateRef.current.presetNotice)
+    if (savedStateRef.current?.presetNotice) {
+      setPresetNotice(sanitizePresetNotice(savedStateRef.current.presetNotice))
+    }
     if (savedStateRef.current?.activePresetId) setActivePresetId(savedStateRef.current.activePresetId)
   }, [])
 
@@ -94,6 +106,7 @@ export default function usePropertyReport() {
       .then(data => {
         if (cancelled) return
         setCatalog(data)
+        setPresetNotice(null)
         const saved = savedStateRef.current
         if (saved?.selectedSources?.length) setSelectedSources(saved.selectedSources)
       })
@@ -114,11 +127,10 @@ export default function usePropertyReport() {
       quote,
       record,
       error,
-      presetNotice,
       activePresetId,
       updatedAt: Date.now(),
     })
-  }, [selectedSources, quote, record, error, presetNotice, activePresetId])
+  }, [selectedSources, quote, record, error, activePresetId])
 
   const toggleSource = useCallback(
     sourceId => {

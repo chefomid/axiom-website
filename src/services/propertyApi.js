@@ -253,36 +253,9 @@ export function isPaymentRequiredError(err) {
   return err?.status === 402 || Boolean(err?.paymentRequired)
 }
 
-/** Human-readable notice when a preset drops sources (missing keys, etc.). */
-export function buildPresetApplyNotice(catalog, preset, appliedIds) {
-  const requested = preset?.source_ids ?? []
-  const applied = appliedIds ?? []
-  const skipped = requested.filter(id => !applied.includes(id))
-  if (!skipped.length) return null
-
-  const byId = Object.fromEntries((catalog?.sources ?? []).map(s => [s.id, s]))
-  const allUnconfigured = skipped.every(id => {
-    const src = byId[id]
-    return src?.requires_api_key && src?.configured === false
-  })
-  if (allUnconfigured) return null
-
-  const parts = skipped.map(id => {
-    const src = byId[id]
-    if (!src) return id
-    if (import.meta.env.DEV && src.requires_api_key && src.configured === false) {
-      const key = src.env_key ?? 'API key'
-      return `${src.label} (add ${key})`
-    }
-    if (id === 'sov_orchestrator' && src?.requires_api_key && src?.configured === false) {
-      return import.meta.env.DEV
-        ? `${src.label} (optional, add OPENAI_API_KEY for multi-lane reconciliation)`
-        : src.label
-    }
-    return src.label
-  })
-  if (import.meta.env.PROD) return null
-  return `Skipped: ${parts.join('; ')}. Loaded the rest of this preset.`
+/** Never surface preset key-skip copy to users (dev hints caused production session leaks). */
+export function buildPresetApplyNotice() {
+  return null
 }
 
 export function formatUsd(amount) {
