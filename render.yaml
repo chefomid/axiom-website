@@ -19,5 +19,13 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: RENTCAST_API_KEY
+        sync: false
+      - key: ATTOM_API_KEY
+        sync: false
+      - key: MELISSA_LICENSE_KEY
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
       - key: DATABASE_URL
         sync: false
