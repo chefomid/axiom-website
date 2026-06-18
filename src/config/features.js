@@ -16,3 +16,15 @@ export function isCareersOrganizeLlmEnabled() {
   if (import.meta.env.DEV) return true
   return import.meta.env.VITE_CAREERS_ORGANIZE_LLM === 'true'
 }
+
+/**
+ * Public Data Command: local dev only unless VITE_PUBLIC_DATA_COMMAND_ENABLED=true on the host.
+ * Production shows a non-dismissible hold screen until the tool is ready.
+ */
+export function isPublicDataCommandEnabled() {
+  if (import.meta.env.DEV) return true
+  if (import.meta.env.PROD) {
+    return import.meta.env.VITE_PUBLIC_DATA_COMMAND_ENABLED === 'true'
+  }
+  return false
+}
