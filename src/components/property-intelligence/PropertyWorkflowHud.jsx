@@ -14,6 +14,8 @@ import BatchQuotePanel from './BatchQuotePanel'
 
 import WorkflowPricingPanel from './WorkflowPricingPanel'
 
+import DataPackageLearnMoreModal from './DataPackageLearnMoreModal'
+
 import { WORKFLOW_HUD_WIDTH_DOCKED } from './workflowControls'
 
 import { PRESET_OPTIONAL_ADDONS } from '../../services/propertyApi'
@@ -147,6 +149,7 @@ export default function PropertyWorkflowHud({
   const hasLocationInput = scheduleMode ? scheduleRows.length > 0 : locationLocked
 
   const [packageExpanded, setPackageExpanded] = useState(false)
+  const [learnMoreOpen, setLearnMoreOpen] = useState(false)
 
   useEffect(() => {
     setPackageExpanded(hasLocationInput)
@@ -347,29 +350,35 @@ export default function PropertyWorkflowHud({
           className={`side-panel-section shrink-0 border-b-0 pb-2 ${!hasLocationInput ? 'opacity-45' : ''}`}
           aria-label="Data package"
         >
+          <span className="side-panel-title mb-0 block">Data Package</span>
+          <p className="side-panel-copy mt-1.5">
+            Your package selects which COPE indicators, hazard context, and property attributes we
+            extract for this run.{' '}
+            <span className="text-ink-secondary">
+              Important: The availability of data is variable to the source.
+            </span>{' '}
+            <button
+              type="button"
+              onClick={() => setLearnMoreOpen(true)}
+              className="text-left text-command-live underline decoration-command-live/35 underline-offset-2 transition hover:text-white hover:decoration-white/45"
+            >
+              Click to learn more.
+            </button>
+          </p>
 
           <button
             type="button"
             onClick={() => hasLocationInput && setPackageExpanded(expanded => !expanded)}
             disabled={!hasLocationInput}
-            className="flex w-full items-start justify-between gap-2 text-left disabled:cursor-not-allowed"
+            className="mt-2 flex w-full items-start justify-between gap-2 text-left disabled:cursor-not-allowed"
             aria-expanded={packageExpanded}
           >
-            <span>
-              <span className="side-panel-title mb-0 block">Data Package</span>
-              <p className="side-panel-copy mt-1.5">
-                Pick a source stack for one run. Publicly Available covers government hazards and COPE
-                map at no vendor cost; licensed tiers add property records and building attributes.
-              </p>
-              {!packageExpanded ? (
-                <span
-                  className={`mt-1 block font-mono text-[10px] leading-snug ${
-                    hasLocationInput ? 'text-ink-secondary' : 'text-ink-faint'
-                  }`}
-                >
-                  {packageSummary}
-                </span>
-              ) : null}
+            <span
+              className={`block font-mono text-[10px] leading-snug ${
+                hasLocationInput ? 'text-ink-secondary' : 'text-ink-faint'
+              }`}
+            >
+              {packageSummary}
             </span>
             <span
               className={`mt-0.5 shrink-0 font-mono text-[11px] text-ink-faint transition-transform duration-150 ${
@@ -382,32 +391,25 @@ export default function PropertyWorkflowHud({
           </button>
 
           {packageExpanded && hasLocationInput ? (
-            <>
-              {!readyForGenerate ? (
-                <p className="side-panel-copy mb-2 mt-2">
-                  {scheduleMode
-                    ? 'Pick a package tier and validate your schedule. Pricing appears at the bottom.'
-                    : 'Pick a package tier and any add-ons. Pricing appears at the bottom once you lock the property.'}
-                </p>
-              ) : null}
-
+            <div className="mt-2">
               <IntentPackagePicker
-                layout="sidebar"
-                presets={presets}
-                catalog={catalog}
-                loading={loadingCatalog}
-                activePresetId={activePresetId}
-                selectedSources={selectedSources}
-                onToggleSource={onToggleSource}
-                onApply={onApply}
-                disabled={disabled}
-                locationLocked={locationLocked}
-                scheduleHasRows={scheduleMode && scheduleRows.length > 0}
-                scheduleMode={scheduleMode}
-              />
-            </>
+              layout="sidebar"
+              presets={presets}
+              catalog={catalog}
+              loading={loadingCatalog}
+              activePresetId={activePresetId}
+              selectedSources={selectedSources}
+              onToggleSource={onToggleSource}
+              onApply={onApply}
+              disabled={disabled}
+              locationLocked={locationLocked}
+              scheduleHasRows={scheduleMode && scheduleRows.length > 0}
+              scheduleMode={scheduleMode}
+            />
+            </div>
           ) : null}
 
+          <DataPackageLearnMoreModal open={learnMoreOpen} onClose={() => setLearnMoreOpen(false)} />
         </section>
 
 

@@ -10,7 +10,7 @@ const PRIMARY_INTENTS = [
   {
     id: 'publicly_available',
     title: 'Publicly available',
-    description: 'Public records, hazards, COPE map',
+    description: 'Government hazards, COPE map, public records where available',
     accent:
       'border-panel-border bg-panel-surface/40 hover:border-[#333] hover:bg-panel-surface/60 active:scale-[0.99]',
     active: 'border-command-live/60 bg-command-live/12',
@@ -19,7 +19,7 @@ const PRIMARY_INTENTS = [
   {
     id: 'cope_insurance',
     title: 'Property dossier',
-    description: 'Licensed ATTOM data, hazards, PDF export',
+    description: 'Licensed vendor pulls, hazards, PDF export where available',
     tag: 'Licensed',
     accent:
       'border-panel-border bg-panel-surface/40 hover:border-[#333] hover:bg-panel-surface/60 active:scale-[0.99]',
