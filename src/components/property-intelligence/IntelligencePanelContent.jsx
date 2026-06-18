@@ -77,14 +77,6 @@ export default function IntelligencePanelContent() {
 
     <div className="shrink-0">
 
-      <section className="side-panel-section shrink-0 border-b-0 pb-1">
-
-        <span className="side-panel-title mb-0">Intelligence Panel</span>
-
-      </section>
-
-
-
       <section className="side-panel-section shrink-0 border-b-0 py-2">
 
         <p className="text-[12px] font-medium leading-snug text-white/88">

@@ -301,12 +301,6 @@ export default function PropertyWorkflowHud({
 
           {inputMode === 'single' ? (
             <div>
-              {!locationLocked ? (
-                <p className="side-panel-copy mb-2">
-                  Enter an address or use your location. The map unlocks once the property is locked.
-                </p>
-              ) : null}
-
               <PropertySearchBar
                 address={address}
                 loading={loadingReport}
