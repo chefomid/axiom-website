@@ -18,7 +18,6 @@ import DataPackageLearnMoreModal from './DataPackageLearnMoreModal'
 
 import { WORKFLOW_HUD_WIDTH_DOCKED } from './workflowControls'
 
-import { PRESET_OPTIONAL_ADDONS } from '../../services/propertyApi'
 
 
 
@@ -154,19 +153,6 @@ export default function PropertyWorkflowHud({
   useEffect(() => {
     setPackageExpanded(hasLocationInput)
   }, [hasLocationInput])
-
-  const activePreset = presets?.find(preset => preset.id === activePresetId)
-
-  const addonCount =
-    selectedSources?.filter(sourceId => PRESET_OPTIONAL_ADDONS.includes(sourceId)).length ?? 0
-
-  const packageSummary = !hasLocationInput
-    ? scheduleMode
-      ? 'Upload a schedule to choose a package'
-      : 'Lock a location to choose a package'
-    : activePreset
-      ? `${activePreset.label}${addonCount ? ` · ${addonCount} add-on${addonCount === 1 ? '' : 's'}` : ''}`
-      : 'Choose a package'
 
   return (
 
@@ -345,40 +331,25 @@ export default function PropertyWorkflowHud({
           className="side-panel-section shrink-0 border-b-0 pb-2"
           aria-label="Data package"
         >
-          <span className="side-panel-title mb-0 block">Data Package</span>
-          <p className="side-panel-copy mt-1.5">
-            Your package selects which COPE indicators, hazard context, and property attributes we
-            extract for this run.{' '}
-            <span className="text-ink-secondary">
-              Important: The availability of data is variable to the source.
-            </span>{' '}
+          <div className="flex items-center justify-between gap-2">
+            <span className="side-panel-title mb-0 block">Data Package</span>
             <button
               type="button"
-              onClick={() => setLearnMoreOpen(true)}
-              className="text-left text-command-live underline decoration-command-live/35 underline-offset-2 transition hover:text-white hover:decoration-white/45"
+              onClick={() => setPackageExpanded(expanded => !expanded)}
+              className="shrink-0 rounded p-1 text-ink-faint transition hover:text-ink-secondary"
+              aria-expanded={packageExpanded}
+              aria-label={packageExpanded ? 'Collapse packages' : 'Expand packages'}
             >
-              Click to learn more.
+              <span
+                className={`block font-mono text-[11px] transition-transform duration-150 ${
+                  packageExpanded ? 'rotate-180' : ''
+                }`}
+                aria-hidden
+              >
+                ▾
+              </span>
             </button>
-          </p>
-
-          <button
-            type="button"
-            onClick={() => setPackageExpanded(expanded => !expanded)}
-            className="mt-2 flex w-full items-start justify-between gap-2 text-left"
-            aria-expanded={packageExpanded}
-          >
-            <span className="block font-mono text-[10px] leading-snug text-ink-secondary">
-              {packageSummary}
-            </span>
-            <span
-              className={`mt-0.5 shrink-0 font-mono text-[11px] text-ink-faint transition-transform duration-150 ${
-                packageExpanded ? 'rotate-180' : ''
-              }`}
-              aria-hidden
-            >
-              ▾
-            </span>
-          </button>
+          </div>
 
           {packageExpanded ? (
             <div className="mt-2">
@@ -395,6 +366,22 @@ export default function PropertyWorkflowHud({
               locationLocked={locationLocked}
               scheduleHasRows={scheduleMode && scheduleRows.length > 0}
               scheduleMode={scheduleMode}
+              afterPackages={
+                <p className="side-panel-copy">
+                  Your package selects which COPE indicators, hazard context, and property attributes
+                  we extract for this run.{' '}
+                  <span className="text-ink-secondary">
+                    Important: The availability of data is variable to the source.
+                  </span>{' '}
+                  <button
+                    type="button"
+                    onClick={() => setLearnMoreOpen(true)}
+                    className="text-left text-command-live underline decoration-command-live/35 underline-offset-2 transition hover:text-white hover:decoration-white/45"
+                  >
+                    Click to learn more.
+                  </button>
+                </p>
+              }
             />
             </div>
           ) : null}

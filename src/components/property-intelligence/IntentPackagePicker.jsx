@@ -247,6 +247,7 @@ export default function IntentPackagePicker({
   scheduleHasRows = false,
   scheduleMode = false,
   layout = 'sidebar',
+  afterPackages = null,
 }) {
   const isOverlay = layout === 'overlay'
   const isCompact = layout === 'compact'
@@ -333,6 +334,8 @@ export default function IntentPackagePicker({
           )
         })}
       </ul>
+
+      {afterPackages}
 
       {hasLocationInput ? (
         <p className="font-mono text-[9px] leading-relaxed text-ink-faint">
