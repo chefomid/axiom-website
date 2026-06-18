@@ -1,9 +1,5 @@
-import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import PropertyIntelligenceIntroModal, {
-  ackPropertyIntelligenceIntro,
-  isPropertyIntelligenceIntroAcked,
-} from '../components/property-intelligence/PropertyIntelligenceIntroModal'
 import PropertyIntelligenceOverview from '../components/property-intelligence/PropertyIntelligenceOverview'
 import MobilePaymentReturn from '../components/property-intelligence/MobilePaymentReturn'
 import { isPropertyIntelligenceEnabled } from '../config/features'
@@ -20,15 +16,9 @@ export default function PropertyIntelligence() {
   const enabled = isPropertyIntelligenceEnabled()
   const isLgUp = useIsLgUp()
   const [searchParams] = useSearchParams()
-  const [introOpen, setIntroOpen] = useState(() => !isPropertyIntelligenceIntroAcked())
 
   const isPaymentReturn =
     searchParams.get('billing') === 'success' && Boolean(searchParams.get('session_id')?.trim())
-
-  const handleIntroContinue = useCallback(() => {
-    ackPropertyIntelligenceIntro()
-    setIntroOpen(false)
-  }, [])
 
   useEffect(() => {
     document.title = 'Property Intelligence | AXIOM'
@@ -50,11 +40,6 @@ export default function PropertyIntelligence() {
 
   return (
     <>
-      <PropertyIntelligenceIntroModal
-        open={introOpen}
-        onContinue={handleIntroContinue}
-        isMobile={!isLgUp}
-      />
       {showOverview ? (
         <PropertyIntelligenceOverview comingSoon={!enabled} />
       ) : (

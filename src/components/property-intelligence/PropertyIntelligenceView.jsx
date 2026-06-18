@@ -23,6 +23,12 @@ import PropertyWorkflowHud from './PropertyWorkflowHud'
 import ReportResultsPanel from './ReportResultsPanel'
 import ScheduleUploadModal from './ScheduleUploadModal'
 import BatchResultsPanel from './BatchResultsPanel'
+import LicensedDataNoticeModal, {
+  ackLicensedDataNotice,
+  isLicensedCatalogSource,
+  isLicensedDataNoticeAcked,
+  LICENSED_PRESET_IDS,
+} from './LicensedDataNoticeModal'
 
 export default function PropertyIntelligenceView() {
 
@@ -59,6 +65,8 @@ export default function PropertyIntelligenceView() {
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
   const [scheduleFocusRowIndex, setScheduleFocusRowIndex] = useState(null)
   const [scheduleFitAllSignal, setScheduleFitAllSignal] = useState(0)
+  const [licensedNoticeOpen, setLicensedNoticeOpen] = useState(false)
+  const licensedActionRef = useRef(null)
 
   const {
     batchQuote,
@@ -135,18 +143,58 @@ export default function PropertyIntelligenceView() {
 
   } = usePropertyReport()
 
+  const runLicensedGate = useCallback(action => {
+    if (isLicensedDataNoticeAcked()) {
+      action()
+      return
+    }
+    licensedActionRef.current = action
+    setLicensedNoticeOpen(true)
+  }, [])
+
+  const handleLicensedNoticeContinue = useCallback(() => {
+    ackLicensedDataNotice()
+    setLicensedNoticeOpen(false)
+    const action = licensedActionRef.current
+    licensedActionRef.current = null
+    action?.()
+  }, [])
+
+  const handleApplyPreset = useCallback(
+    presetId => {
+      if (LICENSED_PRESET_IDS.has(presetId)) {
+        runLicensedGate(() => applyPreset(presetId))
+        return
+      }
+      applyPreset(presetId)
+    },
+    [applyPreset, runLicensedGate],
+  )
+
+  const handleToggleSource = useCallback(
+    sourceId => {
+      const enabling = !selectedSources.includes(sourceId)
+      if (enabling && isLicensedCatalogSource(catalog, sourceId)) {
+        runLicensedGate(() => toggleSource(sourceId))
+        return
+      }
+      toggleSource(sourceId)
+    },
+    [catalog, selectedSources, toggleSource, runLicensedGate],
+  )
+
 
 
   const handleToggleOptionalSource = useCallback(
     sourceId => {
       if (scheduleMode) {
-        toggleSource(sourceId)
+        handleToggleSource(sourceId)
         return
       }
       const quoteAddress = addressDraft.trim() || address.trim()
       toggleOptionalSource(sourceId, quoteAddress)
     },
-    [scheduleMode, toggleSource, addressDraft, address, toggleOptionalSource],
+    [scheduleMode, handleToggleSource, addressDraft, address, toggleOptionalSource],
   )
 
   useEffect(() => {
@@ -961,8 +1009,12 @@ export default function PropertyIntelligenceView() {
 
 
   return (
-
-    <div className="flex h-[100dvh] flex-col overflow-hidden">
+    <>
+      <LicensedDataNoticeModal
+        open={licensedNoticeOpen}
+        onContinue={handleLicensedNoticeContinue}
+      />
+      <div className="flex h-[100dvh] flex-col overflow-hidden">
 
       <PropertyHeader apiOnline={apiOnline} />
 
@@ -1001,7 +1053,7 @@ export default function PropertyIntelligenceView() {
           quote={quote}
           loadingQuote={scheduleMode ? loadingBatchQuote : loadingQuote}
           onToggleSource={handleToggleOptionalSource}
-          onApply={applyPreset}
+          onApply={handleApplyPreset}
           disabled={loadingReport || loadingCatalog || loadingBatchRun}
           apiOnline={apiOnline}
           requiredUrlIds={requiredUrlIds}
@@ -1117,7 +1169,7 @@ export default function PropertyIntelligenceView() {
       />
 
     </div>
-
+    </>
   )
 
 }

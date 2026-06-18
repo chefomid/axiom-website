@@ -20,9 +20,9 @@ const COOKIE_TABLE = [
     type: 'localStorage',
   },
   {
-    name: 'axiom:pi-intro-ack',
+    name: 'axiom:pi-licensed-notice-ack',
     provider: 'AXIOM (first-party)',
-    purpose: 'Remembers Property Intelligence expectations acknowledgment (versioned)',
+    purpose: 'Remembers licensed data expectations acknowledgment',
     category: 'Functional',
     duration: 'Browser session',
     type: 'sessionStorage',
