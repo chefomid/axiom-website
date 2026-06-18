@@ -340,8 +340,9 @@ export default function PropertyWorkflowHud({
 
 
 
+        {hasLocationInput ? (
         <section
-          className={`side-panel-section shrink-0 border-b-0 pb-2 ${!hasLocationInput ? 'opacity-45' : ''}`}
+          className="side-panel-section shrink-0 border-b-0 pb-2"
           aria-label="Data package"
         >
           <span className="side-panel-title mb-0 block">Data Package</span>
@@ -362,16 +363,11 @@ export default function PropertyWorkflowHud({
 
           <button
             type="button"
-            onClick={() => hasLocationInput && setPackageExpanded(expanded => !expanded)}
-            disabled={!hasLocationInput}
-            className="mt-2 flex w-full items-start justify-between gap-2 text-left disabled:cursor-not-allowed"
+            onClick={() => setPackageExpanded(expanded => !expanded)}
+            className="mt-2 flex w-full items-start justify-between gap-2 text-left"
             aria-expanded={packageExpanded}
           >
-            <span
-              className={`block font-mono text-[10px] leading-snug ${
-                hasLocationInput ? 'text-ink-secondary' : 'text-ink-faint'
-              }`}
-            >
+            <span className="block font-mono text-[10px] leading-snug text-ink-secondary">
               {packageSummary}
             </span>
             <span
@@ -384,7 +380,7 @@ export default function PropertyWorkflowHud({
             </span>
           </button>
 
-          {packageExpanded && hasLocationInput ? (
+          {packageExpanded ? (
             <div className="mt-2">
               <IntentPackagePicker
               layout="sidebar"
@@ -405,6 +401,7 @@ export default function PropertyWorkflowHud({
 
           <DataPackageLearnMoreModal open={learnMoreOpen} onClose={() => setLearnMoreOpen(false)} />
         </section>
+        ) : null}
 
 
 
