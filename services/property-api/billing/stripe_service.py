@@ -12,10 +12,19 @@ from billing.db import add_credits, claim_stripe_event, get_balance
 from billing.packs import get_pack
 
 
-def _billing_return_url(base: str, *, billing: str, anon_id: str, resume: str | None = None) -> str:
+def _billing_return_url(
+    base: str,
+    *,
+    billing: str,
+    anon_id: str,
+    resume: str | None = None,
+    include_session_id: bool = False,
+) -> str:
     params = [f"billing={billing}", f"anon_id={quote(anon_id.strip(), safe='')}"]
     if resume:
         params.append(f"resume={quote(resume, safe='')}")
+    if include_session_id and billing == "success":
+        params.append("session_id={CHECKOUT_SESSION_ID}")
     return f"{base}/property-intelligence?{'&'.join(params)}"
 
 
@@ -39,9 +48,13 @@ def _create_stripe_session(
 
     if embedded:
         params["ui_mode"] = "embedded_page"
-        params["return_url"] = _billing_return_url(base, billing="success", anon_id=aid, resume=resume)
+        params["return_url"] = _billing_return_url(
+            base, billing="success", anon_id=aid, resume=resume, include_session_id=True
+        )
     else:
-        params["success_url"] = _billing_return_url(base, billing="success", anon_id=aid, resume=resume)
+        params["success_url"] = _billing_return_url(
+            base, billing="success", anon_id=aid, resume=resume, include_session_id=True
+        )
         params["cancel_url"] = _billing_return_url(base, billing="cancel", anon_id=aid, resume=resume)
 
     return stripe.checkout.Session.create(**params)

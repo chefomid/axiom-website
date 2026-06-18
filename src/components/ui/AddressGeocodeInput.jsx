@@ -172,7 +172,7 @@ export default function AddressGeocodeInput({
       setSuggestions([])
       setLoading(false)
       setOpen(false)
-      setHint('Keep typing, include a street name, e.g. 825 NE Multnomah St')
+      setHint('Keep typing, include a street name, e.g. 123 Main St, Portland')
       return undefined
     }
 

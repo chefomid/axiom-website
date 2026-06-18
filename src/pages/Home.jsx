@@ -221,7 +221,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
         intelligence stack, modular by design and configurable to any deployment.
       </motion.p>
 
-      <div className="grid md:grid-cols-2 gap-px bg-[#1a1a1a]">
+      <div className="grid grid-cols-1 gap-px bg-[#1a1a1a]">
         {pillars.map((p, i) => (
           <motion.div
             key={p.label}
@@ -230,7 +230,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
             whileInView="show"
             viewport={{ once: true }}
             custom={i}
-            className="bg-[#080808] p-6 sm:p-10 flex flex-col gap-6"
+            className="bg-[#080808] py-6 sm:py-10 flex flex-col gap-6"
           >
             <span className="text-xs text-ink-muted font-display">{p.label}</span>
             <h2 className="font-display text-xl font-medium text-white leading-snug">

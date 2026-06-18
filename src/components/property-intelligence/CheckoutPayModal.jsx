@@ -255,6 +255,8 @@ export default function CheckoutPayModal({
   phoneUrlLoading = false,
   waiting = false,
   timedOut = false,
+  checkingStatus = false,
+  onCheckPaymentStatus,
   onEmbeddedComplete,
   onClose,
 }) {
@@ -333,9 +335,21 @@ export default function CheckoutPayModal({
               ) : null}
 
               {timedOut ? (
-                <p className="mt-4 text-center font-mono text-[12px] leading-relaxed text-command-watch">
-                  Payment not detected yet. You can keep waiting or cancel and try again.
-                </p>
+                <div className="mt-4 space-y-3 text-center">
+                  <p className="font-mono text-[12px] leading-relaxed text-command-watch">
+                    Payment not detected yet. You can check again or cancel and retry.
+                  </p>
+                  {onCheckPaymentStatus ? (
+                    <button
+                      type="button"
+                      onClick={() => void onCheckPaymentStatus()}
+                      disabled={checkingStatus}
+                      className="workflow-footer-cta inline-flex !h-auto min-h-[40px] items-center justify-center px-4 py-2.5 !text-[11px] tracking-[0.12em]"
+                    >
+                      {checkingStatus ? 'Checking…' : 'Check payment status'}
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
             </div>
 

@@ -1,13 +1,28 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from PIL import Image
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from booklet_layout import (  # noqa: E402
+    draw_image_band,
+    draw_images_gallery,
+    draw_images_quad,
+    draw_images_stacked,
+    draw_vertical_spread,
+    gallery_block_height,
+    image_aspect,
+    natural_height,
+    quad_block_height,
+    stacked_block_height,
+)
+
 BOOKLET_DIR = ROOT / "public" / "insurance-manager" / "booklet"
 OUTPUT_DIR = ROOT / "public" / "insurance-manager"
 BOOKLET_PATH = OUTPUT_DIR / "Insurance-Manager-Booklet.pdf"
@@ -128,7 +143,7 @@ DOSSIER: list[Spread] = [
             "Grounded on vault facts, not invented limits",
             "Offline mode for data residency",
         ],
-        layout="pair",
+        layout="stack",
         images=[
             "13-assistant-01-general-chat.png",
             "14-assistant-02-compliance-start.png",
@@ -255,53 +270,6 @@ def draw_bullets(
             c.drawString(x + bullet_indent, y, line)
             y -= leading
     return y
-
-
-def draw_image_fit(
-    c: canvas.Canvas,
-    image_path: Path,
-    x: float,
-    y: float,
-    width: float,
-    height: float,
-    *,
-    valign: str = "center",
-) -> None:
-    with Image.open(image_path) as img:
-        img_w, img_h = img.size
-
-    scale = min(width / img_w, height / img_h)
-    draw_w = img_w * scale
-    draw_h = img_h * scale
-    draw_x = x + (width - draw_w) / 2
-    draw_y = y + (height - draw_h) if valign == "top" else y + (height - draw_h) / 2
-
-    c.setFillColorRGB(0.06, 0.06, 0.06)
-    c.rect(x, y, width, height, stroke=0, fill=1)
-    c.drawImage(str(image_path), draw_x, draw_y, draw_w, draw_h, preserveAspectRatio=True, mask="auto")
-
-
-def draw_image_grid(
-    c: canvas.Canvas,
-    image_names: list[str],
-    x: float,
-    y: float,
-    width: float,
-    height: float,
-    columns: int,
-    rows: int,
-    gap: float = 6,
-) -> None:
-    cell_w = (width - gap * (columns - 1)) / columns
-    cell_h = (height - gap * (rows - 1)) / rows
-    for index, name in enumerate(image_names):
-        row = index // columns
-        col = index % columns
-        if row >= rows:
-            break
-        cell_x = x + col * (cell_w + gap)
-        cell_y = y + height - (row + 1) * cell_h - row * gap
-        draw_image_fit(c, resolve_image(name), cell_x, cell_y, cell_w, cell_h)
 
 
 def draw_page_header(c: canvas.Canvas, page_w: float, page_h: float, page_label: str) -> None:
@@ -472,37 +440,97 @@ def draw_text_panel(c: canvas.Canvas, spread: Spread, text_x: float, text_w: flo
     return y
 
 
+def measure_image_block_height(spread: Spread, image_w: float, max_h: float) -> float:
+    paths = [resolve_image(name) for name in spread.images]
+    aspects = [image_aspect(path) for path in paths]
+
+    if spread.layout == "single":
+        return min(natural_height(image_w, aspects[0]), max_h)
+    if spread.layout == "quad":
+        return min(quad_block_height(image_w, aspects, gap=6), max_h)
+    if spread.layout == "stack":
+        return min(stacked_block_height(image_w, aspects, gap=8), max_h)
+    if spread.layout == "gallery":
+        return min(gallery_block_height(image_w, aspects, gap=8), max_h)
+    raise ValueError(f"Unknown layout: {spread.layout}")
+
+
+def draw_image_block(c: canvas.Canvas, spread: Spread, x: float, y: float, width: float, height: float) -> None:
+    paths = [resolve_image(name) for name in spread.images]
+
+    if spread.layout == "single":
+        draw_image_band(c, paths[0], x, y, width, height, valign="top")
+    elif spread.layout == "quad":
+        draw_images_quad(c, paths, x, y, width, height, gap=6)
+    elif spread.layout == "stack":
+        draw_images_stacked(c, paths, x, y, width, height, gap=8)
+    elif spread.layout == "gallery":
+        draw_images_gallery(c, paths, x, y, width, height, gap=8)
+    else:
+        raise ValueError(f"Unknown layout: {spread.layout}")
+
+
 def draw_hero_spread(c: canvas.Canvas, page_w: float, page_h: float, spread: Spread) -> None:
-    c.setFillColorRGB(0.04, 0.04, 0.04)
-    c.rect(0, 0, page_w, page_h, stroke=0, fill=1)
-    draw_page_header(c, page_w, page_h, spread.page_label)
+    image_path = resolve_image(spread.images[0])
 
-    margin = 36
-    content_top = page_h - 56
-    content_bottom = 34
-    content_w = page_w - margin * 2
-    text_gap = 18
+    def draw_text(c: canvas.Canvas, margin: float, content_w: float, start_y: float) -> float:
+        return draw_text_panel(
+            c,
+            Spread(
+                page_label=spread.page_label,
+                title=spread.title,
+                description=spread.description,
+            ),
+            margin,
+            content_w,
+            start_y,
+        )
 
-    text_h = measure_text_panel_height(c, spread, content_w)
-    image_h = content_top - content_bottom - text_h - text_gap
-    text_start_y = content_top - 4
-
-    draw_text_panel(c, spread, margin, content_w, text_start_y)
-    draw_image_fit(
+    draw_vertical_spread(
         c,
-        resolve_image(spread.images[0]),
-        margin,
-        content_bottom,
-        content_w,
-        max(image_h, 120),
-        valign="top",
+        page_w,
+        page_h,
+        page_label=spread.page_label,
+        margin=36,
+        content_top=page_h - 56,
+        content_bottom=34,
+        image_path=image_path,
+        draw_text=draw_text,
+        draw_header=draw_page_header,
+        image_max_fraction=0.55,
+        text_gap=18,
     )
-    c.showPage()
+
+
+def draw_single_spread(c: canvas.Canvas, page_w: float, page_h: float, spread: Spread) -> None:
+    image_path = resolve_image(spread.images[0])
+
+    def draw_text(c: canvas.Canvas, margin: float, content_w: float, start_y: float) -> float:
+        return draw_text_panel(c, spread, margin, content_w, start_y)
+
+    draw_vertical_spread(
+        c,
+        page_w,
+        page_h,
+        page_label=spread.page_label,
+        margin=36,
+        content_top=page_h - 56,
+        content_bottom=34,
+        image_path=image_path,
+        draw_text=draw_text,
+        draw_header=draw_page_header,
+        image_max_fraction=0.46,
+        text_gap=18,
+    )
 
 
 def draw_spread(c: canvas.Canvas, page_w: float, page_h: float, spread: Spread) -> None:
     if spread.layout == "hero":
         draw_hero_spread(c, page_w, page_h, spread)
+        return
+
+    if spread.layout == "single":
+        draw_single_spread(c, page_w, page_h, spread)
         return
 
     c.setFillColorRGB(0.04, 0.04, 0.04)
@@ -516,38 +544,18 @@ def draw_spread(c: canvas.Canvas, page_w: float, page_h: float, spread: Spread) 
     image_w = (page_w - (margin * 2) - gap) * 0.56
     text_w = page_w - (margin * 2) - gap - image_w
     image_x = margin
-    image_y = content_bottom
-    image_h = content_top - content_bottom
+    available_h = content_top - content_bottom
+
+    image_block_h = measure_image_block_height(spread, image_w, available_h)
+    image_y = content_top - image_block_h
+
+    draw_image_block(c, spread, image_x, image_y, image_w, image_block_h)
+
     text_x = image_x + image_w + gap
-
-    if spread.layout == "single":
-        draw_image_fit(
-            c, resolve_image(spread.images[0]), image_x, image_y, image_w, image_h, valign="top"
-        )
-    elif spread.layout == "quad":
-        draw_image_grid(c, spread.images, image_x, image_y, image_w, image_h, columns=2, rows=2)
-    elif spread.layout == "stack":
-        draw_image_grid(c, spread.images, image_x, image_y, image_w, image_h, columns=1, rows=2, gap=8)
-    elif spread.layout == "pair":
-        draw_image_grid(c, spread.images, image_x, image_y, image_w, image_h, columns=2, rows=1, gap=8)
-    elif spread.layout == "gallery":
-        hero_h = image_h * 0.58
-        row_h = image_h - hero_h - 8
-        draw_image_fit(
-            c, resolve_image(spread.images[0]), image_x, image_y + row_h + 8, image_w, hero_h, valign="top"
-        )
-        half_w = (image_w - 8) / 2
-        draw_image_fit(c, resolve_image(spread.images[1]), image_x, image_y, half_w, row_h, valign="top")
-        draw_image_fit(
-            c, resolve_image(spread.images[2]), image_x + half_w + 8, image_y, half_w, row_h, valign="top"
-        )
-    else:
-        raise ValueError(f"Unknown layout: {spread.layout}")
-
     text_h = measure_text_panel_height(c, spread, text_w)
     text_start_y = content_top - 4
-    if text_h < image_h * 0.72:
-        text_start_y = content_bottom + (image_h + text_h) / 2
+    if text_h < image_block_h * 0.72:
+        text_start_y = image_y + (image_block_h + text_h) / 2
 
     draw_text_panel(c, spread, text_x, text_w, text_start_y)
     c.showPage()

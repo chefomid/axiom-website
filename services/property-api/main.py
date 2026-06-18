@@ -167,6 +167,7 @@ class CheckoutQuoteRequest(BaseModel):
     address: str = Field(default="", max_length=500)
     addresses: list[str] = Field(default_factory=list)
     selected_sources: list[str] = Field(default_factory=list)
+    source_urls: dict[str, str] = Field(default_factory=dict)
     confirmed_price_usd: float | None = None
     embedded: bool = False
 
@@ -187,6 +188,11 @@ class CheckoutStatusResponse(BaseModel):
     status: str
     balance_credits: int
     credits_added: int
+
+
+class CheckoutResumeResponse(BaseModel):
+    purpose: str
+    resume: dict[str, Any]
 
 
 class CheckoutEmbedResponse(BaseModel):
@@ -480,6 +486,37 @@ async def billing_checkout_status(
     return CheckoutStatusResponse(**result)
 
 
+@app.get("/billing/checkout-resume", response_model=CheckoutResumeResponse)
+@limiter.limit("30/minute")
+async def billing_checkout_resume(
+    request: Request,
+    session_id: str = "",
+    anon_id: str = "",
+):
+    sid = session_id.strip()
+    aid = anon_id.strip()
+    if not sid:
+        raise HTTPException(status_code=400, detail="session_id query parameter required")
+    if not aid:
+        raise HTTPException(status_code=400, detail="anon_id query parameter required")
+    if not billing_enabled():
+        raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
+    if not billing_db.is_ready():
+        raise HTTPException(status_code=503, detail="Billing database not ready")
+    try:
+        status = await get_checkout_status(sid, aid)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+    if status["status"] != "paid":
+        raise HTTPException(status_code=402, detail="Payment not completed")
+    stored = await billing_db.get_checkout_resume(sid, aid)
+    if not stored:
+        raise HTTPException(status_code=404, detail="Resume context not found for this checkout")
+    return CheckoutResumeResponse(purpose=stored["purpose"], resume=stored["payload"])
+
+
 @app.get("/billing/checkout-embed", response_model=CheckoutEmbedResponse)
 @limiter.limit("30/minute")
 async def billing_checkout_embed(
@@ -648,6 +685,21 @@ async def billing_checkout_quote(request: Request, body: CheckoutQuoteRequest):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+
+    resume_payload: dict[str, Any] = {
+        "address": addr,
+        "addresses": addrs,
+        "selected_sources": body.selected_sources,
+        "source_urls": body.source_urls,
+        "confirmed_price_usd": body.confirmed_price_usd,
+    }
+    await billing_db.save_checkout_resume(
+        str(session["session_id"]),
+        body.anon_id,
+        body.purpose,
+        resume_payload,
+    )
+
     return CheckoutQuoteResponse(**session)
 
 

@@ -1,16 +1,25 @@
 from __future__ import annotations
 
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from PIL import Image
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas
 
-
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from booklet_layout import (  # noqa: E402
+    draw_image_band,
+    draw_vertical_spread,
+    image_aspect,
+    natural_height,
+    stacked_block_height,
+)
+
 SOURCE_DIR = ROOT / "Pictures" / "COI Tracker"
 BRIEF_PATH = SOURCE_DIR / "COI_Tracker_Booklet_Content_Brief.txt"
 OUTPUT_DIR = ROOT / "public" / "coi-tracker"
@@ -155,30 +164,6 @@ def draw_bullets(
     return y
 
 
-def draw_image_fit(
-    c: canvas.Canvas,
-    image_path: Path,
-    x: float,
-    y: float,
-    width: float,
-    height: float,
-    *,
-    valign: str = "center",
-) -> None:
-    with Image.open(image_path) as img:
-        img_w, img_h = img.size
-
-    scale = min(width / img_w, height / img_h)
-    draw_w = img_w * scale
-    draw_h = img_h * scale
-    draw_x = x + (width - draw_w) / 2
-    draw_y = y + (height - draw_h) if valign == "top" else y + (height - draw_h) / 2
-
-    c.setFillColorRGB(0.06, 0.06, 0.06)
-    c.rect(x, y, width, height, stroke=0, fill=1)
-    c.drawImage(str(image_path), draw_x, draw_y, draw_w, draw_h, preserveAspectRatio=True, mask="auto")
-
-
 def draw_page_header(c: canvas.Canvas, page_w: float, page_h: float, page_label: str) -> None:
     c.setFillColorRGB(0.44, 0.44, 0.44)
     c.setFont("Helvetica", 8.5)
@@ -224,44 +209,8 @@ def draw_back_cover(c: canvas.Canvas, page_w: float, page_h: float, cta: str) ->
     c.showPage()
 
 
-def measure_asset_text_height(c: canvas.Canvas, asset: Asset, text_w: float) -> float:
-    height = 0.0
-    height += max(1, len(wrap_lines(c, asset.title, text_w, "Helvetica-Bold", 18))) * 22 + 10
-    height += max(1, len(wrap_lines(c, asset.description, text_w, "Helvetica", 10.5))) * 14 + 10
-    height += 16
-    for bullet in asset.primary_features:
-        height += max(1, len(wrap_lines(c, bullet, text_w - 10, "Helvetica", 9.5))) * 13
-    height += 8 + 16
-    for bullet in asset.sub_features:
-        height += max(1, len(wrap_lines(c, bullet, text_w - 10, "Helvetica", 9.5))) * 13
-    return height
-
-
-def draw_asset_spread(c: canvas.Canvas, page_w: float, page_h: float, asset: Asset, index_label: str) -> None:
-    c.setFillColorRGB(0.04, 0.04, 0.04)
-    c.rect(0, 0, page_w, page_h, stroke=0, fill=1)
-    draw_page_header(c, page_w, page_h, index_label)
-
-    margin = 36
-    content_top = page_h - 56
-    content_bottom = 34
-    gap = 26
-    image_w = (page_w - (margin * 2) - gap) * 0.56
-    text_w = page_w - (margin * 2) - gap - image_w
-
-    image_x = margin
-    image_y = content_bottom
-    image_h = content_top - content_bottom
-    draw_image_fit(c, asset.image_path, image_x, image_y, image_w, image_h, valign="top")
-
-    text_x = image_x + image_w + gap
-    text_h = measure_asset_text_height(c, asset, text_w)
-    y = content_top - 4
-    if text_h < image_h * 0.72:
-        y = content_bottom + (image_h + text_h) / 2
-    c.setFillColorRGB(1, 1, 1)
-    c.setFont("Helvetica-Bold", 18)
-    y = draw_wrapped_paragraph(c, asset.title, text_x, y, text_w, "Helvetica-Bold", 18, (0.96, 0.96, 0.96), 22)
+def draw_asset_text_panel(c: canvas.Canvas, asset: Asset, text_x: float, text_w: float, start_y: float) -> float:
+    y = draw_wrapped_paragraph(c, asset.title, text_x, start_y, text_w, "Helvetica-Bold", 18, (0.96, 0.96, 0.96), 22)
     y -= 10
     y = draw_wrapped_paragraph(
         c, asset.description, text_x, y, text_w, "Helvetica", 10.5, (0.77, 0.77, 0.77), 14
@@ -283,7 +232,27 @@ def draw_asset_spread(c: canvas.Canvas, page_w: float, page_h: float, asset: Ass
     draw_bullets(
         c, asset.sub_features, text_x, y, text_w, "Helvetica", 9.5, (0.82, 0.82, 0.82), (0.65, 0.65, 0.65), 13
     )
-    c.showPage()
+    return y
+
+
+def draw_asset_spread(c: canvas.Canvas, page_w: float, page_h: float, asset: Asset, index_label: str) -> None:
+    def draw_text(c: canvas.Canvas, margin: float, content_w: float, start_y: float) -> float:
+        return draw_asset_text_panel(c, asset, margin, content_w, start_y)
+
+    draw_vertical_spread(
+        c,
+        page_w,
+        page_h,
+        page_label=index_label,
+        margin=36,
+        content_top=page_h - 56,
+        content_bottom=34,
+        image_path=asset.image_path,
+        draw_text=draw_text,
+        draw_header=draw_page_header,
+        image_max_fraction=0.44,
+        text_gap=18,
+    )
 
 
 def draw_reporting_pair(c: canvas.Canvas, page_w: float, page_h: float, asset_a: Asset, asset_b: Asset) -> None:
@@ -291,22 +260,48 @@ def draw_reporting_pair(c: canvas.Canvas, page_w: float, page_h: float, asset_a:
     c.rect(0, 0, page_w, page_h, stroke=0, fill=1)
     draw_page_header(c, page_w, page_h, "Reporting Spread")
 
-    margin = 34
-    gap = 16
-    pane_w = (page_w - (margin * 2) - gap) / 2
-    pane_h = page_h - 130
-    y_base = 42
+    margin = 36
+    content_top = page_h - 56
+    content_bottom = 34
+    content_w = page_w - margin * 2
+    available_h = content_top - content_bottom
+    gap = 14
 
-    for idx, asset in enumerate((asset_a, asset_b)):
-        pane_x = margin + idx * (pane_w + gap)
-        draw_image_fit(c, asset.image_path, pane_x, y_base + 92, pane_w, pane_h - 92)
-        c.setFillColorRGB(0.95, 0.95, 0.95)
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(pane_x, y_base + 74, asset.title)
-        draw_wrapped_paragraph(
-            c, asset.description, pane_x, y_base + 58, pane_w, "Helvetica", 8.7, (0.72, 0.72, 0.72), 11
-        )
+    aspects = [image_aspect(asset.image_path) for asset in (asset_a, asset_b)]
+    image_block_h = min(stacked_block_height(content_w, aspects, gap), available_h * 0.58)
+    image_y = content_top - image_block_h
 
+    band_heights = [
+        natural_height(content_w, aspects[0]),
+        natural_height(content_w, aspects[1]),
+    ]
+    total_natural = sum(band_heights) + gap
+    if total_natural > image_block_h:
+        scale = (image_block_h - gap) / sum(band_heights)
+        band_heights = [height * scale for height in band_heights]
+
+    cursor = image_y + image_block_h
+    for asset, band_h in zip((asset_a, asset_b), band_heights):
+        cursor -= band_h
+        draw_image_band(c, asset.image_path, margin, cursor, content_w, band_h, valign="top")
+        cursor -= gap
+
+    text_start_y = image_y - 18
+    text_start_y = draw_wrapped_paragraph(
+        c, asset_a.title, margin, text_start_y, content_w, "Helvetica-Bold", 14, (0.96, 0.96, 0.96), 18
+    )
+    text_start_y -= 6
+    text_start_y = draw_wrapped_paragraph(
+        c, asset_a.description, margin, text_start_y, content_w, "Helvetica", 9.5, (0.77, 0.77, 0.77), 13
+    )
+    text_start_y -= 12
+    text_start_y = draw_wrapped_paragraph(
+        c, asset_b.title, margin, text_start_y, content_w, "Helvetica-Bold", 14, (0.96, 0.96, 0.96), 18
+    )
+    text_start_y -= 6
+    draw_wrapped_paragraph(
+        c, asset_b.description, margin, text_start_y, content_w, "Helvetica", 9.5, (0.77, 0.77, 0.77), 13
+    )
     c.showPage()
 
 
@@ -337,11 +332,9 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     INDIVIDUAL_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Individual one-page PDFs per screenshot.
     for asset in assets:
         draw_individual_pdf(asset, INDIVIDUAL_DIR / asset.pdf_name)
 
-    # Master booklet PDF.
     page_w, page_h = landscape(A4)
     c = canvas.Canvas(str(BOOKLET_PATH), pagesize=(page_w, page_h))
     draw_cover(c, page_w, page_h, front_headline, front_subheadline)

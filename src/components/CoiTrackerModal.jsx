@@ -291,27 +291,6 @@ export default function CoiTrackerModal({ open, onClose }) {
                     ? 'Overview'
                     : `${String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} / ${String(filteredDossier.length).padStart(2, '0')}`}
                 </span>
-                <a
-                  href="/coi-tracker/COI-Tracker-Booklet.pdf"
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Open booklet PDF"
-                  title="Open Booklet PDF"
-                  className="flex h-11 w-11 items-center justify-center text-ink-muted transition-colors hover:text-white sm:h-auto sm:w-auto sm:text-[10px] sm:tracking-[0.3em] sm:uppercase"
-                >
-                  <span className="sm:hidden" aria-hidden>
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                      <path
-                        d="M10 2H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7M10 2l5 5M10 2v5h5"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  <span className="hidden sm:inline">Open Booklet PDF</span>
-                </a>
                 <button
                   onClick={onClose}
                   aria-label="Close"
@@ -383,19 +362,13 @@ export default function CoiTrackerModal({ open, onClose }) {
                 className="relative flex shrink-0 scroll-mt-14 items-start justify-center px-4 py-8 md:min-h-[calc(100dvh-3.75rem)] md:snap-center md:items-center md:px-10 md:py-10 xl:px-16"
               >
                 <div
-                  className={`relative mx-auto grid w-full max-w-7xl grid-cols-1 items-start gap-6 md:items-center md:gap-10 lg:gap-12 xl:gap-16 ${
-                    item.compact ? 'lg:grid-cols-[1.15fr,0.85fr]' : 'lg:grid-cols-[1.32fr,0.68fr]'
-                  }`}
+                  className="relative mx-auto grid w-full max-w-7xl grid-cols-1 items-start gap-6 md:gap-10 lg:gap-12 xl:gap-16"
                 >
-                  <div className="flex items-center justify-center rounded-xl border border-[#2a2a2a] bg-[#0a0a0a]/60 p-2 md:border-0 md:bg-transparent md:p-0">
+                  <div className="flex items-start justify-center rounded-xl border border-[#2a2a2a] bg-[#0a0a0a]/60 p-2 md:border-0 md:bg-transparent md:p-0">
                     <img
                       src={item.src}
                       alt={item.title}
-                      className={`object-contain ${
-                        item.compact
-                          ? 'h-[220px] w-auto max-w-full sm:h-[280px]'
-                          : 'w-full max-h-[min(420px,52vh)] sm:max-h-[min(720px,68vh)]'
-                      }`}
+                      className="w-full h-auto object-contain object-top"
                       loading="lazy"
                       decoding="async"
                     />

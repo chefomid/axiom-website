@@ -372,7 +372,7 @@ function ScreenshotPanel({ item }) {
             loading="lazy"
             decoding="async"
           />
-          <motion.div className="grid grid-cols-1 sm:grid-cols-[1.15fr_0.85fr] gap-2 items-start">
+          <motion.div className="flex flex-col gap-1.5 w-full items-start">
             {rest.map((src, index) => (
               <img
                 key={src}
@@ -426,7 +426,7 @@ function ScreenshotPanel({ item }) {
           animate={{ opacity: 1 }}
           className="w-full"
         >
-          <motion.div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2">
+          <motion.div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2 items-start">
             {tiles.map((tile, index) => (
               <motion.div
                 key={tile.src}
@@ -470,11 +470,9 @@ function ScreenshotPanel({ item }) {
     }
 
     const layoutClass =
-      layout === 'pair'
-        ? 'grid grid-cols-1 sm:grid-cols-2 gap-2 w-full items-start'
-        : layout === 'stack'
-          ? 'flex flex-col gap-1.5 w-full items-stretch'
-          : 'w-full'
+      layout === 'stack' || layout === 'pair'
+        ? 'flex flex-col gap-1.5 w-full items-start'
+        : 'w-full'
 
     return (
       <motion.div
@@ -634,27 +632,6 @@ export default function InsuranceManagerModal({ open, onClose }) {
                   {String(filteredDossier.findIndex(item => item.id === activeSection) + 1).padStart(2, '0')} /{' '}
                   {String(filteredDossier.length).padStart(2, '0')}
                 </span>
-                <a
-                  href="/insurance-manager/Insurance-Manager-Booklet.pdf"
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Open booklet PDF"
-                  title="Open Booklet PDF"
-                  className="flex h-11 w-11 items-center justify-center text-ink-muted transition-colors hover:text-white sm:h-auto sm:w-auto sm:text-[10px] sm:tracking-[0.3em] sm:uppercase"
-                >
-                  <span className="sm:hidden" aria-hidden>
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                      <path
-                        d="M10 2H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7M10 2l5 5M10 2v5h5"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  <span className="hidden sm:inline">Open Booklet PDF</span>
-                </a>
                 <button
                   onClick={onClose}
                   aria-label="Close"
@@ -779,9 +756,7 @@ export default function InsuranceManagerModal({ open, onClose }) {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true, margin: '-40px' }}
                       transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-                      className={`grid grid-cols-1 gap-0 items-stretch ${
-                        item.compact ? '2xl:grid-cols-[0.82fr,1.18fr]' : '2xl:grid-cols-[1.16fr,0.84fr]'
-                      }`}
+                      className="grid grid-cols-1 gap-0 items-start"
                     >
                       <motion.div
                         className={`bg-[#151515] ${item.compact ? 'p-3 md:p-6' : 'p-3 md:p-5'}`}
@@ -794,7 +769,7 @@ export default function InsuranceManagerModal({ open, onClose }) {
                           <ScreenshotPanel item={item} />
                         </motion.div>
                       </motion.div>
-                      <motion.div className="flex flex-col justify-center gap-5 border-t border-[#2a2a2a] p-5 md:gap-7 md:border-l md:border-t-0 md:p-6 lg:p-8 mx-auto w-full max-w-none 2xl:max-w-md">
+                      <motion.div className="flex flex-col justify-center gap-5 border-t border-[#2a2a2a] p-5 md:gap-7 md:p-6 lg:p-8 mx-auto w-full max-w-none">
                         <div>
                           <h3 className="font-display text-2xl md:text-3xl font-semibold text-white pb-2 mb-3 im-title-rule">
                             {item.title}

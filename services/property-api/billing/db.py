@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,6 +43,13 @@ CREATE TABLE IF NOT EXISTS stripe_events (
     event_id TEXT PRIMARY KEY,
     processed_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS checkout_resume (
+    session_id TEXT PRIMARY KEY,
+    anon_id TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_ledger_anon ON ledger(anon_id);
 """
 
@@ -62,6 +70,13 @@ CREATE TABLE IF NOT EXISTS ledger (
 CREATE TABLE IF NOT EXISTS stripe_events (
     event_id TEXT PRIMARY KEY,
     processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS checkout_resume (
+    session_id TEXT PRIMARY KEY,
+    anon_id TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    payload_json JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_anon ON ledger(anon_id);
 """
@@ -340,5 +355,106 @@ def _sqlite_claim_stripe_event(event_id: str) -> bool:
         )
         conn.commit()
         return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+async def save_checkout_resume(
+    session_id: str,
+    anon_id: str,
+    purpose: str,
+    payload: dict[str, Any],
+) -> None:
+    if not _ready:
+        return
+    sid = session_id.strip()
+    aid = anon_id.strip()
+    if not sid or not aid or not purpose:
+        return
+    payload_json = json.dumps(payload)
+    if _use_postgres:
+        async with _pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO checkout_resume (session_id, anon_id, purpose, payload_json, created_at)
+                VALUES ($1, $2, $3, $4::jsonb, NOW())
+                ON CONFLICT (session_id) DO UPDATE
+                SET anon_id = EXCLUDED.anon_id,
+                    purpose = EXCLUDED.purpose,
+                    payload_json = EXCLUDED.payload_json,
+                    created_at = NOW()
+                """,
+                sid,
+                aid,
+                purpose,
+                payload_json,
+            )
+        return
+    await asyncio.to_thread(_sqlite_save_checkout_resume, sid, aid, purpose, payload_json)
+
+
+def _sqlite_save_checkout_resume(
+    session_id: str, anon_id: str, purpose: str, payload_json: str
+) -> None:
+    conn = _sqlite_connect()
+    try:
+        conn.execute(
+            """
+            INSERT INTO checkout_resume (session_id, anon_id, purpose, payload_json, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(session_id) DO UPDATE SET
+                anon_id = excluded.anon_id,
+                purpose = excluded.purpose,
+                payload_json = excluded.payload_json,
+                created_at = excluded.created_at
+            """,
+            (session_id, anon_id, purpose, payload_json, _now_iso()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+async def get_checkout_resume(session_id: str, anon_id: str) -> dict[str, Any] | None:
+    if not _ready:
+        return None
+    sid = session_id.strip()
+    aid = anon_id.strip()
+    if not sid or not aid:
+        return None
+    if _use_postgres:
+        async with _pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT anon_id, purpose, payload_json
+                FROM checkout_resume
+                WHERE session_id = $1
+                """,
+                sid,
+            )
+            if not row or row["anon_id"] != aid:
+                return None
+            payload = row["payload_json"]
+            if isinstance(payload, str):
+                payload = json.loads(payload)
+            return {"purpose": row["purpose"], "payload": dict(payload or {})}
+    return await asyncio.to_thread(_sqlite_get_checkout_resume, sid, aid)
+
+
+def _sqlite_get_checkout_resume(session_id: str, anon_id: str) -> dict[str, Any] | None:
+    conn = _sqlite_connect()
+    try:
+        row = conn.execute(
+            """
+            SELECT anon_id, purpose, payload_json
+            FROM checkout_resume
+            WHERE session_id = ?
+            """,
+            (session_id,),
+        ).fetchone()
+        if not row or row["anon_id"] != anon_id:
+            return None
+        payload = json.loads(row["payload_json"] or "{}")
+        return {"purpose": row["purpose"], "payload": payload}
     finally:
         conn.close()

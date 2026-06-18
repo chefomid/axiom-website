@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 
 import CheckoutPayModal from '../components/property-intelligence/CheckoutPayModal'
 import { useIsLgUp } from './useMediaQuery'
-import { fetchBillingBalance, fetchBillingPacks } from '../services/propertyApi'
+import { fetchBillingBalance, fetchBillingPacks, fetchCheckoutStatus } from '../services/propertyApi'
 import { getOrCreateAnonId } from '../utils/anonId'
 import { getStripePromise } from '../utils/stripeClient'
 
@@ -16,10 +16,12 @@ export function CheckoutPayProvider({ children }) {
   const [modal, setModal] = useState(null)
   const [waiting, setWaiting] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
+  const [checkingStatus, setCheckingStatus] = useState(false)
   const [stripePublishableKey, setStripePublishableKey] = useState('')
   const [phoneUrlLoading, setPhoneUrlLoading] = useState(false)
   const pollRef = useRef(null)
   const timeoutRef = useRef(null)
+  const pollStateRef = useRef(null)
   const onCompleteRef = useRef(null)
   const onCancelRef = useRef(null)
   const bootstrapIdRef = useRef(0)
@@ -51,6 +53,7 @@ export function CheckoutPayProvider({ children }) {
       window.clearTimeout(timeoutRef.current)
       timeoutRef.current = null
     }
+    pollStateRef.current = null
   }, [])
 
   const closeModal = useCallback(() => {
@@ -60,6 +63,7 @@ export function CheckoutPayProvider({ children }) {
     setModal(null)
     setWaiting(false)
     setTimedOut(false)
+    setCheckingStatus(false)
     setPhoneUrlLoading(false)
     onCompleteRef.current = null
     onCancelRef.current = null
@@ -72,6 +76,7 @@ export function CheckoutPayProvider({ children }) {
     setModal(null)
     setWaiting(false)
     setTimedOut(false)
+    setCheckingStatus(false)
     setPhoneUrlLoading(false)
     onCompleteRef.current = null
     onCancelRef.current = null
@@ -79,30 +84,75 @@ export function CheckoutPayProvider({ children }) {
     onComplete?.()
   }, [clearPolling])
 
+  const pollPaymentOnce = useCallback(async () => {
+    const state = pollStateRef.current
+    if (!state) return false
+
+    const anonId = getOrCreateAnonId()
+    const { hostedSessionId, balanceBefore, creditsToAdd } = state
+
+    if (hostedSessionId) {
+      try {
+        const status = await fetchCheckoutStatus(hostedSessionId, anonId)
+        if (status.status === 'paid') {
+          completeCheckout()
+          return true
+        }
+      } catch {
+        /* keep polling */
+      }
+    }
+
+    if (creditsToAdd > 0) {
+      try {
+        const bal = await fetchBillingBalance(anonId)
+        if ((bal.balance_credits ?? 0) >= balanceBefore + creditsToAdd) {
+          completeCheckout()
+          return true
+        }
+      } catch {
+        /* keep polling */
+      }
+    }
+
+    return false
+  }, [completeCheckout])
+
+  const checkPaymentStatus = useCallback(async () => {
+    setCheckingStatus(true)
+    try {
+      const paid = await pollPaymentOnce()
+      if (paid) setTimedOut(false)
+      return paid
+    } finally {
+      setCheckingStatus(false)
+    }
+  }, [pollPaymentOnce])
+
   const startPolling = useCallback(
-    (balanceBefore, creditsToAdd) => {
-      if (!creditsToAdd || creditsToAdd <= 0) return
-      const anonId = getOrCreateAnonId()
-      const targetBalance = balanceBefore + creditsToAdd
+    (balanceBefore, creditsToAdd, hostedSessionId) => {
+      if (!hostedSessionId && (!creditsToAdd || creditsToAdd <= 0)) return
+
+      pollStateRef.current = {
+        hostedSessionId: hostedSessionId ?? null,
+        balanceBefore,
+        creditsToAdd: creditsToAdd ?? 0,
+      }
       setWaiting(true)
       setTimedOut(false)
 
-      pollRef.current = window.setInterval(async () => {
-        try {
-          const bal = await fetchBillingBalance(anonId)
-          if ((bal.balance_credits ?? 0) >= targetBalance) {
-            completeCheckout()
-          }
-        } catch {
-          /* keep polling */
-        }
-      }, POLL_INTERVAL_MS)
+      const tick = () => {
+        void pollPaymentOnce()
+      }
+
+      tick()
+      pollRef.current = window.setInterval(tick, POLL_INTERVAL_MS)
 
       timeoutRef.current = window.setTimeout(() => {
         setTimedOut(true)
       }, POLL_TIMEOUT_MS)
     },
-    [completeCheckout],
+    [pollPaymentOnce],
   )
 
   const bootstrapCheckout = useCallback(
@@ -144,7 +194,12 @@ export function CheckoutPayProvider({ children }) {
         if (bootstrapId !== bootstrapIdRef.current) return
 
         const balanceBefore = balanceResult.balance_credits ?? 0
-        const creditsToAdd = creditsToAddHint ?? previewResult?.credits_to_add ?? null
+        const hostedSessionId = hostedSession?.session_id ?? null
+        const creditsToAdd =
+          hostedSession?.credits_to_add ??
+          creditsToAddHint ??
+          previewResult?.credits_to_add ??
+          null
         const hostedUrl = hostedSession?.url ?? null
         const embedSecret = embedSession?.client_secret ?? null
 
@@ -172,8 +227,8 @@ export function CheckoutPayProvider({ children }) {
         )
         setPhoneUrlLoading(false)
 
-        if (creditsToAdd) {
-          startPolling(balanceBefore, creditsToAdd)
+        if (hostedSessionId || creditsToAdd) {
+          startPolling(balanceBefore, creditsToAdd ?? 0, hostedSessionId)
         }
       } catch (err) {
         if (bootstrapId !== bootstrapIdRef.current) return
@@ -260,6 +315,8 @@ export function CheckoutPayProvider({ children }) {
         phoneUrlLoading={phoneUrlLoading}
         waiting={waiting}
         timedOut={timedOut}
+        checkingStatus={checkingStatus}
+        onCheckPaymentStatus={checkPaymentStatus}
         onEmbeddedComplete={handleEmbeddedComplete}
         onClose={closeModal}
       />
