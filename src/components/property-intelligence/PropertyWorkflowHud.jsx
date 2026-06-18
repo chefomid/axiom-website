@@ -358,8 +358,8 @@ export default function PropertyWorkflowHud({
             <span>
               <span className="side-panel-title mb-0 block">Data Package</span>
               <p className="side-panel-copy mt-1.5">
-                A data package bundles licensed property records, live hazard feeds, and public sources
-                into one priced run for your location.
+                Pick a source stack for one run. Publicly Available covers government hazards and COPE
+                map at no vendor cost; licensed tiers add property records and building attributes.
               </p>
               {!packageExpanded ? (
                 <span

@@ -73,10 +73,10 @@ function IntroBody({ featured }) {
           What to expect
         </p>
         <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
-          Licensed vendors cover 140M+ US properties with assessor-aligned records, building
-          attributes, and peril scores. Live government feeds add flood zones, seismic activity,
-          weather alerts, and environmental context at the pin. The Publicly Available package
-          starts with these feeds at no vendor cost.
+          Start with Publicly Available: live government feeds for flood zones, seismic activity,
+          weather alerts, and environmental context at the pin, at no vendor cost. Licensed tiers
+          add assessor-aligned records across 140M+ US properties, building attributes, and peril
+          scores when you need deeper COPE detail.
         </p>
         <p className="mt-2.5 text-sm leading-relaxed text-ink-muted">
           Some fields may still come back blank: new construction, owner privacy rules, vendor

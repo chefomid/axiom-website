@@ -52,7 +52,7 @@ function PackageButton({ intent, selected, disabled, warning, onClick, stacked =
           selected ? intent.active : intent.accent
         }`}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           {mark}
           <span className="min-w-0 flex-1">
             <span className="flex items-start justify-between gap-2">
