@@ -73,9 +73,34 @@ export async function suggestPropertyAddresses(query, { limit = 5, signal, bbox 
   return []
 }
 
+let catalogCache = null
+let catalogFetchPromise = null
+
+/** Returns cached catalog synchronously, or null if not yet loaded. */
+export function getCachedPropertyCatalog() {
+  return catalogCache
+}
+
+/** Warm the catalog cache as early as possible (e.g. on route entry). */
+export function prefetchPropertyCatalog() {
+  if (catalogCache) return Promise.resolve(catalogCache)
+  if (!catalogFetchPromise) {
+    catalogFetchPromise = propertyFetch('/catalog')
+      .then(parsePropertyResponse)
+      .then(data => {
+        catalogCache = data
+        return data
+      })
+      .catch(err => {
+        catalogFetchPromise = null
+        throw err
+      })
+  }
+  return catalogFetchPromise
+}
+
 export async function fetchPropertyCatalog() {
-  const res = await propertyFetch('/catalog')
-  return parsePropertyResponse(res)
+  return prefetchPropertyCatalog()
 }
 
 export async function quoteProperty({ address, selectedSources }) {
@@ -180,6 +205,24 @@ export async function fetchBillingBalance(anonId) {
   return parsePropertyResponse(res)
 }
 
+export async function fetchCheckoutStatus(sessionId, anonId) {
+  const params = new URLSearchParams({
+    session_id: sessionId,
+    anon_id: anonId ?? getOrCreateAnonId(),
+  })
+  const res = await propertyFetch(`/billing/checkout-status?${params}`)
+  return parsePropertyResponse(res)
+}
+
+export async function fetchCheckoutResume(sessionId, anonId) {
+  const params = new URLSearchParams({
+    session_id: sessionId,
+    anon_id: anonId ?? getOrCreateAnonId(),
+  })
+  const res = await propertyFetch(`/billing/checkout-resume?${params}`)
+  return parsePropertyResponse(res)
+}
+
 export async function startBillingCheckout(packId, anonId, { embedded = false } = {}) {
   const res = await propertyFetch('/billing/checkout', {
     method: 'POST',
@@ -239,6 +282,9 @@ export async function startQuoteCheckout({
   }
   if (addresses?.length) body.addresses = addresses.map(a => a.trim()).filter(Boolean)
   if (confirmedPriceUsd != null) body.confirmed_price_usd = confirmedPriceUsd
+  if (resumeContext?.sourceUrls && Object.keys(resumeContext.sourceUrls).length > 0) {
+    body.source_urls = resumeContext.sourceUrls
+  }
 
   const res = await propertyFetch('/billing/checkout-quote', {
     method: 'POST',

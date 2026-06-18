@@ -68,6 +68,23 @@ function IntroBody({ featured }) {
         source-backed fields in one place.
       </p>
 
+      <div className="mt-5 rounded border border-panel-border/70 bg-panel-surface/30 px-4 py-3.5">
+        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-command-live">
+          What to expect
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
+          Licensed vendors cover 140M+ US properties with assessor-aligned records, building
+          attributes, and peril scores. Live government feeds add flood zones, seismic activity,
+          weather alerts, and environmental context at the pin. The Publicly Available package
+          starts with these feeds at no vendor cost.
+        </p>
+        <p className="mt-2.5 text-sm leading-relaxed text-ink-muted">
+          Some fields may still come back blank: new construction, owner privacy rules, vendor
+          update lag, or properties outside a feed&apos;s footprint are normal. AXIOM labels each
+          field as verified, inferred, or missing so you see exactly what came back.
+        </p>
+      </div>
+
       <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted">
         Licensed property APIs
       </p>

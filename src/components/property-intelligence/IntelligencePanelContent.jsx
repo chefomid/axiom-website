@@ -43,32 +43,6 @@ const DELIVERABLES = [
 
 
 
-function scanStatus({ locationPhase, locationLocked, loadingReport, hasReport }) {
-
-  if (loadingReport) return { label: 'Report Running', active: true }
-
-  if (hasReport) return { label: 'Report Ready', active: true }
-
-  if (locationLocked) return { label: 'Property Scan Active', active: true }
-
-  if (locationPhase === 'composing' || locationPhase === 'searching') {
-
-    return { label: 'Resolving Address', active: false }
-
-  }
-
-  if (locationPhase === 'locating' || locationPhase === 'resolving') {
-
-    return { label: 'Locating Property', active: false }
-
-  }
-
-  return { label: 'Awaiting Property', active: false }
-
-}
-
-
-
 function CompactList({ items }) {
 
   return (
@@ -93,21 +67,9 @@ function CompactList({ items }) {
 
 
 
-export default function IntelligencePanelContent({
-
-  locationPhase,
-
-  locationLocked,
-
-  loadingReport,
-
-  hasReport,
-
-}) {
+export default function IntelligencePanelContent() {
 
   const [sourcesOpen, setSourcesOpen] = useState(false)
-
-  const status = scanStatus({ locationPhase, locationLocked, loadingReport, hasReport })
 
 
 
@@ -117,29 +79,7 @@ export default function IntelligencePanelContent({
 
       <section className="side-panel-section shrink-0 border-b-0 pb-1">
 
-        <div className="flex items-center justify-between gap-2">
-
-          <span className="side-panel-title mb-0">Intelligence Panel</span>
-
-          <div className="flex items-center gap-2">
-
-            <span className="inline-flex items-center gap-1 font-mono text-[9px] text-white/68">
-
-              <span
-
-                className={`h-1 w-1 rounded-full ${status.active ? 'bg-white/80' : 'bg-white/30'}`}
-
-                aria-hidden
-
-              />
-
-              {status.label}
-
-            </span>
-
-          </div>
-
-        </div>
+        <span className="side-panel-title mb-0">Intelligence Panel</span>
 
       </section>
 

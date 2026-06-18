@@ -995,6 +995,7 @@ export default function PropertyIntelligenceView() {
           onSearchingChange={setAddressSearching}
           presets={catalog?.presets}
           catalog={catalog}
+          loadingCatalog={loadingCatalog}
           activePresetId={activePresetId}
           selectedSources={selectedSources}
           quote={quote}

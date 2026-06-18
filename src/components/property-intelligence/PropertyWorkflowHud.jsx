@@ -68,6 +68,8 @@ export default function PropertyWorkflowHud({
 
   catalog,
 
+  loadingCatalog = false,
+
   activePresetId,
 
   selectedSources,
@@ -355,6 +357,10 @@ export default function PropertyWorkflowHud({
           >
             <span>
               <span className="side-panel-title mb-0 block">Data Package</span>
+              <p className="side-panel-copy mt-1.5">
+                A data package bundles licensed property records, live hazard feeds, and public sources
+                into one priced run for your location.
+              </p>
               {!packageExpanded ? (
                 <span
                   className={`mt-1 block font-mono text-[10px] leading-snug ${
@@ -380,8 +386,8 @@ export default function PropertyWorkflowHud({
               {!readyForGenerate ? (
                 <p className="side-panel-copy mb-2 mt-2">
                   {scheduleMode
-                    ? 'Choose a package and validate your schedule. Pricing appears at the bottom.'
-                    : 'Choose a package and optional add-ons. Pricing appears at the bottom once the property is locked.'}
+                    ? 'Pick a package tier and validate your schedule. Pricing appears at the bottom.'
+                    : 'Pick a package tier and any add-ons. Pricing appears at the bottom once you lock the property.'}
                 </p>
               ) : null}
 
@@ -389,6 +395,7 @@ export default function PropertyWorkflowHud({
                 layout="sidebar"
                 presets={presets}
                 catalog={catalog}
+                loading={loadingCatalog}
                 activePresetId={activePresetId}
                 selectedSources={selectedSources}
                 onToggleSource={onToggleSource}
@@ -437,17 +444,7 @@ export default function PropertyWorkflowHud({
 
 
 
-        <IntelligencePanelContent
-
-          locationPhase={locationPhase}
-
-          locationLocked={readyForGenerate}
-
-          loadingReport={loadingReport}
-
-          hasReport={hasReport || hasBatchReport}
-
-        />
+        <IntelligencePanelContent />
 
       </div>
 

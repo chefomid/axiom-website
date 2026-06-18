@@ -4,6 +4,7 @@ import {
   checkPropertyApiHealth,
   enrichProperty,
   fetchPropertyCatalog,
+  getCachedPropertyCatalog,
   isPaymentRequiredError,
   PRESET_OPTIONAL_ADDONS,
   presetSourceIds,
@@ -65,11 +66,11 @@ function resetQuoteToEstimate(quote) {
 }
 
 export default function usePropertyReport() {
-  const [catalog, setCatalog] = useState(null)
+  const [catalog, setCatalog] = useState(() => getCachedPropertyCatalog())
   const [selectedSources, setSelectedSources] = useState([])
   const [quote, setQuote] = useState(null)
   const [record, setRecord] = useState(null)
-  const [loadingCatalog, setLoadingCatalog] = useState(true)
+  const [loadingCatalog, setLoadingCatalog] = useState(() => !getCachedPropertyCatalog())
   const [loadingQuote, setLoadingQuote] = useState(false)
   const [quoteError, setQuoteError] = useState(null)
   const [loadingReport, setLoadingReport] = useState(false)

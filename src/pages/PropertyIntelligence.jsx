@@ -1,10 +1,13 @@
 import { Suspense, useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import PropertyIntelligenceIntroModal, {
   ackPropertyIntelligenceIntro,
   isPropertyIntelligenceIntroAcked,
 } from '../components/property-intelligence/PropertyIntelligenceIntroModal'
 import PropertyIntelligenceOverview from '../components/property-intelligence/PropertyIntelligenceOverview'
+import MobilePaymentReturn from '../components/property-intelligence/MobilePaymentReturn'
 import { isPropertyIntelligenceEnabled } from '../config/features'
+import { prefetchPropertyCatalog } from '../services/propertyApi'
 import { useIsLgUp } from '../hooks/useMediaQuery'
 import { lazyWithRetry } from '../utils/lazyWithRetry'
 import { CheckoutPayProvider } from '../hooks/useCheckoutPay'
@@ -16,7 +19,11 @@ const PropertyIntelligenceView = lazyWithRetry(
 export default function PropertyIntelligence() {
   const enabled = isPropertyIntelligenceEnabled()
   const isLgUp = useIsLgUp()
+  const [searchParams] = useSearchParams()
   const [introOpen, setIntroOpen] = useState(() => !isPropertyIntelligenceIntroAcked())
+
+  const isPaymentReturn =
+    searchParams.get('billing') === 'success' && Boolean(searchParams.get('session_id')?.trim())
 
   const handleIntroContinue = useCallback(() => {
     ackPropertyIntelligenceIntro()
@@ -30,6 +37,14 @@ export default function PropertyIntelligence() {
       document.title = 'AXIOM'
     }
   }, [])
+
+  useEffect(() => {
+    if (enabled && isLgUp) prefetchPropertyCatalog().catch(() => {})
+  }, [enabled, isLgUp])
+
+  if (!isLgUp && isPaymentReturn) {
+    return <MobilePaymentReturn />
+  }
 
   if (!enabled || !isLgUp) {
     return <PropertyIntelligenceOverview comingSoon={!enabled} />
@@ -46,4 +61,3 @@ export default function PropertyIntelligence() {
     </div>
   )
 }
-

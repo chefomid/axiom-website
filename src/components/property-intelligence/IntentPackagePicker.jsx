@@ -212,9 +212,32 @@ function OptionalAddonRow({
   )
 }
 
+function PackageSkeleton({ stacked = false }) {
+  const cardClass = stacked
+    ? 'workflow-package-card isolate w-full rounded-lg border border-panel-border/50 bg-panel-surface/20 px-3.5 py-3'
+    : 'workflow-package-btn flex w-full items-center gap-3 rounded-md border border-panel-border/50 bg-panel-surface/20 px-3 py-2.5'
+
+  return (
+    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading packages">
+      {[0, 1, 2].map(i => (
+        <div key={i} className={cardClass}>
+          <div className="flex items-start gap-3">
+            <span className="checkout-skeleton-block h-4 w-4 shrink-0 rounded" />
+            <span className="min-w-0 flex-1 space-y-2">
+              <span className="checkout-skeleton-block block h-3 w-2/5 rounded" />
+              <span className="checkout-skeleton-block block h-2.5 w-4/5 rounded" />
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function IntentPackagePicker({
   presets,
   catalog,
+  loading = false,
   activePresetId,
   selectedSources,
   onToggleSource,
@@ -240,8 +263,8 @@ export default function IntentPackagePicker({
     ? 'Upload a schedule first, then choose packages and add-ons.'
     : 'Lock an address on the map first, then choose packages and add-ons.'
 
-  if (!presets?.length) {
-    return <p className="font-mono text-[10px] text-ink-muted">Loading packages…</p>
+  if (loading || !presets?.length) {
+    return <PackageSkeleton stacked={stacked} />
   }
 
   const allPackageItems = [
