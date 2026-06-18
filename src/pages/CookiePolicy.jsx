@@ -22,7 +22,7 @@ const COOKIE_TABLE = [
   {
     name: 'axiom:pi-intro-ack',
     provider: 'AXIOM (first-party)',
-    purpose: 'Remembers Property Intelligence onboarding dismissal',
+    purpose: 'Remembers Property Intelligence expectations acknowledgment (versioned)',
     category: 'Functional',
     duration: 'Browser session',
     type: 'sessionStorage',

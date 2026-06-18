@@ -3,10 +3,16 @@ import { PrimaryButton } from '../ui/CommandControls'
 import MobileStickyFooter from '../ui/MobileStickyFooter'
 
 export const PI_INTRO_ACK_KEY = 'axiom:pi-intro-ack'
+export const PI_INTRO_ACK_VERSION = 2
 
 export function isPropertyIntelligenceIntroAcked() {
   try {
-    return sessionStorage.getItem(PI_INTRO_ACK_KEY) === 'true'
+    const raw = sessionStorage.getItem(PI_INTRO_ACK_KEY)
+    if (!raw) return false
+    // Legacy boolean ack from before the expectations disclaimer shipped.
+    if (raw === 'true') return false
+    const parsed = JSON.parse(raw)
+    return Number(parsed?.version) >= PI_INTRO_ACK_VERSION
   } catch {
     return false
   }
@@ -14,7 +20,10 @@ export function isPropertyIntelligenceIntroAcked() {
 
 export function ackPropertyIntelligenceIntro() {
   try {
-    sessionStorage.setItem(PI_INTRO_ACK_KEY, 'true')
+    sessionStorage.setItem(
+      PI_INTRO_ACK_KEY,
+      JSON.stringify({ version: PI_INTRO_ACK_VERSION }),
+    )
   } catch {
     /* sessionStorage unavailable */
   }
@@ -50,7 +59,7 @@ const COPE_VECTOR = [
   { label: 'Exposure', detail: 'Flood, quake, wildfire, weather' },
 ]
 
-function IntroBody({ featured }) {
+function IntroBody({ featured, isMobile = false }) {
   return (
     <>
       <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-muted">
@@ -63,12 +72,7 @@ function IntroBody({ featured }) {
         Property Intelligence
       </h2>
 
-      <p className="mt-4 text-sm leading-relaxed text-ink-secondary">
-        COPE-ready property intelligence: building characteristics, live hazards, and
-        source-backed fields in one place.
-      </p>
-
-      <div className="mt-5 rounded border border-panel-border/70 bg-panel-surface/30 px-4 py-3.5">
+      <div className="mt-4 rounded border border-panel-border/70 bg-panel-surface/30 px-4 py-3.5">
         <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-command-live">
           What to expect
         </p>
@@ -84,6 +88,21 @@ function IntroBody({ featured }) {
           field as verified, inferred, or missing so you see exactly what came back.
         </p>
       </div>
+
+      {isMobile ? (
+        <div className="mt-4 rounded border border-[#333] bg-[#141414] px-4 py-3">
+          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-white">Mobile view</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-secondary">
+            Browse the overview here. The interactive map, data packages, and report workflow are
+            available on <span className="text-white">desktop</span> (screen width 1024px or larger).
+          </p>
+        </div>
+      ) : (
+        <p className="mt-4 text-sm leading-relaxed text-ink-secondary">
+          COPE-ready property intelligence: building characteristics, live hazards, and
+          source-backed fields in one place.
+        </p>
+      )}
 
       <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted">
         Licensed property APIs
@@ -131,11 +150,12 @@ function IntroBody({ featured }) {
   )
 }
 
-export default function PropertyIntelligenceIntroModal({ open, onContinue, vendors }) {
+export default function PropertyIntelligenceIntroModal({ open, onContinue, vendors, isMobile = false }) {
   const featured = FEATURED_VENDOR_IDS.map(id => ({
     id,
     ...(vendors?.[id] ?? FALLBACK_VENDORS[id]),
   }))
+  const ctaLabel = isMobile ? 'Continue' : 'Get started'
 
   return (
     <AnimatePresence>
@@ -147,7 +167,7 @@ export default function PropertyIntelligenceIntroModal({ open, onContinue, vendo
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/80 p-0 backdrop-blur-md md:items-center md:p-6"
+          className="fixed inset-0 z-[240] flex items-end justify-center bg-black/80 p-0 backdrop-blur-md md:items-center md:p-6"
         >
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
@@ -157,15 +177,15 @@ export default function PropertyIntelligenceIntroModal({ open, onContinue, vendo
             className="flex max-h-[min(92dvh,100%)] w-full max-w-xl flex-col overflow-hidden rounded-t-xl border border-[#333] bg-[#0d0d0d]/98 shadow-2xl md:max-h-none md:rounded md:border"
           >
             <div className="sleek-scrollbar flex-1 overflow-y-auto overscroll-contain p-5 md:p-6">
-              <IntroBody featured={featured} />
+              <IntroBody featured={featured} isMobile={isMobile} />
               <div className="mt-6 hidden justify-end md:flex">
-                <PrimaryButton onClick={onContinue}>Get started</PrimaryButton>
+                <PrimaryButton onClick={onContinue}>{ctaLabel}</PrimaryButton>
               </div>
             </div>
 
             <MobileStickyFooter fixed={false} align="end" className="md:hidden">
               <div className="w-full [&_button]:w-full">
-                <PrimaryButton onClick={onContinue}>Get started</PrimaryButton>
+                <PrimaryButton onClick={onContinue}>{ctaLabel}</PrimaryButton>
               </div>
             </MobileStickyFooter>
           </motion.div>

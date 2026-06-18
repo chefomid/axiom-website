@@ -46,18 +46,26 @@ export default function PropertyIntelligence() {
     return <MobilePaymentReturn />
   }
 
-  if (!enabled || !isLgUp) {
-    return <PropertyIntelligenceOverview comingSoon={!enabled} />
-  }
+  const showOverview = !enabled || !isLgUp
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-black text-ink-primary">
-      <PropertyIntelligenceIntroModal open={introOpen} onContinue={handleIntroContinue} />
-      <Suspense fallback={null}>
-        <CheckoutPayProvider>
-          <PropertyIntelligenceView />
-        </CheckoutPayProvider>
-      </Suspense>
-    </div>
+    <>
+      <PropertyIntelligenceIntroModal
+        open={introOpen}
+        onContinue={handleIntroContinue}
+        isMobile={!isLgUp}
+      />
+      {showOverview ? (
+        <PropertyIntelligenceOverview comingSoon={!enabled} />
+      ) : (
+        <div className="flex h-[100dvh] flex-col overflow-hidden bg-black text-ink-primary">
+          <Suspense fallback={null}>
+            <CheckoutPayProvider>
+              <PropertyIntelligenceView />
+            </CheckoutPayProvider>
+          </Suspense>
+        </div>
+      )}
+    </>
   )
 }
