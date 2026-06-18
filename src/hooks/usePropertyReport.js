@@ -253,7 +253,7 @@ export default function usePropertyReport() {
   )
 
   const runReport = useCallback(
-    async ({ address, sourceUrls, sourceUrl }) => {
+    async ({ address, sourceUrls, sourceUrl, reportId }) => {
       if (!address?.trim()) return
       setLoadingReport(true)
       setError(null)
@@ -265,6 +265,7 @@ export default function usePropertyReport() {
           sourceUrls,
           confirmedPriceUsd: quote?.totals?.user_price_usd,
           anonId: getOrCreateAnonId(),
+          reportId,
         })
         setRecord(result)
         if (result.receipt) setQuote(prev => ({ ...prev, ...result.receipt, isFinal: true }))
@@ -321,6 +322,7 @@ export default function usePropertyReport() {
     scheduleQuote,
     refreshQuote,
     record,
+    setRecord,
     loadingCatalog,
     loadingQuote,
     quoteError,

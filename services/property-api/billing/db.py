@@ -50,6 +50,14 @@ CREATE TABLE IF NOT EXISTS checkout_resume (
     payload_json TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS report_confirmations (
+    confirmation_id TEXT PRIMARY KEY,
+    anon_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_ledger_anon ON ledger(anon_id);
 """
 
@@ -77,6 +85,14 @@ CREATE TABLE IF NOT EXISTS checkout_resume (
     purpose TEXT NOT NULL,
     payload_json JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS report_confirmations (
+    confirmation_id TEXT PRIMARY KEY,
+    anon_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    payload_json JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_anon ON ledger(anon_id);
 """
@@ -456,5 +472,160 @@ def _sqlite_get_checkout_resume(session_id: str, anon_id: str) -> dict[str, Any]
             return None
         payload = json.loads(row["payload_json"] or "{}")
         return {"purpose": row["purpose"], "payload": payload}
+    finally:
+        conn.close()
+
+
+async def save_report_confirmation_pending(
+    confirmation_id: str,
+    anon_id: str,
+    payload: dict[str, Any],
+) -> None:
+    if not _ready:
+        return
+    cid = confirmation_id.strip()
+    aid = anon_id.strip()
+    if not cid or not aid:
+        return
+    payload_json = json.dumps({**payload, "status": "pending"})
+    if _use_postgres:
+        async with _pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO report_confirmations
+                    (confirmation_id, anon_id, status, payload_json, created_at, updated_at)
+                VALUES ($1, $2, 'pending', $3::jsonb, NOW(), NOW())
+                ON CONFLICT (confirmation_id) DO UPDATE
+                SET anon_id = EXCLUDED.anon_id,
+                    status = 'pending',
+                    payload_json = EXCLUDED.payload_json,
+                    updated_at = NOW()
+                """,
+                cid,
+                aid,
+                payload_json,
+            )
+        return
+    await asyncio.to_thread(_sqlite_save_report_confirmation, cid, aid, "pending", payload_json)
+
+
+async def update_report_confirmation(
+    confirmation_id: str,
+    *,
+    status: str,
+    payload: dict[str, Any],
+) -> None:
+    if not _ready:
+        return
+    cid = confirmation_id.strip()
+    if not cid:
+        return
+    payload_json = json.dumps(payload)
+    if _use_postgres:
+        async with _pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE report_confirmations
+                SET status = $2, payload_json = $3::jsonb, updated_at = NOW()
+                WHERE confirmation_id = $1
+                """,
+                cid,
+                status,
+                payload_json,
+            )
+        return
+    await asyncio.to_thread(_sqlite_update_report_confirmation, cid, status, payload_json)
+
+
+async def get_report_confirmation(confirmation_id: str) -> dict[str, Any] | None:
+    if not _ready:
+        return None
+    cid = confirmation_id.strip().upper()
+    if not cid:
+        return None
+    if _use_postgres:
+        async with _pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT confirmation_id, anon_id, status, payload_json
+                FROM report_confirmations
+                WHERE confirmation_id = $1
+                """,
+                cid,
+            )
+            if not row:
+                return None
+            payload = row["payload_json"]
+            if isinstance(payload, str):
+                payload = json.loads(payload)
+            return {
+                "confirmation_id": row["confirmation_id"],
+                "anon_id": row["anon_id"],
+                "status": row["status"],
+                "payload": dict(payload or {}),
+            }
+    return await asyncio.to_thread(_sqlite_get_report_confirmation, cid)
+
+
+def _sqlite_save_report_confirmation(
+    confirmation_id: str, anon_id: str, status: str, payload_json: str
+) -> None:
+    conn = _sqlite_connect()
+    try:
+        now = _now_iso()
+        conn.execute(
+            """
+            INSERT INTO report_confirmations
+                (confirmation_id, anon_id, status, payload_json, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(confirmation_id) DO UPDATE SET
+                anon_id = excluded.anon_id,
+                status = excluded.status,
+                payload_json = excluded.payload_json,
+                updated_at = excluded.updated_at
+            """,
+            (confirmation_id, anon_id, status, payload_json, now, now),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _sqlite_update_report_confirmation(confirmation_id: str, status: str, payload_json: str) -> None:
+    conn = _sqlite_connect()
+    try:
+        conn.execute(
+            """
+            UPDATE report_confirmations
+            SET status = ?, payload_json = ?, updated_at = ?
+            WHERE confirmation_id = ?
+            """,
+            (status, payload_json, _now_iso(), confirmation_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _sqlite_get_report_confirmation(confirmation_id: str) -> dict[str, Any] | None:
+    conn = _sqlite_connect()
+    try:
+        row = conn.execute(
+            """
+            SELECT confirmation_id, anon_id, status, payload_json
+            FROM report_confirmations
+            WHERE confirmation_id = ?
+            """,
+            (confirmation_id,),
+        ).fetchone()
+        if not row:
+            return None
+        payload = json.loads(row["payload_json"] or "{}")
+        return {
+            "confirmation_id": row["confirmation_id"],
+            "anon_id": row["anon_id"],
+            "status": row["status"],
+            "payload": payload,
+        }
     finally:
         conn.close()

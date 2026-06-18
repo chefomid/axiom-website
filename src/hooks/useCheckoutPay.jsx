@@ -4,10 +4,14 @@ import CheckoutPayModal from '../components/property-intelligence/CheckoutPayMod
 import { useIsLgUp } from './useMediaQuery'
 import { fetchBillingBalance, fetchBillingPacks, fetchCheckoutStatus } from '../services/propertyApi'
 import { getOrCreateAnonId } from '../utils/anonId'
+import { loadBillingResume } from '../utils/billingResume'
 import { getStripePromise } from '../utils/stripeClient'
 
-const POLL_INTERVAL_MS = 2000
+const FAST_POLL_MS = 500
+const SLOW_POLL_MS = 2000
+const FAST_POLL_DURATION_MS = 60_000
 const POLL_TIMEOUT_MS = 15 * 60 * 1000
+const MAX_CONSECUTIVE_FAILURES = 5
 
 const CheckoutPayContext = createContext(null)
 
@@ -16,6 +20,7 @@ export function CheckoutPayProvider({ children }) {
   const [modal, setModal] = useState(null)
   const [waiting, setWaiting] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
+  const [pollTrouble, setPollTrouble] = useState(false)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [stripePublishableKey, setStripePublishableKey] = useState('')
   const [phoneUrlLoading, setPhoneUrlLoading] = useState(false)
@@ -46,7 +51,7 @@ export function CheckoutPayProvider({ children }) {
 
   const clearPolling = useCallback(() => {
     if (pollRef.current) {
-      window.clearInterval(pollRef.current)
+      window.clearTimeout(pollRef.current)
       pollRef.current = null
     }
     if (timeoutRef.current) {
@@ -63,6 +68,7 @@ export function CheckoutPayProvider({ children }) {
     setModal(null)
     setWaiting(false)
     setTimedOut(false)
+    setPollTrouble(false)
     setCheckingStatus(false)
     setPhoneUrlLoading(false)
     onCompleteRef.current = null
@@ -71,17 +77,19 @@ export function CheckoutPayProvider({ children }) {
 
   const completeCheckout = useCallback(() => {
     const onComplete = onCompleteRef.current
+    const resume = loadBillingResume()
     bootstrapIdRef.current += 1
     clearPolling()
     setModal(null)
     setWaiting(false)
     setTimedOut(false)
+    setPollTrouble(false)
     setCheckingStatus(false)
     setPhoneUrlLoading(false)
     onCompleteRef.current = null
     onCancelRef.current = null
     window.dispatchEvent(new Event('axiom:billing-refresh'))
-    onComplete?.()
+    onComplete?.(resume)
   }, [clearPolling])
 
   const pollPaymentOnce = useCallback(async () => {
@@ -90,36 +98,53 @@ export function CheckoutPayProvider({ children }) {
 
     const anonId = getOrCreateAnonId()
     const { hostedSessionId, balanceBefore, creditsToAdd } = state
+    let paid = false
 
     if (hostedSessionId) {
       try {
         const status = await fetchCheckoutStatus(hostedSessionId, anonId)
+        state.consecutiveFailures = 0
+        setPollTrouble(false)
         if (status.status === 'paid') {
-          completeCheckout()
-          return true
+          paid = true
         }
       } catch {
-        /* keep polling */
+        state.consecutiveFailures = (state.consecutiveFailures ?? 0) + 1
+        if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          setPollTrouble(true)
+        }
       }
     }
 
-    if (creditsToAdd > 0) {
+    if (!paid && creditsToAdd > 0) {
       try {
         const bal = await fetchBillingBalance(anonId)
+        state.consecutiveFailures = 0
+        setPollTrouble(false)
         if ((bal.balance_credits ?? 0) >= balanceBefore + creditsToAdd) {
-          completeCheckout()
-          return true
+          paid = true
         }
       } catch {
-        /* keep polling */
+        state.consecutiveFailures = (state.consecutiveFailures ?? 0) + 1
+        if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          setPollTrouble(true)
+        }
       }
     }
 
+    if (paid) {
+      completeCheckout()
+      return true
+    }
     return false
   }, [completeCheckout])
 
   const checkPaymentStatus = useCallback(async () => {
     setCheckingStatus(true)
+    setPollTrouble(false)
+    if (pollStateRef.current) {
+      pollStateRef.current.consecutiveFailures = 0
+    }
     try {
       const paid = await pollPaymentOnce()
       if (paid) setTimedOut(false)
@@ -127,6 +152,22 @@ export function CheckoutPayProvider({ children }) {
     } finally {
       setCheckingStatus(false)
     }
+  }, [pollPaymentOnce])
+
+  const schedulePollTick = useCallback(() => {
+    const state = pollStateRef.current
+    if (!state) return
+
+    const elapsed = Date.now() - (state.startedAt ?? Date.now())
+    const interval = elapsed < FAST_POLL_DURATION_MS ? FAST_POLL_MS : SLOW_POLL_MS
+
+    pollRef.current = window.setTimeout(() => {
+      void (async () => {
+        const done = await pollPaymentOnce()
+        if (!pollStateRef.current || done) return
+        schedulePollTick()
+      })()
+    }, interval)
   }, [pollPaymentOnce])
 
   const startPolling = useCallback(
@@ -137,22 +178,22 @@ export function CheckoutPayProvider({ children }) {
         hostedSessionId: hostedSessionId ?? null,
         balanceBefore,
         creditsToAdd: creditsToAdd ?? 0,
+        startedAt: Date.now(),
+        consecutiveFailures: 0,
       }
       setWaiting(true)
       setTimedOut(false)
+      setPollTrouble(false)
 
-      const tick = () => {
-        void pollPaymentOnce()
-      }
-
-      tick()
-      pollRef.current = window.setInterval(tick, POLL_INTERVAL_MS)
+      void pollPaymentOnce().then(done => {
+        if (!done && pollStateRef.current) schedulePollTick()
+      })
 
       timeoutRef.current = window.setTimeout(() => {
         setTimedOut(true)
       }, POLL_TIMEOUT_MS)
     },
-    [pollPaymentOnce],
+    [pollPaymentOnce, schedulePollTick],
   )
 
   const bootstrapCheckout = useCallback(
@@ -269,6 +310,7 @@ export function CheckoutPayProvider({ children }) {
 
       setWaiting(false)
       setTimedOut(false)
+      setPollTrouble(false)
       setPhoneUrlLoading(true)
       setModal({
         title: title ?? 'Complete payment',
@@ -315,6 +357,7 @@ export function CheckoutPayProvider({ children }) {
         phoneUrlLoading={phoneUrlLoading}
         waiting={waiting}
         timedOut={timedOut}
+        pollTrouble={pollTrouble}
         checkingStatus={checkingStatus}
         onCheckPaymentStatus={checkPaymentStatus}
         onEmbeddedComplete={handleEmbeddedComplete}

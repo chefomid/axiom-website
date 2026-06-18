@@ -66,7 +66,7 @@ export default function usePropertyBatch() {
     }
   }, [])
 
-  const runBatch = useCallback(async ({ addresses, selectedSources, confirmedPriceUsd }) => {
+  const runBatch = useCallback(async ({ addresses, selectedSources, confirmedPriceUsd, batchId }) => {
     setLoadingRun(true)
     setRunError(null)
     try {
@@ -75,6 +75,7 @@ export default function usePropertyBatch() {
         selectedSources,
         confirmedPriceUsd,
         anonId: getOrCreateAnonId(),
+        batchId,
       })
       setBatchRun(data)
       return data

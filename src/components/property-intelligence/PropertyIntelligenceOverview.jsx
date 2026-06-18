@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import Nav from '../Nav'
 import SiteFooter from '../SiteFooter'
 import StatusChip from '../better-world/StatusChip'
 import { useIsLgUp } from '../../hooks/useMediaQuery'
+import ReportConfirmationModal from './ReportConfirmationModal'
 
 const GOVERNMENT_FEEDS = [
   { id: 'fema', label: 'FEMA', detail: 'Flood zones', logo: '/data-sources/fema.svg' },
@@ -99,11 +101,17 @@ function SourcePanel({ label, note, children }) {
 export default function PropertyIntelligenceOverview({ comingSoon = true }) {
   const isLgUp = useIsLgUp()
   const desktopOnly = !comingSoon && !isLgUp
+  const [confirmationModalOpen, setConfirmationModalOpen] = useState(false)
 
   return (
     <div className="relative isolate flex min-h-[100dvh] flex-col bg-black font-sans text-ink-primary">
       <OverviewBackground />
       {isLgUp ? <Nav /> : <MobileHeader comingSoon={comingSoon} />}
+      <ReportConfirmationModal
+        open={confirmationModalOpen}
+        onClose={() => setConfirmationModalOpen(false)}
+        apiOnline={!comingSoon}
+      />
 
       <main
         className={`sleek-scrollbar flex-1 overflow-y-auto px-6 pb-10 sm:px-8 md:px-12 ${
@@ -149,6 +157,15 @@ export default function PropertyIntelligenceOverview({ comingSoon = true }) {
                   COPE dossiers from a single address. Public hazard feeds and licensed property data,
                   cited in one report.
                 </p>
+                {!comingSoon ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmationModalOpen(true)}
+                    className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint underline decoration-ink-faint/40 underline-offset-4 transition-colors hover:text-ink-secondary"
+                  >
+                    Retrieve with confirmation number
+                  </button>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-[#1f1f1f] bg-[#1a1a1a]">

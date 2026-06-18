@@ -25,3 +25,8 @@ test('checkout-resume requires paid session', async () => {
   const res = await fetch(`${API_BASE}/billing/checkout-resume?${params}`)
   assert.ok([402, 403, 502, 503].includes(res.status), `unexpected status ${res.status}`)
 })
+
+test('report confirmation rejects unknown id format', async () => {
+  const res = await fetch(`${API_BASE}/reports/confirmation/not-a-valid-id`)
+  assert.ok([404, 503].includes(res.status), `unexpected status ${res.status}`)
+})

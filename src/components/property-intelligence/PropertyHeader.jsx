@@ -12,7 +12,7 @@ import CreditsWallet from './CreditsWallet'
 const navLinkClass =
   'text-xs tracking-widest uppercase text-ink-muted transition-colors duration-300 hover:text-white'
 
-export default function PropertyHeader({ apiOnline }) {
+export default function PropertyHeader({ apiOnline, onRetrieveReport }) {
   const { pathname } = useLocation()
 
   return (
@@ -52,6 +52,15 @@ export default function PropertyHeader({ apiOnline }) {
         </div>
 
         <nav className="flex shrink-0 items-center gap-4 md:gap-6">
+          {onRetrieveReport ? (
+            <button
+              type="button"
+              onClick={onRetrieveReport}
+              className={`${navLinkClass} hidden lg:inline`}
+            >
+              Retrieve report
+            </button>
+          ) : null}
           <Link
             to={PUBLIC_DATA_COMMAND_PATH}
             className={`${navLinkClass} hidden sm:inline ${

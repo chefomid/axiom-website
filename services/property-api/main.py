@@ -6,6 +6,7 @@ Run: uvicorn main:app --reload --port 8000
 
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from contextlib import asynccontextmanager
@@ -31,7 +32,7 @@ from billing.quote_checkout import compute_checkout_pricing
 from env_loader import env_status_payload, load_project_env
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, HttpUrl
 
 from geocode import geocode_address, search_addresses
@@ -70,6 +71,20 @@ from rate_limit import limiter, rate_limit_handler
 from slowapi.errors import RateLimitExceeded
 
 load_project_env()
+
+logger = logging.getLogger(__name__)
+
+BILLING_VERIFY_ERROR = "Unable to verify payment right now. Please try again."
+
+
+def _billing_stripe_http_exception(exc: Exception) -> HTTPException:
+    logger.exception("Billing Stripe error: %s", exc)
+    return HTTPException(status_code=502, detail=BILLING_VERIFY_ERROR)
+
+
+def _new_confirmation_id(purpose: str) -> str:
+    prefix = "BX" if purpose == "batch_enrich" else "AX"
+    return f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
 
 
 @asynccontextmanager
@@ -147,6 +162,7 @@ class CheckoutQuoteResponse(BaseModel):
     charge_usd: float
     credits_to_add: int
     phone_pay_url: str | None = None
+    confirmation_id: str | None = None
 
 
 class CheckoutPreviewResponse(BaseModel):
@@ -188,6 +204,14 @@ class CheckoutStatusResponse(BaseModel):
     status: str
     balance_credits: int
     credits_added: int
+    confirmation_id: str | None = None
+
+
+class ReportConfirmationResponse(BaseModel):
+    confirmation_id: str
+    status: str
+    record: dict[str, Any] | None = None
+    message: str | None = None
 
 
 class CheckoutResumeResponse(BaseModel):
@@ -215,6 +239,7 @@ class EnrichRequest(BaseModel):
     source_urls: dict[str, HttpUrl] | None = None
     confirmed_price_usd: float | None = None
     anon_id: str | None = Field(default=None, max_length=128)
+    report_id: str | None = Field(default=None, max_length=32)
 
 
 class EnrichResponse(BaseModel):
@@ -250,6 +275,7 @@ class BatchEnrichRequest(BaseModel):
     selected_sources: list[str] = Field(default_factory=list)
     confirmed_price_usd: float | None = None
     anon_id: str | None = Field(default=None, max_length=128)
+    batch_id: str | None = Field(default=None, max_length=32)
 
 
 class BatchEnrichResponse(BaseModel):
@@ -482,8 +508,12 @@ async def billing_checkout_status(
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
-    return CheckoutStatusResponse(**result)
+        raise _billing_stripe_http_exception(exc) from exc
+    confirmation_id = None
+    stored = await billing_db.get_checkout_resume(sid, aid)
+    if stored:
+        confirmation_id = stored["payload"].get("confirmation_id")
+    return CheckoutStatusResponse(**result, confirmation_id=confirmation_id)
 
 
 @app.get("/billing/checkout-resume", response_model=CheckoutResumeResponse)
@@ -508,7 +538,7 @@ async def billing_checkout_resume(
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+        raise _billing_stripe_http_exception(exc) from exc
     if status["status"] != "paid":
         raise HTTPException(status_code=402, detail="Payment not completed")
     stored = await billing_db.get_checkout_resume(sid, aid)
@@ -537,7 +567,7 @@ async def billing_checkout_embed(
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+        raise _billing_stripe_http_exception(exc) from exc
     pk = stripe_publishable_key()
     if not pk:
         raise HTTPException(status_code=503, detail="STRIPE_PUBLISHABLE_KEY not configured")
@@ -563,7 +593,7 @@ async def billing_checkout(request: Request, body: CheckoutRequest):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+        raise _billing_stripe_http_exception(exc) from exc
     return CheckoutResponse(**session)
 
 
@@ -684,14 +714,16 @@ async def billing_checkout_quote(request: Request, body: CheckoutQuoteRequest):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Stripe error: {exc}") from exc
+        raise _billing_stripe_http_exception(exc) from exc
 
+    confirmation_id = _new_confirmation_id(body.purpose)
     resume_payload: dict[str, Any] = {
         "address": addr,
         "addresses": addrs,
         "selected_sources": body.selected_sources,
         "source_urls": body.source_urls,
         "confirmed_price_usd": body.confirmed_price_usd,
+        "confirmation_id": confirmation_id,
     }
     await billing_db.save_checkout_resume(
         str(session["session_id"]),
@@ -699,8 +731,17 @@ async def billing_checkout_quote(request: Request, body: CheckoutQuoteRequest):
         body.purpose,
         resume_payload,
     )
+    await billing_db.save_report_confirmation_pending(
+        confirmation_id,
+        body.anon_id,
+        {
+            "purpose": body.purpose,
+            "session_id": str(session["session_id"]),
+            **resume_payload,
+        },
+    )
 
-    return CheckoutQuoteResponse(**session)
+    return CheckoutQuoteResponse(**session, confirmation_id=confirmation_id)
 
 
 @app.post("/billing/stripe-webhook")
@@ -825,6 +866,7 @@ async def _execute_enrich(
     report_id: str | None = None,
 ) -> EnrichResponse:
     resolved = resolve_selected_sources_for_request(selected_sources or None)
+    rid = report_id or f"AX-{uuid.uuid4().hex[:8].upper()}"
 
     try:
         geo = await geocode_address(address.strip())
@@ -847,7 +889,6 @@ async def _execute_enrich(
     )
 
     enrich_cost = enrich_credits_cost(quote_data)
-    rid = report_id or f"AX-{uuid.uuid4().hex[:8].upper()}"
     if charge_credits:
         await require_and_spend(
             anon_id,
@@ -996,6 +1037,16 @@ async def _execute_enrich(
     )
 
 
+async def _persist_confirmation_failure(confirmation_id: str | None, message: str) -> None:
+    if not confirmation_id or not billing_db.is_ready():
+        return
+    await billing_db.update_report_confirmation(
+        confirmation_id,
+        status="failed",
+        payload={"message": message},
+    )
+
+
 @app.post("/quote/batch")
 @limiter.limit("10/minute")
 async def quote_batch(request: Request, body: BatchQuoteRequest):
@@ -1013,14 +1064,31 @@ async def quote_batch(request: Request, body: BatchQuoteRequest):
 async def enrich(request: Request, body: EnrichRequest):
     source_url_str = str(body.source_url) if body.source_url else None
     raw_urls = {k: str(v) for k, v in (body.source_urls or {}).items()}
-    return await _execute_enrich(
-        address=body.address.strip(),
-        selected_sources=body.selected_sources,
-        anon_id=body.anon_id,
-        source_url=source_url_str,
-        source_urls=raw_urls,
-        charge_credits=True,
-    )
+    confirmation_id = body.report_id
+    try:
+        result = await _execute_enrich(
+            address=body.address.strip(),
+            selected_sources=body.selected_sources,
+            anon_id=body.anon_id,
+            source_url=source_url_str,
+            source_urls=raw_urls,
+            charge_credits=True,
+            report_id=confirmation_id,
+        )
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, str) else "Report could not be completed."
+        await _persist_confirmation_failure(confirmation_id, str(detail))
+        raise
+    except Exception:
+        await _persist_confirmation_failure(confirmation_id, "Report could not be completed.")
+        raise
+    if confirmation_id and billing_db.is_ready():
+        await billing_db.update_report_confirmation(
+            confirmation_id,
+            status="ready",
+            payload=result.model_dump(),
+        )
+    return result
 
 
 @app.post("/enrich/batch", response_model=BatchEnrichResponse)
@@ -1043,7 +1111,8 @@ async def enrich_batch(request: Request, body: BatchEnrichRequest):
         raise HTTPException(status_code=400, detail="No valid locations in schedule.")
 
     batch_cost = batch_enrich_credits_cost(batch_quote_data)
-    batch_id = f"BX-{uuid.uuid4().hex[:8].upper()}"
+    batch_id = body.batch_id or f"BX-{uuid.uuid4().hex[:8].upper()}"
+    tracked_batch = bool(body.batch_id)
     await require_and_spend(
         body.anon_id,
         batch_cost,
@@ -1106,7 +1175,7 @@ async def enrich_batch(request: Request, body: BatchEnrichRequest):
         status = "enriched"
         message = f"Batch {batch_id}: {success_count} location(s) enriched."
 
-    return BatchEnrichResponse(
+    response = BatchEnrichResponse(
         batch_id=batch_id,
         selected_sources=batch_quote_data["selected_sources"],
         locations=results,
@@ -1114,6 +1183,49 @@ async def enrich_batch(request: Request, body: BatchEnrichRequest):
         warnings=batch_quote_data.get("warnings") or [],
         status=status,
         message=message,
+    )
+    if tracked_batch and billing_db.is_ready():
+        await billing_db.update_report_confirmation(
+            batch_id,
+            status="ready" if status != "failed" else "failed",
+            payload=response.model_dump(),
+        )
+    return response
+
+
+_CONFIRMATION_ID_RE = re.compile(r"^[AB]X-[0-9A-F]{8}$")
+
+
+@app.get("/reports/confirmation/{confirmation_id}", response_model=ReportConfirmationResponse)
+@limiter.limit("30/minute")
+async def get_report_by_confirmation(request: Request, confirmation_id: str):
+    cid = confirmation_id.strip().upper()
+    if not _CONFIRMATION_ID_RE.match(cid):
+        raise HTTPException(status_code=404, detail="Confirmation number not found")
+    if not billing_db.is_ready():
+        raise HTTPException(status_code=503, detail="Billing database not ready")
+    row = await billing_db.get_report_confirmation(cid)
+    if not row:
+        raise HTTPException(status_code=404, detail="Confirmation number not found")
+    row_status = row["status"]
+    if row_status == "ready":
+        return ReportConfirmationResponse(
+            confirmation_id=cid,
+            status="ready",
+            record=row["payload"],
+        )
+    if row_status == "pending":
+        payload = ReportConfirmationResponse(
+            confirmation_id=cid,
+            status="pending",
+            message="Report is still being prepared.",
+        )
+        return JSONResponse(status_code=202, content=payload.model_dump())
+    message = row["payload"].get("message") if isinstance(row["payload"], dict) else None
+    return ReportConfirmationResponse(
+        confirmation_id=cid,
+        status="failed",
+        message=message or "Report could not be completed.",
     )
 
 

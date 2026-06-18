@@ -132,16 +132,19 @@ export async function enrichBatch({
   selectedSources,
   confirmedPriceUsd,
   anonId,
+  batchId,
 }) {
+  const body = {
+    addresses: (addresses ?? []).map(a => a.trim()).filter(Boolean),
+    selected_sources: selectedSources ?? [],
+    confirmed_price_usd: confirmedPriceUsd,
+    anon_id: anonId ?? getOrCreateAnonId(),
+  }
+  if (batchId?.trim()) body.batch_id = batchId.trim()
   const res = await propertyFetch('/enrich/batch', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      addresses: (addresses ?? []).map(a => a.trim()).filter(Boolean),
-      selected_sources: selectedSources ?? [],
-      confirmed_price_usd: confirmedPriceUsd,
-      anon_id: anonId ?? getOrCreateAnonId(),
-    }),
+    body: JSON.stringify(body),
   })
   return parsePropertyResponse(res)
 }
@@ -166,6 +169,7 @@ export async function enrichProperty({
   sourceUrls,
   confirmedPriceUsd,
   anonId,
+  reportId,
 }) {
   const body = {
     address: address.trim(),
@@ -175,6 +179,7 @@ export async function enrichProperty({
   if (sourceUrl?.trim()) body.source_url = sourceUrl.trim()
   if (sourceUrls && Object.keys(sourceUrls).length > 0) body.source_urls = sourceUrls
   if (confirmedPriceUsd != null) body.confirmed_price_usd = confirmedPriceUsd
+  if (reportId?.trim()) body.report_id = reportId.trim()
 
   const res = await propertyFetch('/enrich', {
     method: 'POST',
@@ -292,7 +297,24 @@ export async function startQuoteCheckout({
     body: JSON.stringify(body),
   })
   const data = await parsePropertyResponse(res)
+  if (data.confirmation_id && resumeContext) {
+    saveBillingResume({
+      resume: purpose,
+      ...resumeContext,
+      confirmationId: data.confirmation_id,
+    })
+  }
   return data
+}
+
+export async function fetchReportByConfirmation(confirmationId) {
+  const id = confirmationId.trim().toUpperCase()
+  const res = await propertyFetch(`/reports/confirmation/${encodeURIComponent(id)}`)
+  if (res.status === 202) {
+    const data = await res.json().catch(() => ({}))
+    return { status: 'pending', ...data }
+  }
+  return parsePropertyResponse(res)
 }
 
 export function isPaymentRequiredError(err) {

@@ -1,18 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import {
-  checkPropertyApiHealth,
-  discoverSourceUrls,
-  enrichBatch,
-  enrichProperty,
-  fetchCheckoutResume,
-  fetchCheckoutStatus,
-} from '../../services/propertyApi'
+import { fetchCheckoutStatus } from '../../services/propertyApi'
 import { adoptAnonIdFromSearchParams, getOrCreateAnonId } from '../../utils/anonId'
-
-import BatchResultsPanel from './BatchResultsPanel'
-import ReportResultsPanel from './ReportResultsPanel'
+import { formatBillingError } from '../../utils/apiErrors'
 
 function MobileShell({ children }) {
   return (
@@ -36,7 +27,7 @@ function MobileShell({ children }) {
           </Link>
           <div className="min-w-0">
             <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-faint">Property Intelligence</p>
-            <p className="font-display truncate text-sm font-semibold text-white">Your report</p>
+            <p className="font-display truncate text-sm font-semibold text-white">Payment</p>
           </div>
         </div>
       </header>
@@ -45,15 +36,28 @@ function MobileShell({ children }) {
   )
 }
 
-function StatusBanner({ children, tone = 'live' }) {
-  const toneClass =
-    tone === 'error'
-      ? 'border-command-critical/40 bg-command-critical/10 text-command-critical'
-      : 'border-command-live/40 bg-command-live/10 text-command-live'
+function CopyButton({ value }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(async () => {
+    if (!value) return
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* clipboard unavailable */
+    }
+  }, [value])
+
   return (
-    <div className={`mx-4 mt-4 rounded-lg border px-4 py-3 font-sans text-sm leading-relaxed ${toneClass}`}>
-      {children}
-    </div>
+    <button
+      type="button"
+      onClick={() => void handleCopy()}
+      className="ml-2 rounded border border-panel-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-secondary transition-colors hover:border-[#444] hover:text-white"
+    >
+      {copied ? 'Copied' : 'Copy'}
+    </button>
   )
 }
 
@@ -61,14 +65,11 @@ export default function MobilePaymentReturn() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [phase, setPhase] = useState('verifying')
   const [error, setError] = useState(null)
-  const [record, setRecord] = useState(null)
-  const [batchRun, setBatchRun] = useState(null)
-  const [discoverResult, setDiscoverResult] = useState(null)
-  const [addressLabel, setAddressLabel] = useState('')
-  const [apiOnline, setApiOnline] = useState(null)
+  const [confirmationId, setConfirmationId] = useState(null)
 
   const sessionId = searchParams.get('session_id')?.trim() ?? ''
   const billing = searchParams.get('billing')
+  const urlAnonId = searchParams.get('anon_id')?.trim() ?? ''
 
   const clearParams = useCallback(() => {
     const next = new URLSearchParams(searchParams)
@@ -81,88 +82,53 @@ export default function MobilePaymentReturn() {
 
   useEffect(() => {
     adoptAnonIdFromSearchParams(searchParams)
-    checkPropertyApiHealth()
-      .then(setApiOnline)
-      .catch(() => setApiOnline(false))
   }, [searchParams])
 
   useEffect(() => {
     if (billing !== 'success' || !sessionId) {
       setPhase('error')
-      setError('Invalid payment return link.')
+      setError('This payment link is not valid.')
       return undefined
     }
 
     let cancelled = false
-    const anonId = getOrCreateAnonId()
+    const anonId = urlAnonId || getOrCreateAnonId()
 
     async function waitForPaid() {
-      for (let attempt = 0; attempt < 45; attempt += 1) {
-        const status = await fetchCheckoutStatus(sessionId, anonId)
-        if (status.status === 'paid') return true
-        await new Promise(resolve => window.setTimeout(resolve, 2000))
-        if (cancelled) return false
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        try {
+          const status = await fetchCheckoutStatus(sessionId, anonId)
+          if (status.status === 'paid') {
+            return status.confirmation_id ?? null
+          }
+        } catch (err) {
+          if (cancelled) return null
+          if (attempt >= 4) {
+            throw err
+          }
+        }
+        await new Promise(resolve => window.setTimeout(resolve, attempt < 30 ? 500 : 2000))
+        if (cancelled) return null
       }
-      return false
+      return null
     }
 
     async function run() {
       try {
-        const paid = await waitForPaid()
+        const confirmed = await waitForPaid()
         if (cancelled) return
-        if (!paid) {
+        if (!confirmed) {
           setPhase('error')
-          setError('Payment not confirmed yet. Return to your desktop or try again in a moment.')
+          setError('Payment is taking longer than expected. Save your receipt email and try retrieving your report later.')
           return
         }
-
-        const { purpose, resume } = await fetchCheckoutResume(sessionId, anonId)
-        if (cancelled) return
-
-        const selectedSources = resume.selected_sources ?? []
-        const sourceUrls = resume.source_urls ?? {}
-        const confirmedPriceUsd = resume.confirmed_price_usd ?? null
-
-        setPhase('running')
-
-        if (purpose === 'enrich') {
-          const addr = (resume.address ?? '').trim()
-          setAddressLabel(addr)
-          const result = await enrichProperty({
-            address: addr,
-            selectedSources,
-            sourceUrls,
-            confirmedPriceUsd,
-          })
-          if (cancelled) return
-          setRecord(result)
-        } else if (purpose === 'batch_enrich') {
-          const addresses = resume.addresses ?? []
-          setAddressLabel(addresses[0] ?? '')
-          const result = await enrichBatch({
-            addresses,
-            selectedSources,
-            confirmedPriceUsd,
-          })
-          if (cancelled) return
-          setBatchRun(result)
-        } else if (purpose === 'discover') {
-          const addr = (resume.address ?? '').trim()
-          setAddressLabel(addr)
-          const result = await discoverSourceUrls({
-            address: addr,
-            selectedSources,
-          })
-          if (cancelled) return
-          setDiscoverResult(result)
-        }
-
+        setConfirmationId(confirmed)
         setPhase('done')
         clearParams()
       } catch (err) {
         if (cancelled) return
         setPhase('error')
-        setError(err?.message ?? 'Something went wrong while loading your report.')
+        setError(formatBillingError(err, 'We could not confirm your payment right now. Please try again shortly.'))
       }
     }
 
@@ -170,7 +136,7 @@ export default function MobilePaymentReturn() {
     return () => {
       cancelled = true
     }
-  }, [billing, sessionId, clearParams])
+  }, [billing, sessionId, urlAnonId, clearParams])
 
   if (phase === 'verifying') {
     return (
@@ -187,30 +153,15 @@ export default function MobilePaymentReturn() {
   if (phase === 'error') {
     return (
       <MobileShell>
-        <StatusBanner tone="error">{error}</StatusBanner>
-        <p className="mx-4 mt-4 font-sans text-sm leading-relaxed text-ink-secondary">
-          If you paid on your phone, your desktop session should update shortly. For the full map workflow, open
-          Property Intelligence on a desktop browser.
-        </p>
-        <Link
-          to="/property-intelligence"
-          className="mx-4 mt-6 inline-flex min-h-[44px] items-center justify-center rounded border border-panel-border px-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-secondary no-underline"
-        >
-          Back to overview
-        </Link>
-      </MobileShell>
-    )
-  }
-
-  if (phase === 'running') {
-    return (
-      <MobileShell>
-        <StatusBanner>Payment received. Generating your report…</StatusBanner>
-        {addressLabel ? (
-          <p className="mx-4 mt-3 truncate font-sans text-sm text-ink-secondary">{addressLabel}</p>
-        ) : null}
-        <div className="flex flex-1 items-center justify-center px-6 py-12">
-          <span className="street-view-spinner h-5 w-5" aria-hidden />
+        <div className="mx-4 mt-8 rounded-lg border border-panel-border bg-panel-surface/30 px-5 py-6 text-center">
+          <p className="font-display text-lg font-semibold text-white">Something went wrong</p>
+          <p className="mt-3 font-sans text-sm leading-relaxed text-ink-secondary">{error}</p>
+          <Link
+            to="/property-intelligence"
+            className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded border border-panel-border px-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-secondary no-underline"
+          >
+            Back to overview
+          </Link>
         </div>
       </MobileShell>
     )
@@ -218,51 +169,24 @@ export default function MobilePaymentReturn() {
 
   return (
     <MobileShell>
-      <StatusBanner>Payment received. Your report is ready.</StatusBanner>
-      {addressLabel ? (
-        <p className="mx-4 mt-3 truncate font-sans text-sm text-ink-secondary">{addressLabel}</p>
-      ) : null}
-      <p className="mx-4 mt-2 font-sans text-xs leading-relaxed text-ink-faint">
-        For the full map workflow, continue on desktop at{' '}
-        <span className="text-ink-secondary">axiompropertycasualty.com/property-intelligence</span>.
-      </p>
+      <div className="mx-4 mt-10 px-2 text-center">
+        <p className="font-display text-2xl font-semibold text-white">Thank you</p>
+        <p className="mt-2 font-sans text-sm text-ink-secondary">Payment received.</p>
+        <p className="mt-1 font-sans text-sm text-ink-muted">Your report is being prepared.</p>
 
-      {record ? (
-        <div className="mt-4 border-t border-panel-border">
-          <ReportResultsPanel
-            record={record}
-            loading={false}
-            error={null}
-            apiOnline={apiOnline}
-            variant="panel"
-            showHeader={false}
-          />
-        </div>
-      ) : null}
-
-      {batchRun ? (
-        <div className="mt-4 border-t border-panel-border">
-          <BatchResultsPanel batchRun={batchRun} loading={false} error={null} apiOnline={apiOnline} />
-        </div>
-      ) : null}
-
-      {discoverResult ? (
-        <div className="mx-4 mt-4 rounded-lg border border-panel-border bg-panel-surface/30 p-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">AI URL discovery</p>
-          <p className="mt-2 font-sans text-sm text-ink-secondary">
-            Discovery completed. Open Property Intelligence on desktop to review and apply suggested URLs.
+        <div className="mx-auto mt-8 max-w-sm rounded-lg border border-panel-border bg-panel-surface/40 px-5 py-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Confirmation</p>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
+            <span className="font-mono text-lg tabular-nums tracking-wide text-command-live">
+              {confirmationId}
+            </span>
+            <CopyButton value={confirmationId} />
+          </div>
+          <p className="mt-4 font-sans text-xs leading-relaxed text-ink-faint">
+            Save this number to retrieve your report anytime.
           </p>
-          {Array.isArray(discoverResult.suggestions) && discoverResult.suggestions.length > 0 ? (
-            <ul className="mt-3 space-y-2">
-              {discoverResult.suggestions.slice(0, 5).map(item => (
-                <li key={item.source_id ?? item.url} className="font-mono text-[10px] text-ink-faint break-all">
-                  {item.source_id}: {item.url}
-                </li>
-              ))}
-            </ul>
-          ) : null}
         </div>
-      ) : null}
+      </div>
     </MobileShell>
   )
 }

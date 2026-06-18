@@ -59,6 +59,29 @@ export function messageFromApiError(err, fallback = 'Request failed.') {
   return err?.message ?? fallback
 }
 
+const BILLING_VERIFY_MESSAGE = 'Unable to verify payment right now. Please try again.'
+
+/** Map billing/checkout API failures to user-safe copy (never raw Stripe internals). */
+export function formatBillingError(err, fallback = BILLING_VERIFY_MESSAGE) {
+  const msg = err?.message ?? ''
+  if (err?.status === 502 || /stripe error/i.test(msg)) {
+    return BILLING_VERIFY_MESSAGE
+  }
+  if (err?.status === 403) {
+    return 'This payment session is not valid. Please start checkout again.'
+  }
+  if (err?.status === 402) {
+    return 'Payment not completed yet. Please try again in a moment.'
+  }
+  if (err?.status === 404) {
+    return 'We could not find that confirmation number. Check the number and try again.'
+  }
+  if (msg === '0' || msg === 'Failed to fetch' || err?.name === 'TypeError') {
+    return fallback
+  }
+  return msg || fallback
+}
+
 export function safetyNoteFromApiError(err) {
   if (!isRateLimitError(err)) return null
   return formatRateLimitMessage(err.rateLimit ?? err).safetyNote

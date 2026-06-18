@@ -15,6 +15,7 @@ import usePropertyBatch from '../../hooks/usePropertyBatch'
 import { useCheckoutPay } from '../../hooks/useCheckoutPay'
 
 import PropertyHeader from './PropertyHeader'
+import ReportConfirmationModal from './ReportConfirmationModal'
 
 import PropertyMap from './PropertyMap'
 
@@ -59,6 +60,8 @@ export default function PropertyIntelligenceView() {
   const [mapInstance, setMapInstance] = useState(null)
   const handleGenerateRef = useRef(null)
   const resumeHandledRef = useRef(false)
+  const pendingConfirmationRef = useRef(null)
+  const [confirmationModalOpen, setConfirmationModalOpen] = useState(false)
 
   const [inputMode, setInputMode] = useState('single')
   const [scheduleRows, setScheduleRows] = useState([])
@@ -83,6 +86,7 @@ export default function PropertyIntelligenceView() {
     clearBatch,
     markBatchQuotePending,
     setBatchQuote,
+    setBatchRun,
   } = usePropertyBatch()
 
   const scheduleMode = inputMode === 'schedule'
@@ -116,6 +120,7 @@ export default function PropertyIntelligenceView() {
     refreshQuote,
 
     record,
+    setRecord,
 
     loadingCatalog,
 
@@ -241,12 +246,14 @@ export default function PropertyIntelligenceView() {
       setSearchParams(next, { replace: true })
 
       if (resume === 'enrich' && resumeData?.address && !resumeHandledRef.current) {
+        pendingConfirmationRef.current = resumeData.confirmationId ?? null
         resumeHandledRef.current = true
         window.setTimeout(() => {
           handleGenerateRef.current?.()
           resumeHandledRef.current = false
         }, 900)
       } else if (resume === 'batch_enrich' && resumeData?.addresses?.length && !resumeHandledRef.current) {
+        pendingConfirmationRef.current = resumeData.confirmationId ?? null
         resumeHandledRef.current = true
         window.setTimeout(async () => {
           setReportPanelOpen(true)
@@ -262,7 +269,9 @@ export default function PropertyIntelligenceView() {
                 addresses: resumeData.addresses,
                 selectedSources: resumeData.selectedSources ?? [],
                 confirmedPriceUsd: confirmedPrice,
+                batchId: pendingConfirmationRef.current,
               })
+              pendingConfirmationRef.current = null
             }
           } catch {
             setBillingNotice('Payment received, but schedule analysis failed to start. Try again.')
@@ -522,7 +531,8 @@ export default function PropertyIntelligenceView() {
             },
             embedded,
           }),
-        onComplete: () => {
+        onComplete: resume => {
+          pendingConfirmationRef.current = resume?.confirmationId ?? null
           setBillingNotice('Payment received. Generating your report…')
           setReportPanelOpen(true)
           handleGenerateRef.current?.()
@@ -565,7 +575,8 @@ export default function PropertyIntelligenceView() {
             },
             embedded,
           }),
-        onComplete: () => {
+        onComplete: resume => {
+          pendingConfirmationRef.current = resume?.confirmationId ?? null
           setBillingNotice('Payment received. Analyzing your schedule…')
           setReportPanelOpen(true)
           handleGenerateRef.current?.()
@@ -617,10 +628,13 @@ export default function PropertyIntelligenceView() {
       }
       setReportPanelOpen(true)
       try {
+        const batchId = pendingConfirmationRef.current
+        pendingConfirmationRef.current = null
         await runBatch({
           addresses: batchAddresses,
           selectedSources,
           confirmedPriceUsd: batchQuote.totals.user_price_usd,
+          batchId,
         })
       } catch (err) {
         if (billingEnabled && isPaymentRequiredError(err)) {
@@ -643,7 +657,9 @@ export default function PropertyIntelligenceView() {
 
     setReportPanelOpen(true)
     try {
-      await runReport({ address: runAddress, sourceUrls })
+      const reportId = pendingConfirmationRef.current
+      pendingConfirmationRef.current = null
+      await runReport({ address: runAddress, sourceUrls, reportId })
     } catch (err) {
       if (billingEnabled && isPaymentRequiredError(err)) {
         startEnrichCheckout()
@@ -1008,15 +1024,39 @@ export default function PropertyIntelligenceView() {
 
 
 
+  const handleConfirmationReportReady = useCallback(
+    payload => {
+      if (payload?.type === 'batch' && payload.batchRun) {
+        setBatchRun(payload.batchRun)
+        setInputMode('schedule')
+        setReportPanelOpen(true)
+      } else if (payload?.type === 'single' && payload.record) {
+        setRecord(payload.record)
+        setReportPanelOpen(true)
+      }
+      setConfirmationModalOpen(false)
+    },
+    [setBatchRun, setRecord],
+  )
+
   return (
     <>
       <LicensedDataNoticeModal
         open={licensedNoticeOpen}
         onContinue={handleLicensedNoticeContinue}
       />
+      <ReportConfirmationModal
+        open={confirmationModalOpen}
+        onClose={() => setConfirmationModalOpen(false)}
+        onReportReady={handleConfirmationReportReady}
+        apiOnline={apiOnline}
+      />
       <div className="flex h-[100dvh] flex-col overflow-hidden">
 
-      <PropertyHeader apiOnline={apiOnline} />
+      <PropertyHeader
+        apiOnline={apiOnline}
+        onRetrieveReport={() => setConfirmationModalOpen(true)}
+      />
 
 
 

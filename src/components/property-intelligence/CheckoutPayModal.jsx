@@ -255,6 +255,7 @@ export default function CheckoutPayModal({
   phoneUrlLoading = false,
   waiting = false,
   timedOut = false,
+  pollTrouble = false,
   checkingStatus = false,
   onCheckPaymentStatus,
   onEmbeddedComplete,
@@ -332,6 +333,24 @@ export default function CheckoutPayModal({
                   <span className="street-view-spinner h-3.5 w-3.5 shrink-0" aria-hidden />
                   <p className="font-mono text-[12px] text-ink-secondary">Waiting for payment…</p>
                 </motion.div>
+              ) : null}
+
+              {pollTrouble && !timedOut ? (
+                <div className="mt-4 space-y-3 text-center">
+                  <p className="font-mono text-[12px] leading-relaxed text-command-watch">
+                    Having trouble confirming payment. You can check again or keep waiting.
+                  </p>
+                  {onCheckPaymentStatus ? (
+                    <button
+                      type="button"
+                      onClick={() => void onCheckPaymentStatus()}
+                      disabled={checkingStatus}
+                      className="workflow-footer-cta inline-flex !h-auto min-h-[40px] items-center justify-center px-4 py-2.5 !text-[11px] tracking-[0.12em]"
+                    >
+                      {checkingStatus ? 'Checking…' : 'Check again'}
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
 
               {timedOut ? (
