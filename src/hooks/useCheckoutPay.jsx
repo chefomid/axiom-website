@@ -345,7 +345,12 @@ export function CheckoutPayProvider({ children }) {
         const [balanceResult, embedSession, hostedSession, previewResult] = await Promise.all([
           fetchBillingBalance(getOrCreateAnonId()).catch(() => ({ balance_credits: 0 })),
           fetchSession(true).catch(err => {
-            console.warn('Embedded checkout unavailable', err)
+            const message = err?.message ?? ''
+            if (err?.status === 400 && /sufficient credits/i.test(message)) {
+              console.info('[checkout] embedded checkout skipped — wallet already has enough credits.')
+              return null
+            }
+            console.warn('[checkout] embedded checkout unavailable:', err?.status, message || err)
             return null
           }),
           fetchSession(false),

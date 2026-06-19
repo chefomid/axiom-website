@@ -7,7 +7,6 @@ import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe
 import { QRCodeSVG } from 'qrcode.react'
 
 import { formatUsd } from '../../services/propertyApi'
-import { STRIPE_EMBEDDED_APPEARANCE } from '../../utils/stripeAppearance'
 import { getStripePromise } from '../../utils/stripeClient'
 
 import { WORKFLOW_CTL } from './workflowControls'
@@ -81,7 +80,6 @@ function EmbeddedCheckoutPanel({ clientSecret, stripePublishableKey, onComplete 
     () => ({
       clientSecret,
       onComplete,
-      appearance: STRIPE_EMBEDDED_APPEARANCE,
     }),
     [clientSecret, onComplete],
   )
