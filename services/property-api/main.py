@@ -27,6 +27,7 @@ from billing.stripe_service import (
     get_checkout_status,
     get_embed_checkout_credentials,
     handle_webhook_payload,
+    map_checkout_status_exception,
 )
 from billing.quote_checkout import compute_checkout_pricing
 from env_loader import env_status_payload, load_project_env
@@ -518,7 +519,8 @@ async def billing_checkout_status(
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
-        raise _billing_stripe_http_exception(exc) from exc
+        mapped = map_checkout_status_exception(sid, aid, exc)
+        raise HTTPException(status_code=mapped.status_code, detail=mapped.detail) from exc
     confirmation_id = None
     stored = await billing_db.get_checkout_resume(sid, aid)
     if stored:

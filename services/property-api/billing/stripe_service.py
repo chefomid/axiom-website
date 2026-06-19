@@ -9,6 +9,8 @@ run yet.
 
 from __future__ import annotations
 
+import logging
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
 
@@ -17,6 +19,66 @@ import stripe
 from billing.config import frontend_url, stripe_secret_key, stripe_webhook_secret
 from billing.db import add_credits, claim_stripe_event, get_balance
 from billing.packs import get_pack
+
+logger = logging.getLogger(__name__)
+
+CHECKOUT_STATUS_ROUTE = "/billing/checkout-status"
+BILLING_VERIFY_RETRY = "Unable to verify payment right now. Please try again."
+BILLING_AUTH_MISCONFIG = "Billing verification is not configured correctly."
+BILLING_SESSION_NOT_FOUND = "Checkout session not found."
+BILLING_SESSION_INVALID = "Checkout session is not valid."
+
+
+@dataclass(frozen=True)
+class CheckoutStatusError:
+    status_code: int
+    detail: str
+
+
+def _safe_prefix(value: str, length: int) -> str:
+    cleaned = (value or "").strip()
+    return cleaned[:length] if cleaned else ""
+
+
+def log_checkout_status_failure(session_id: str, anon_id: str, exc: Exception) -> None:
+    stripe_code = getattr(exc, "code", None)
+    stripe_http_status = getattr(exc, "http_status", None)
+    stripe_request_id = getattr(exc, "request_id", None)
+    logger.error(
+        "checkout-status failed route=%s session_id_prefix=%s anon_id_prefix=%s "
+        "exception_type=%s stripe_code=%s stripe_http_status=%s stripe_request_id=%s "
+        "exception_message=%s",
+        CHECKOUT_STATUS_ROUTE,
+        _safe_prefix(session_id, 12),
+        _safe_prefix(anon_id, 8),
+        type(exc).__name__,
+        stripe_code,
+        stripe_http_status,
+        stripe_request_id,
+        str(exc)[:500],
+    )
+
+
+def map_checkout_status_exception(session_id: str, anon_id: str, exc: Exception) -> CheckoutStatusError:
+    log_checkout_status_failure(session_id, anon_id, exc)
+
+    if isinstance(exc, stripe.error.AuthenticationError):
+        return CheckoutStatusError(503, BILLING_AUTH_MISCONFIG)
+
+    if isinstance(exc, stripe.error.InvalidRequestError):
+        message = str(exc)
+        code = getattr(exc, "code", None) or ""
+        if code == "resource_missing" or "No such checkout.session" in message:
+            return CheckoutStatusError(404, BILLING_SESSION_NOT_FOUND)
+        return CheckoutStatusError(400, BILLING_SESSION_INVALID)
+
+    if isinstance(exc, stripe.error.APIConnectionError):
+        return CheckoutStatusError(503, BILLING_VERIFY_RETRY)
+
+    if isinstance(exc, (stripe.error.APIError, stripe.error.RateLimitError)):
+        return CheckoutStatusError(502, BILLING_VERIFY_RETRY)
+
+    return CheckoutStatusError(502, BILLING_VERIFY_RETRY)
 
 
 def _billing_return_url(

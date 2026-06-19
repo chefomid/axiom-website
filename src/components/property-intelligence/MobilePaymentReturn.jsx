@@ -1,22 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { fetchCheckoutStatus } from '../../services/propertyApi'
 import { adoptAnonIdFromSearchParams, getOrCreateAnonId } from '../../utils/anonId'
-import { formatBillingError, isRateLimitError } from '../../utils/apiErrors'
+import { formatBillingError } from '../../utils/apiErrors'
+import {
+  classifyMobileVerificationFailure,
+  isRetryableCheckoutStatusError,
+  sessionIdLogPrefix,
+} from '../../utils/mobileCheckoutReturn'
 
 const MOBILE_POLL_FAST_MS = 2000
 const MOBILE_POLL_SLOW_MS = 2000
 const MOBILE_POLL_FAST_ATTEMPTS = 30
 const MOBILE_POLL_MAX_ATTEMPTS = 60
-
-function isRetryableCheckoutStatusError(err) {
-  const status = err?.status
-  if (status === 403) return false
-  if (status === 502 || status === 503 || status === 429) return true
-  if (err?.name === 'TypeError' || err?.message === 'Failed to fetch') return true
-  return isRateLimitError(err)
-}
 
 function MobileShell({ children }) {
   return (
@@ -74,11 +71,47 @@ function CopyButton({ value }) {
   )
 }
 
+async function waitForPaid(sessionId, anonId, cancelledRef) {
+  for (let attempt = 0; attempt < MOBILE_POLL_MAX_ATTEMPTS; attempt += 1) {
+    if (cancelledRef.current) return null
+
+    try {
+      const status = await fetchCheckoutStatus(sessionId, anonId)
+      if (status.status === 'paid') {
+        return { paid: true, confirmationId: status.confirmation_id ?? null }
+      }
+    } catch (err) {
+      if (cancelledRef.current) return null
+      const httpStatus = err?.status ?? 'unknown'
+      if (httpStatus === 429) {
+        console.warn('[checkout] mobile checkout-status rate limited (HTTP 429); retrying.')
+      } else if (httpStatus === 502 || httpStatus === 503) {
+        console.warn(
+          `[checkout] mobile checkout-status unavailable (HTTP ${httpStatus}), retrying...`,
+          err?.message ?? err,
+        )
+      } else if (!isRetryableCheckoutStatusError(err)) {
+        throw err
+      }
+    }
+
+    const delay = attempt < MOBILE_POLL_FAST_ATTEMPTS ? MOBILE_POLL_FAST_MS : MOBILE_POLL_SLOW_MS
+    await new Promise(resolve => window.setTimeout(resolve, delay))
+  }
+
+  return { paid: false, confirmationId: null, timedOut: true }
+}
+
 export default function MobilePaymentReturn() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [phase, setPhase] = useState('verifying')
+  const [errorTitle, setErrorTitle] = useState('Something went wrong')
   const [error, setError] = useState(null)
+  const [errorRetryable, setErrorRetryable] = useState(false)
+  const [checkingAgain, setCheckingAgain] = useState(false)
   const [confirmationId, setConfirmationId] = useState(null)
+  const cancelledRef = useRef(false)
+  const completedRef = useRef(false)
 
   const sessionId = searchParams.get('session_id')?.trim() ?? ''
   const billing = searchParams.get('billing')
@@ -93,75 +126,84 @@ export default function MobilePaymentReturn() {
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
 
+  const runVerification = useCallback(async () => {
+    if (billing !== 'success' || !sessionId) {
+      setPhase('error')
+      setErrorTitle('Something went wrong')
+      setError('This payment link is not valid.')
+      setErrorRetryable(false)
+      return
+    }
+
+    const anonId = urlAnonId || getOrCreateAnonId()
+    console.info('[checkout] mobile return verifying session:', sessionIdLogPrefix(sessionId))
+
+    setPhase('verifying')
+    setError(null)
+    setErrorRetryable(false)
+    setErrorTitle('Something went wrong')
+
+    try {
+      const result = await waitForPaid(sessionId, anonId, cancelledRef)
+      if (cancelledRef.current) return
+
+      if (result?.paid) {
+        completedRef.current = true
+        setConfirmationId(result.confirmationId)
+        setPhase('done')
+        clearParams()
+        return
+      }
+
+      const failure = classifyMobileVerificationFailure(null, { timedOut: Boolean(result?.timedOut) })
+      setErrorTitle(failure.title)
+      setError(failure.message)
+      setErrorRetryable(failure.retryable)
+      setPhase('error')
+    } catch (err) {
+      if (cancelledRef.current) return
+      console.warn('[checkout] mobile payment confirmation failed:', err?.status, err?.message ?? err)
+      const failure = classifyMobileVerificationFailure(err)
+      if (!failure.retryable && err) {
+        failure.message = formatBillingError(err, failure.message)
+      }
+      setErrorTitle(failure.title)
+      setError(failure.message)
+      setErrorRetryable(failure.retryable)
+      setPhase('error')
+    } finally {
+      setCheckingAgain(false)
+    }
+  }, [billing, sessionId, urlAnonId, clearParams])
+
   useEffect(() => {
     adoptAnonIdFromSearchParams(searchParams)
   }, [searchParams])
 
   useEffect(() => {
+    if (completedRef.current) return undefined
+
     if (billing !== 'success' || !sessionId) {
       setPhase('error')
+      setErrorTitle('Something went wrong')
       setError('This payment link is not valid.')
+      setErrorRetryable(false)
       return undefined
     }
 
-    let cancelled = false
-    const anonId = urlAnonId || getOrCreateAnonId()
-
-    async function waitForPaid() {
-      for (let attempt = 0; attempt < MOBILE_POLL_MAX_ATTEMPTS; attempt += 1) {
-        try {
-          const status = await fetchCheckoutStatus(sessionId, anonId)
-          if (status.status === 'paid') {
-            return { paid: true, confirmationId: status.confirmation_id ?? null }
-          }
-        } catch (err) {
-          if (cancelled) return null
-          const httpStatus = err?.status ?? 'unknown'
-          if (httpStatus === 429) {
-            console.warn('[checkout] mobile checkout-status rate limited (HTTP 429); retrying.')
-          } else if (httpStatus === 502 || httpStatus === 503) {
-            console.warn(
-              `[checkout] mobile checkout-status unavailable (HTTP ${httpStatus}); retrying.`,
-              err?.message ?? err,
-            )
-          } else if (!isRetryableCheckoutStatusError(err)) {
-            throw err
-          }
-        }
-        const delay = attempt < MOBILE_POLL_FAST_ATTEMPTS ? MOBILE_POLL_FAST_MS : MOBILE_POLL_SLOW_MS
-        await new Promise(resolve => window.setTimeout(resolve, delay))
-        if (cancelled) return null
-      }
-      return { paid: false, confirmationId: null }
-    }
-
-    async function run() {
-      try {
-        const result = await waitForPaid()
-        if (cancelled) return
-        if (!result?.paid) {
-          setPhase('error')
-          setError(
-            'Payment is taking longer than expected. Save your receipt email and try retrieving your report later.',
-          )
-          return
-        }
-        setConfirmationId(result.confirmationId)
-        setPhase('done')
-        clearParams()
-      } catch (err) {
-        if (cancelled) return
-        console.warn('[checkout] mobile payment confirmation failed:', err?.status, err?.message ?? err)
-        setPhase('error')
-        setError(formatBillingError(err, 'We could not confirm your payment right now. Please try again shortly.'))
-      }
-    }
-
-    void run()
+    cancelledRef.current = false
+    void runVerification()
     return () => {
-      cancelled = true
+      cancelledRef.current = true
     }
-  }, [billing, sessionId, urlAnonId, clearParams])
+  }, [billing, sessionId, urlAnonId, runVerification])
+
+  const handleCheckAgain = useCallback(() => {
+    if (completedRef.current) return
+    cancelledRef.current = false
+    setCheckingAgain(true)
+    void runVerification()
+  }, [runVerification])
 
   if (phase === 'verifying') {
     return (
@@ -169,7 +211,9 @@ export default function MobilePaymentReturn() {
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
           <span className="street-view-spinner mb-4 h-5 w-5" aria-hidden />
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">Confirming payment</p>
-          <p className="mt-2 font-sans text-sm text-ink-secondary">This usually takes a few seconds.</p>
+          <p className="mt-2 font-sans text-sm text-ink-secondary">
+            {checkingAgain ? 'Checking payment status again…' : 'This usually takes a few seconds.'}
+          </p>
         </div>
       </MobileShell>
     )
@@ -179,14 +223,26 @@ export default function MobilePaymentReturn() {
     return (
       <MobileShell>
         <div className="mx-4 mt-8 rounded-lg border border-panel-border bg-panel-surface/30 px-5 py-6 text-center">
-          <p className="font-display text-lg font-semibold text-white">Something went wrong</p>
+          <p className="font-display text-lg font-semibold text-white">{errorTitle}</p>
           <p className="mt-3 font-sans text-sm leading-relaxed text-ink-secondary">{error}</p>
-          <Link
-            to="/property-intelligence"
-            className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded border border-panel-border px-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-secondary no-underline"
-          >
-            Back to overview
-          </Link>
+          <div className="mt-6 flex flex-col items-center gap-3">
+            {errorRetryable ? (
+              <button
+                type="button"
+                onClick={handleCheckAgain}
+                disabled={checkingAgain}
+                className="inline-flex min-h-[44px] items-center justify-center rounded border border-panel-border px-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-secondary transition-colors hover:border-[#444] hover:text-white disabled:opacity-60"
+              >
+                {checkingAgain ? 'Checking…' : 'Check again'}
+              </button>
+            ) : null}
+            <Link
+              to="/property-intelligence"
+              className="inline-flex min-h-[44px] items-center justify-center rounded border border-panel-border px-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-secondary no-underline transition-colors hover:border-[#444] hover:text-white"
+            >
+              Back to overview
+            </Link>
+          </div>
         </div>
       </MobileShell>
     )
