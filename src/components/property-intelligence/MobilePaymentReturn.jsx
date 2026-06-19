@@ -19,8 +19,7 @@ import {
 import { isReportPostPaymentPurpose } from '../../utils/postPaymentContext'
 import PostPaymentOverlay from './PostPaymentOverlay'
 import RefundConfirmModal from './RefundConfirmModal'
-import EmailConfirmationButton from './EmailConfirmationButton'
-import { defaultReportNameFromContext } from '../../utils/reportName'
+import ConfirmationNumberCopy from './ConfirmationNumberCopy'
 
 const MOBILE_POLL_FAST_MS = 2000
 const MOBILE_POLL_SLOW_MS = 2000
@@ -55,31 +54,6 @@ function MobileShell({ children }) {
       </header>
       <main className="sleek-scrollbar flex-1 overflow-y-auto">{children}</main>
     </div>
-  )
-}
-
-function CopyButton({ value }) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = useCallback(async () => {
-    if (!value) return
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      /* clipboard unavailable */
-    }
-  }, [value])
-
-  return (
-    <button
-      type="button"
-      onClick={() => void handleCopy()}
-      className="ml-2 rounded border border-panel-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-secondary transition-colors hover:border-[#444] hover:text-white"
-    >
-      {copied ? 'Copied' : 'Copy'}
-    </button>
   )
 }
 
@@ -323,23 +297,11 @@ export default function MobilePaymentReturn() {
           <p className="font-display text-2xl font-semibold text-white">Report ready</p>
           <p className="mt-2 font-sans text-sm text-ink-secondary">Your property intelligence report is complete.</p>
           {reportConfirmation ? (
-            <div className="mx-auto mt-8 max-w-sm rounded-lg border border-panel-border bg-panel-surface/40 px-5 py-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Confirmation</p>
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
-                <span className="font-mono text-lg tabular-nums tracking-wide text-command-live">
-                  {reportConfirmation}
-                </span>
-                <CopyButton value={reportConfirmation} />
-              </div>
-              <p className="mt-4 font-sans text-xs leading-relaxed text-ink-faint">
-                Open Property Intelligence on desktop to view the full report, or save this number to retrieve it later.
+            <div className="mx-auto mt-8 max-w-sm text-left">
+              <ConfirmationNumberCopy confirmationId={reportConfirmation} />
+              <p className="mt-4 text-center font-sans text-xs leading-relaxed text-ink-faint">
+                Open Property Intelligence on desktop to view the full report.
               </p>
-              <div className="mx-auto mt-4 flex w-full max-w-sm flex-wrap items-start justify-center gap-2">
-                <EmailConfirmationButton
-                  confirmationId={reportConfirmation}
-                  defaultReportName={defaultReportNameFromContext(postPaymentContext)}
-                />
-              </div>
             </div>
           ) : null}
         </div>

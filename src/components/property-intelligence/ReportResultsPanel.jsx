@@ -10,10 +10,7 @@ import ReportHazardsPanel from './ReportHazardsPanel'
 import ReportSourceFields from './ReportSourceFields'
 import ReportSovPanel from './ReportSovPanel'
 import ReportVisionPanel from './ReportVisionPanel'
-import EmailConfirmationButton from './EmailConfirmationButton'
-import EmailConfirmationCloseModal from './EmailConfirmationCloseModal'
-import { defaultReportNameFromRecord } from '../../utils/reportName'
-import { isConfirmationEmailSent } from '../../utils/confirmationEmailSent'
+import ConfirmationNumberCopy from './ConfirmationNumberCopy'
 
 const BASE_TABS = [
   { id: 'cope', label: 'COPE' },
@@ -93,7 +90,6 @@ export default function ReportResultsPanel({
   onToggleExpand,
   onClose,
   showHeader = true,
-  hideEmailButton = false,
 }) {
   const isPanel = variant === 'panel'
   const [open, setOpen] = useState(Boolean(record))
@@ -101,23 +97,6 @@ export default function ReportResultsPanel({
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
   const [exportError, setExportError] = useState(null)
-  const [emailFormOpen, setEmailFormOpen] = useState(false)
-  const [emailClosePromptOpen, setEmailClosePromptOpen] = useState(false)
-  const [emailSent, setEmailSent] = useState(() => isConfirmationEmailSent(record?.report_id))
-
-  useEffect(() => {
-    setEmailSent(isConfirmationEmailSent(record?.report_id))
-    setEmailFormOpen(false)
-    setEmailClosePromptOpen(false)
-  }, [record?.report_id])
-
-  const handlePanelClose = () => {
-    if (record.report_id && !emailSent && !isConfirmationEmailSent(record.report_id)) {
-      setEmailClosePromptOpen(true)
-      return
-    }
-    onClose?.()
-  }
 
   useEffect(() => {
     if (record) setOpen(true)
@@ -177,7 +156,7 @@ export default function ReportResultsPanel({
     <>
       <div className="border-b border-panel-border/60 px-5 py-3">
         {record.report_id ? (
-          <p className="font-mono text-[10px] tabular-nums text-ink-muted">{record.report_id}</p>
+          <ConfirmationNumberCopy confirmationId={record.report_id} />
         ) : null}
         {hazardLink ? (
           publicDataCommandEnabled ? (
@@ -185,7 +164,7 @@ export default function ReportResultsPanel({
               to={hazardLink}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${HAZARD_LINK_CLASS} ${record.report_id ? 'mt-2' : ''}`}
+              className={`${HAZARD_LINK_CLASS} ${record.report_id ? 'mt-3' : ''}`}
             >
               Live hazards at this location
               <span className="font-mono text-[10px] text-ink-muted" aria-hidden>
@@ -196,7 +175,7 @@ export default function ReportResultsPanel({
             <button
               type="button"
               onClick={() => setActiveTab('hazards')}
-              className={`${HAZARD_LINK_CLASS} ${record.report_id ? 'mt-2' : ''}`}
+              className={`${HAZARD_LINK_CLASS} ${record.report_id ? 'mt-3' : ''}`}
             >
               View hazards for this location
             </button>
@@ -224,15 +203,6 @@ export default function ReportResultsPanel({
               {exportingExcel ? 'Exporting…' : 'Export COPE Excel'}
             </button>
           </>
-        ) : null}
-        {record.report_id && !hideEmailButton ? (
-          <EmailConfirmationButton
-            confirmationId={record.report_id}
-            defaultReportName={defaultReportNameFromRecord(record)}
-            open={emailFormOpen}
-            onOpenChange={setEmailFormOpen}
-            onSent={() => setEmailSent(true)}
-          />
         ) : null}
         {exportError ? (
           <span className="font-sans text-xs text-command-critical">{exportError}</span>
@@ -324,7 +294,7 @@ export default function ReportResultsPanel({
                 {onClose ? (
                   <button
                     type="button"
-                    onClick={handlePanelClose}
+                    onClick={onClose}
                     className="rounded border border-panel-border px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-muted transition hover:border-command-live/40 hover:text-white"
                     aria-label="Close report"
                   >
@@ -335,18 +305,6 @@ export default function ReportResultsPanel({
             </div>
           </div>
         ) : null}
-        <EmailConfirmationCloseModal
-          open={emailClosePromptOpen}
-          confirmationId={record.report_id}
-          onSendEmail={() => {
-            setEmailClosePromptOpen(false)
-            setEmailFormOpen(true)
-          }}
-          onCloseAnyway={() => {
-            setEmailClosePromptOpen(false)
-            onClose?.()
-          }}
-        />
         <div className="flex min-h-0 flex-1 flex-col">{reportBody}</div>
       </div>
     )
