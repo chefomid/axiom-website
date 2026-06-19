@@ -30,6 +30,7 @@ class EmbeddedCheckoutSessionTests(unittest.TestCase):
         self.assertIn("session_id={CHECKOUT_SESSION_ID}", params["success_url"])
         self.assertEqual(result["url"], "https://checkout.stripe.com/c/pay/cs_hosted")
         self.assertIsNone(result["client_secret"])
+        self.assertEqual(result["checkout_mode"], "hosted")
         self.assertIsNone(result["phone_pay_url"])
 
     @patch("billing.stripe_service.stripe.checkout.Session.create")
@@ -56,6 +57,7 @@ class EmbeddedCheckoutSessionTests(unittest.TestCase):
         self.assertNotIn("cancel_url", params)
         self.assertIn("session_id={CHECKOUT_SESSION_ID}", params["return_url"])
         self.assertEqual(result["client_secret"], "cs_test_secret")
+        self.assertEqual(result["checkout_mode"], "embedded")
         self.assertIsNone(result["url"])
         self.assertIn("/property-intelligence/pay", result["phone_pay_url"] or "")
         self.assertIn("session_id=cs_embedded", result["phone_pay_url"] or "")

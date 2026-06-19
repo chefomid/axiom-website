@@ -216,6 +216,18 @@ export async function fetchCheckoutStatus(sessionId, anonId) {
     anon_id: anonId ?? getOrCreateAnonId(),
   })
   const res = await propertyFetch(`/billing/checkout-status?${params}`)
+  if (res.status === 429) {
+    const data = await res.json().catch(() => ({}))
+    const detail = data.detail ?? data.message ?? res.statusText
+    const err = new Error(
+      typeof detail === 'string' ? detail : 'checkout-status rate limit exceeded (HTTP 429)',
+    )
+    attachApiErrorMetadata(err, { status: 429, detail })
+    console.warn(
+      '[checkout-status] HTTP 429 — polling hit API rate limit; will retry. Webhook fulfillment is recommended.',
+    )
+    throw err
+  }
   return parsePropertyResponse(res)
 }
 

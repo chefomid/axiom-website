@@ -7,7 +7,8 @@ import { getOrCreateAnonId } from '../utils/anonId'
 import { loadBillingResume } from '../utils/billingResume'
 import { getStripePromise } from '../utils/stripeClient'
 
-const FAST_POLL_MS = 500
+// 2000ms keeps checkout-status under the API rate limit (~30 req/min fast phase).
+const FAST_POLL_MS = 2000
 const SLOW_POLL_MS = 2000
 const FAST_POLL_DURATION_MS = 60_000
 const POLL_TIMEOUT_MS = 15 * 60 * 1000
@@ -108,7 +109,18 @@ export function CheckoutPayProvider({ children }) {
         if (status.status === 'paid') {
           paid = true
         }
-      } catch {
+      } catch (err) {
+        const httpStatus = err?.status ?? 'unknown'
+        if (httpStatus === 429) {
+          console.warn(
+            `[checkout] checkout-status rate limited (HTTP 429) for hosted session ${hostedSessionId}; retrying.`,
+          )
+        } else {
+          console.warn(
+            `[checkout] checkout-status failed (HTTP ${httpStatus}) for hosted session ${hostedSessionId}:`,
+            err?.message ?? err,
+          )
+        }
         state.consecutiveFailures = (state.consecutiveFailures ?? 0) + 1
         if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
           setPollTrouble(true)
@@ -124,7 +136,9 @@ export function CheckoutPayProvider({ children }) {
         if ((bal.balance_credits ?? 0) >= balanceBefore + creditsToAdd) {
           paid = true
         }
-      } catch {
+      } catch (err) {
+        const httpStatus = err?.status ?? 'unknown'
+        console.warn(`[checkout] balance poll failed (HTTP ${httpStatus}):`, err?.message ?? err)
         state.consecutiveFailures = (state.consecutiveFailures ?? 0) + 1
         if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
           setPollTrouble(true)
@@ -243,6 +257,16 @@ export function CheckoutPayProvider({ children }) {
           null
         const hostedUrl = hostedSession?.url ?? null
         const embedSecret = embedSession?.client_secret ?? null
+
+        if (embedSession?.session_id) {
+          console.info('[checkout] embedded session (pay on this device):', embedSession.session_id)
+        }
+        if (hostedSessionId) {
+          console.info('[checkout] hosted session (QR + poll target):', hostedSessionId)
+        }
+        if (hostedUrl && !hostedSessionId) {
+          throw new Error('Hosted checkout URL missing session_id — cannot poll payment status')
+        }
 
         if (!embedSecret && !hostedUrl) {
           throw new Error('Checkout session missing')

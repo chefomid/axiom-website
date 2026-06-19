@@ -1,4 +1,11 @@
-"""Stripe Checkout + webhook handling."""
+"""Stripe Checkout + webhook handling.
+
+QR phone flow: the desktop QR encodes a hosted Checkout session URL. The desktop
+polls that hosted ``session_id`` via GET /billing/checkout-status. The Stripe
+webhook (``checkout.session.completed``) is the reliable fulfillment path;
+polling syncs the desktop UI and idempotently fulfills if the webhook has not
+run yet.
+"""
 
 from __future__ import annotations
 
@@ -79,6 +86,7 @@ def _session_response(
 ) -> dict[str, str | float | int | None]:
     result: dict[str, str | float | int | None] = {
         "session_id": session.id,
+        "checkout_mode": "embedded" if embedded else "hosted",
         "charge_usd": charge_usd,
         "credits_to_add": credits_to_add,
         "url": None,
@@ -265,15 +273,17 @@ async def get_checkout_status(session_id: str, anon_id: str) -> dict[str, Any]:
         raise ValueError("Session does not belong to this user")
 
     payment_status = session.get("payment_status") or "unpaid"
+    session_status = session.get("status") or "open"
+    is_paid = payment_status == "paid" or session_status == "complete"
     credits_added = 0
     balance = await get_balance(anon_id)
 
-    if payment_status == "paid":
+    if is_paid:
         result = await fulfill_checkout_session(session)
         credits_added = int(result.get("credits_added") or 0)
         balance = int(result.get("balance_credits") or balance)
 
-    status = "paid" if payment_status == "paid" else "open"
+    status = "paid" if is_paid else "open"
     return {
         "status": status,
         "balance_credits": balance,

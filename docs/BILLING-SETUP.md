@@ -48,9 +48,11 @@ Anonymous users buy **credit packs** via Stripe Checkout (Apple Pay / Google Pay
 
 ### QR / phone checkout (desktop → scan on phone)
 
-When you pay via QR on your phone while developing locally, two extra steps are required:
+**Architecture:** The desktop QR encodes a **hosted** Stripe Checkout URL (session B). The desktop polls `GET /billing/checkout-status` with that hosted `session_id` until Stripe reports paid (or the wallet balance increases). The Stripe webhook (`checkout.session.completed`) is the reliable **fulfillment** path; polling is the **desktop synchronization** path and idempotently credits the wallet if the webhook has not run yet.
 
-1. **`stripe listen` must be running** — without it, the desktop never receives payment confirmation and stays on "Waiting for payment…". The API also polls Stripe session status as a fallback, but webhooks are still recommended.
+When you pay via QR on your phone while developing locally:
+
+1. **`stripe listen` is recommended** — without it, desktop detection still works via checkout-status polling, but webhook fulfillment is disabled until you configure `STRIPE_WEBHOOK_SECRET`.
 
 2. **Use your PC's LAN IP for `FRONTEND_URL`** — the default `http://127.0.0.1:5173` is unreachable from your phone after Apple Pay. Find your IPv4 address (`ipconfig` on Windows) and set:
 

@@ -93,6 +93,14 @@ async def lifespan(app: FastAPI):
         await billing_db.init_db()
     except Exception as exc:
         print(f"Billing database init failed: {exc}")
+    from billing.config import stripe_webhook_secret
+
+    if billing_enabled() and not stripe_webhook_secret():
+        print(
+            "WARNING: STRIPE_WEBHOOK_SECRET is not set — webhook fulfillment disabled. "
+            "Desktop QR checkout relies on GET /billing/checkout-status polling; "
+            "configure checkout.session.completed webhooks in production."
+        )
     yield
     await billing_db.close_db()
 
@@ -150,6 +158,7 @@ class CheckoutResponse(BaseModel):
     url: str | None = None
     client_secret: str | None = None
     session_id: str
+    checkout_mode: str | None = None
     charge_usd: float | None = None
     credits_to_add: int | None = None
     phone_pay_url: str | None = None
@@ -159,6 +168,7 @@ class CheckoutQuoteResponse(BaseModel):
     url: str | None = None
     client_secret: str | None = None
     session_id: str
+    checkout_mode: str | None = None
     charge_usd: float
     credits_to_add: int
     phone_pay_url: str | None = None
@@ -487,7 +497,7 @@ async def billing_balance(anon_id: str = ""):
 
 
 @app.get("/billing/checkout-status", response_model=CheckoutStatusResponse)
-@limiter.limit("60/minute")
+@limiter.limit("120/minute")
 async def billing_checkout_status(
     request: Request,
     session_id: str = "",
