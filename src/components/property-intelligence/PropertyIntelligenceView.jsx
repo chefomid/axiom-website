@@ -719,16 +719,6 @@ export default function PropertyIntelligenceView() {
     runBatch: runPostPaymentBatch,
   })
 
-  startPostPaymentFlowRef.current = startPostPaymentFlow
-  handlePostPaymentCompleteRef.current = handlePostPaymentComplete
-
-  useEffect(() => {
-    if (postPaymentPhase !== 'report') return
-    setReportPanelOpen(true)
-    setReportExpanded(true)
-    setBillingNotice(null)
-  }, [postPaymentPhase])
-
   const handlePostPaymentComplete = useCallback(
     entry => {
       const purpose = entry?.purpose ?? entry?.resume
@@ -740,6 +730,16 @@ export default function PropertyIntelligenceView() {
     },
     [startPostPaymentFlow],
   )
+
+  startPostPaymentFlowRef.current = startPostPaymentFlow
+  handlePostPaymentCompleteRef.current = handlePostPaymentComplete
+
+  useEffect(() => {
+    if (postPaymentPhase !== 'report') return
+    setReportPanelOpen(true)
+    setReportExpanded(true)
+    setBillingNotice(null)
+  }, [postPaymentPhase])
 
   const handleConfirmRefund = useCallback(async () => {
     const sessionId = postPaymentContext?.sessionId
