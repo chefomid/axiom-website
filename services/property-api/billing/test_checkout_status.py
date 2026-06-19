@@ -129,6 +129,67 @@ class CheckoutStatusTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["status"], "paid")
         self.assertEqual(result["balance_credits"], 47)
 
+    async def test_get_checkout_status_paid_embedded_session_id(self) -> None:
+        """Embedded desktop pay: status/fulfill works on embedded session A (not hosted B)."""
+        session = MagicMock()
+        session.get = lambda key, default=None: {
+            "metadata": {
+                "anon_id": "test-anon-id-1234",
+                "pack_id": "pack_5",
+                "credits": "55",
+            },
+            "payment_status": "paid",
+            "status": "complete",
+            "id": "cs_embedded_paid",
+        }.get(key, default)
+
+        with patch("billing.stripe_service.stripe.checkout.Session.retrieve", return_value=session):
+            with patch("billing.stripe_service.stripe_secret_key", return_value="sk_test_fake"):
+                with patch(
+                    "billing.stripe_service.fulfill_checkout_session",
+                    new_callable=AsyncMock,
+                ) as mock_fulfill:
+                    mock_fulfill.return_value = {
+                        "credits_added": 55,
+                        "anon_id": "test-anon-id-1234",
+                        "balance_credits": 55,
+                    }
+                    result = await get_checkout_status("cs_embedded_paid", "test-anon-id-1234")
+
+        mock_fulfill.assert_awaited_once()
+        self.assertEqual(result["status"], "paid")
+        self.assertEqual(result["credits_added"], 55)
+
+    async def test_get_checkout_status_idempotent_when_already_fulfilled(self) -> None:
+        session = MagicMock()
+        session.get = lambda key, default=None: {
+            "metadata": {
+                "anon_id": "test-anon-id-1234",
+                "credits": "47",
+                "checkout_type": "quote",
+                "purpose": "enrich",
+            },
+            "payment_status": "paid",
+            "id": "cs_test_paid",
+        }.get(key, default)
+
+        with patch("billing.stripe_service.stripe.checkout.Session.retrieve", return_value=session):
+            with patch("billing.stripe_service.stripe_secret_key", return_value="sk_test_fake"):
+                with patch(
+                    "billing.stripe_service.fulfill_checkout_session",
+                    new_callable=AsyncMock,
+                ) as mock_fulfill:
+                    mock_fulfill.return_value = {
+                        "credits_added": 0,
+                        "anon_id": "test-anon-id-1234",
+                        "balance_credits": 47,
+                    }
+                    result = await get_checkout_status("cs_test_paid", "test-anon-id-1234")
+
+        self.assertEqual(result["status"], "paid")
+        self.assertEqual(result["credits_added"], 0)
+        self.assertEqual(result["balance_credits"], 47)
+
 
 class CheckoutEmbedTests(unittest.IsolatedAsyncioTestCase):
     async def test_get_embed_checkout_credentials(self) -> None:
