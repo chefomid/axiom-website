@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { isPublicDataCommandEnabled } from '../../config/features'
 import { publicDataCommandAtLocation } from '../../constants/routes'
 import { downloadReportPdf } from '../../services/reportApi'
 import { buildCopeReportDocument, validateCopeReportDocument } from '../../utils/copeReportDocument'
@@ -17,6 +18,15 @@ const BASE_TABS = [
 ]
 const IMAGE_TAB = { id: 'image', label: 'Image' }
 const SOV_TAB = { id: 'sov', label: 'SOV' }
+
+const TAB_ACTIVE_CLASS =
+  'border-white bg-white text-black shadow-none'
+const TAB_INACTIVE_CLASS =
+  'border-panel-border bg-panel-surface/40 text-ink-muted hover:border-ink-muted hover:text-ink-secondary'
+const ACTION_BTN_CLASS =
+  'rounded-md border border-white bg-white px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide text-black transition hover:bg-[#e8e8e8] disabled:border-panel-border disabled:bg-panel-surface/40 disabled:text-ink-muted disabled:opacity-60'
+const HAZARD_LINK_CLASS =
+  'inline-flex items-center gap-1 font-sans text-xs text-white transition hover:underline'
 
 function LoadingState({ variant }) {
   return (
@@ -105,6 +115,7 @@ export default function ReportResultsPanel({
     record.lat != null && record.lng != null
       ? publicDataCommandAtLocation(record.lat, record.lng)
       : null
+  const publicDataCommandEnabled = isPublicDataCommandEnabled()
 
   let tabs = [...BASE_TABS]
   if (record.statement_of_values) tabs = [...tabs, SOV_TAB]
@@ -147,17 +158,27 @@ export default function ReportResultsPanel({
           <p className="font-mono text-[10px] tabular-nums text-ink-muted">{record.report_id}</p>
         ) : null}
         {hazardLink ? (
-          <Link
-            to={hazardLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`inline-flex items-center gap-1 font-sans text-xs text-command-live transition hover:underline ${record.report_id ? 'mt-2' : ''}`}
-          >
-            Live hazards at this location
-            <span className="font-mono text-[10px] text-ink-faint" aria-hidden>
-              ↗
-            </span>
-          </Link>
+          publicDataCommandEnabled ? (
+            <Link
+              to={hazardLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${HAZARD_LINK_CLASS} ${record.report_id ? 'mt-2' : ''}`}
+            >
+              Live hazards at this location
+              <span className="font-mono text-[10px] text-ink-muted" aria-hidden>
+                ↗
+              </span>
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setActiveTab('hazards')}
+              className={`${HAZARD_LINK_CLASS} ${record.report_id ? 'mt-2' : ''}`}
+            >
+              View hazards for this location
+            </button>
+          )
         ) : null}
       </div>
 
@@ -168,7 +189,7 @@ export default function ReportResultsPanel({
               type="button"
               onClick={handleExportPdf}
               disabled={exportingPdf || exportingExcel}
-              className="rounded-md border border-command-live/50 bg-command-live/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide text-command-live transition hover:bg-command-live/25 disabled:opacity-40"
+              className={ACTION_BTN_CLASS}
             >
               {exportingPdf ? 'Exporting…' : 'Export COPE PDF'}
             </button>
@@ -176,7 +197,7 @@ export default function ReportResultsPanel({
               type="button"
               onClick={handleExportExcel}
               disabled={exportingPdf || exportingExcel}
-              className="rounded-md border border-panel-border bg-panel-surface/60 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide text-ink-primary transition hover:border-command-live/40 hover:bg-panel-surface disabled:opacity-40"
+              className={ACTION_BTN_CLASS}
             >
               {exportingExcel ? 'Exporting…' : 'Export COPE Excel'}
             </button>
@@ -200,9 +221,7 @@ export default function ReportResultsPanel({
             aria-selected={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`shrink-0 rounded-md border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide transition ${
-              activeTab === tab.id
-                ? 'border-command-live/60 bg-command-live/15 text-white shadow-[inset_0_0_0_1px_rgba(74,158,255,0.15)]'
-                : 'border-panel-border bg-panel-surface/40 text-ink-muted hover:border-command-live/30 hover:text-ink-secondary'
+              activeTab === tab.id ? TAB_ACTIVE_CLASS : TAB_INACTIVE_CLASS
             }`}
           >
             {tab.label}

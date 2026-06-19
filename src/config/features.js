@@ -24,7 +24,10 @@ export function isCareersOrganizeLlmEnabled() {
 export function isPublicDataCommandEnabled() {
   if (import.meta.env.DEV) return true
   if (import.meta.env.PROD) {
-    return import.meta.env.VITE_PUBLIC_DATA_COMMAND_ENABLED === 'true'
+    return (
+      import.meta.env.VITE_PUBLIC_DATA_COMMAND_ENABLED === 'true' ||
+      isPropertyIntelligenceEnabled()
+    )
   }
   return false
 }
