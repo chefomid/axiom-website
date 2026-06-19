@@ -1,14 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { fetchCheckoutStatus } from '../../services/propertyApi'
+import { usePostPaymentFlow } from '../../hooks/usePostPaymentFlow'
+import {
+  enrichBatch,
+  enrichProperty,
+  fetchCheckoutStatus,
+  requestCheckoutRefund,
+} from '../../services/propertyApi'
 import { adoptAnonIdFromSearchParams, getOrCreateAnonId } from '../../utils/anonId'
 import { formatBillingError } from '../../utils/apiErrors'
+import { loadBillingResume, clearBillingResume } from '../../utils/billingResume'
 import {
   classifyMobileVerificationFailure,
   isRetryableCheckoutStatusError,
   sessionIdLogPrefix,
 } from '../../utils/mobileCheckoutReturn'
+import { isReportPostPaymentPurpose } from '../../utils/postPaymentContext'
+import PostPaymentOverlay from './PostPaymentOverlay'
+import RefundConfirmModal from './RefundConfirmModal'
 
 const MOBILE_POLL_FAST_MS = 2000
 const MOBILE_POLL_SLOW_MS = 2000
@@ -78,7 +88,7 @@ async function waitForPaid(sessionId, anonId, cancelledRef) {
     try {
       const status = await fetchCheckoutStatus(sessionId, anonId)
       if (status.status === 'paid') {
-        return { paid: true, confirmationId: status.confirmation_id ?? null }
+        return { paid: true, confirmationId: status.confirmation_id ?? null, statusResponse: status }
       }
     } catch (err) {
       if (cancelledRef.current) return null
@@ -112,10 +122,55 @@ export default function MobilePaymentReturn() {
   const [confirmationId, setConfirmationId] = useState(null)
   const cancelledRef = useRef(false)
   const completedRef = useRef(false)
+  const startPostPaymentRef = useRef(null)
 
   const sessionId = searchParams.get('session_id')?.trim() ?? ''
   const billing = searchParams.get('billing')
   const urlAnonId = searchParams.get('anon_id')?.trim() ?? ''
+
+  const runMobileReport = useCallback(async ctx => {
+    await enrichProperty({
+      address: ctx.address,
+      selectedSources: ctx.selectedSources ?? [],
+      sourceUrls: ctx.sourceUrls,
+      confirmedPriceUsd: ctx.confirmedPriceUsd ?? ctx.chargeUsd,
+      reportId: ctx.confirmationId,
+      anonId: ctx.anonId,
+    })
+  }, [])
+
+  const runMobileBatch = useCallback(async ctx => {
+    const confirmedPrice =
+      ctx.confirmedPriceUsd ?? ctx.batchQuoteSnapshot?.totals?.user_price_usd ?? ctx.chargeUsd
+    await enrichBatch({
+      addresses: ctx.addresses ?? [],
+      selectedSources: ctx.selectedSources ?? [],
+      confirmedPriceUsd: confirmedPrice,
+      batchId: ctx.confirmationId,
+      anonId: ctx.anonId,
+    })
+  }, [])
+
+  const {
+    phase: postPaymentPhase,
+    context: postPaymentContext,
+    errorMessage: postPaymentError,
+    refundResult: postPaymentRefundResult,
+    refundModalOpen,
+    refundLoading,
+    showRefundEligible,
+    overlayActive: postPaymentOverlayActive,
+    startFlow: startPostPaymentFlow,
+    resetFlow: resetPostPaymentFlow,
+    setRefundModalOpen,
+    setRefundLoading,
+    completeRefund,
+  } = usePostPaymentFlow({
+    runReport: runMobileReport,
+    runBatch: runMobileBatch,
+  })
+
+  startPostPaymentRef.current = startPostPaymentFlow
 
   const clearParams = useCallback(() => {
     const next = new URLSearchParams(searchParams)
@@ -125,6 +180,19 @@ export default function MobilePaymentReturn() {
     next.delete('resume')
     setSearchParams(next, { replace: true })
   }, [searchParams, setSearchParams])
+
+  const handleConfirmRefund = useCallback(async () => {
+    const sid = postPaymentContext?.sessionId
+    const anonId = postPaymentContext?.anonId
+    if (!sid || !anonId) return
+    setRefundLoading(true)
+    try {
+      const result = await requestCheckoutRefund(sid, anonId)
+      completeRefund(result)
+    } catch {
+      setRefundLoading(false)
+    }
+  }, [completeRefund, postPaymentContext, setRefundLoading])
 
   const runVerification = useCallback(async () => {
     if (billing !== 'success' || !sessionId) {
@@ -149,9 +217,26 @@ export default function MobilePaymentReturn() {
 
       if (result?.paid) {
         completedRef.current = true
+        window.dispatchEvent(new Event('axiom:billing-refresh'))
+        const resumeData = loadBillingResume()
+        const purpose = resumeData?.resume ?? searchParams.get('resume') ?? null
+        clearBillingResume()
+        clearParams()
+
+        if (isReportPostPaymentPurpose(purpose) && resumeData) {
+          void startPostPaymentRef.current?.({
+            ...resumeData,
+            purpose,
+            sessionId,
+            confirmationId: result.confirmationId ?? resumeData.confirmationId ?? null,
+            creditsAdded: result.statusResponse?.credits_added ?? null,
+            anonId,
+          })
+          return
+        }
+
         setConfirmationId(result.confirmationId)
         setPhase('done')
-        clearParams()
         return
       }
 
@@ -174,7 +259,7 @@ export default function MobilePaymentReturn() {
     } finally {
       setCheckingAgain(false)
     }
-  }, [billing, sessionId, urlAnonId, clearParams])
+  }, [billing, sessionId, urlAnonId, clearParams, searchParams])
 
   useEffect(() => {
     adoptAnonIdFromSearchParams(searchParams)
@@ -204,6 +289,55 @@ export default function MobilePaymentReturn() {
     setCheckingAgain(true)
     void runVerification()
   }, [runVerification])
+
+  if (postPaymentOverlayActive) {
+    return (
+      <>
+        <PostPaymentOverlay
+          phase={postPaymentPhase}
+          context={postPaymentContext}
+          errorMessage={postPaymentError}
+          refundResult={postPaymentRefundResult}
+          showRefundEligible={showRefundEligible}
+          onRequestRefund={() => setRefundModalOpen(true)}
+          onDismiss={resetPostPaymentFlow}
+        />
+        <RefundConfirmModal
+          open={refundModalOpen}
+          loading={refundLoading}
+          paymentSummary={postPaymentContext?.paymentSummary}
+          onCancel={() => setRefundModalOpen(false)}
+          onConfirm={() => void handleConfirmRefund()}
+        />
+      </>
+    )
+  }
+
+  if (postPaymentPhase === 'report') {
+    const reportConfirmation = postPaymentContext?.confirmationId ?? confirmationId
+    return (
+      <MobileShell>
+        <div className="mx-4 mt-10 px-2 text-center">
+          <p className="font-display text-2xl font-semibold text-white">Report ready</p>
+          <p className="mt-2 font-sans text-sm text-ink-secondary">Your property intelligence report is complete.</p>
+          {reportConfirmation ? (
+            <div className="mx-auto mt-8 max-w-sm rounded-lg border border-panel-border bg-panel-surface/40 px-5 py-5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Confirmation</p>
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
+                <span className="font-mono text-lg tabular-nums tracking-wide text-command-live">
+                  {reportConfirmation}
+                </span>
+                <CopyButton value={reportConfirmation} />
+              </div>
+              <p className="mt-4 font-sans text-xs leading-relaxed text-ink-faint">
+                Open Property Intelligence on desktop to view the full report, or save this number to retrieve it later.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </MobileShell>
+    )
+  }
 
   if (phase === 'verifying') {
     return (
@@ -253,24 +387,7 @@ export default function MobilePaymentReturn() {
       <div className="mx-4 mt-10 px-2 text-center">
         <p className="font-display text-2xl font-semibold text-white">Thank you</p>
         <p className="mt-2 font-sans text-sm text-ink-secondary">Payment received.</p>
-        <p className="mt-1 font-sans text-sm text-ink-muted">
-          {confirmationId ? 'Your report is being prepared.' : 'Your credits have been added.'}
-        </p>
-
-        {confirmationId ? (
-          <div className="mx-auto mt-8 max-w-sm rounded-lg border border-panel-border bg-panel-surface/40 px-5 py-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Confirmation</p>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
-              <span className="font-mono text-lg tabular-nums tracking-wide text-command-live">
-                {confirmationId}
-              </span>
-              <CopyButton value={confirmationId} />
-            </div>
-            <p className="mt-4 font-sans text-xs leading-relaxed text-ink-faint">
-              Save this number to retrieve your report anytime.
-            </p>
-          </div>
-        ) : null}
+        <p className="mt-1 font-sans text-sm text-ink-muted">Your credits have been added.</p>
       </div>
     </MobileShell>
   )

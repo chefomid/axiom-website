@@ -58,6 +58,13 @@ CREATE TABLE IF NOT EXISTS report_confirmations (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS checkout_refunds (
+    session_id TEXT PRIMARY KEY,
+    anon_id TEXT NOT NULL,
+    stripe_refund_id TEXT NOT NULL,
+    amount_usd REAL NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_ledger_anon ON ledger(anon_id);
 """
 
@@ -93,6 +100,13 @@ CREATE TABLE IF NOT EXISTS report_confirmations (
     payload_json JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS checkout_refunds (
+    session_id TEXT PRIMARY KEY,
+    anon_id TEXT NOT NULL,
+    stripe_refund_id TEXT NOT NULL,
+    amount_usd DOUBLE PRECISION NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_ledger_anon ON ledger(anon_id);
 """
@@ -627,5 +641,142 @@ def _sqlite_get_report_confirmation(confirmation_id: str) -> dict[str, Any] | No
             "status": row["status"],
             "payload": payload,
         }
+    finally:
+        conn.close()
+
+
+async def get_ledger_credit_add(reference_id: str) -> dict[str, Any] | None:
+    """Return the positive credit ledger row for a checkout session, if any."""
+    if not _ready or not reference_id.strip():
+        return None
+    ref = reference_id.strip()
+    if _use_postgres:
+        async with _pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT anon_id, delta_credits, reason, reference_id
+                FROM ledger
+                WHERE reference_id = $1 AND delta_credits > 0
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                ref,
+            )
+            if not row:
+                return None
+            return {
+                "anon_id": row["anon_id"],
+                "credits": int(row["delta_credits"]),
+                "reason": row["reason"],
+                "reference_id": row["reference_id"],
+            }
+    return await asyncio.to_thread(_sqlite_get_ledger_credit_add, ref)
+
+
+def _sqlite_get_ledger_credit_add(reference_id: str) -> dict[str, Any] | None:
+    conn = _sqlite_connect()
+    try:
+        row = conn.execute(
+            """
+            SELECT anon_id, delta_credits, reason, reference_id
+            FROM ledger
+            WHERE reference_id = ? AND delta_credits > 0
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (reference_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return {
+            "anon_id": row["anon_id"],
+            "credits": int(row["delta_credits"]),
+            "reason": row["reason"],
+            "reference_id": row["reference_id"],
+        }
+    finally:
+        conn.close()
+
+
+async def get_checkout_refund(session_id: str) -> dict[str, Any] | None:
+    if not _ready or not session_id.strip():
+        return None
+    sid = session_id.strip()
+    if _use_postgres:
+        async with _pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT session_id, anon_id, stripe_refund_id, amount_usd, created_at
+                FROM checkout_refunds
+                WHERE session_id = $1
+                """,
+                sid,
+            )
+            if not row:
+                return None
+            return dict(row)
+    return await asyncio.to_thread(_sqlite_get_checkout_refund, sid)
+
+
+def _sqlite_get_checkout_refund(session_id: str) -> dict[str, Any] | None:
+    conn = _sqlite_connect()
+    try:
+        row = conn.execute(
+            """
+            SELECT session_id, anon_id, stripe_refund_id, amount_usd, created_at
+            FROM checkout_refunds
+            WHERE session_id = ?
+            """,
+            (session_id,),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+async def save_checkout_refund(
+    session_id: str,
+    anon_id: str,
+    stripe_refund_id: str,
+    amount_usd: float,
+) -> None:
+    if not _ready:
+        return
+    sid = session_id.strip()
+    aid = anon_id.strip()
+    rid = stripe_refund_id.strip()
+    if not sid or not aid or not rid:
+        return
+    if _use_postgres:
+        async with _pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO checkout_refunds (session_id, anon_id, stripe_refund_id, amount_usd, created_at)
+                VALUES ($1, $2, $3, $4, NOW())
+                ON CONFLICT (session_id) DO NOTHING
+                """,
+                sid,
+                aid,
+                rid,
+                amount_usd,
+            )
+        return
+    await asyncio.to_thread(_sqlite_save_checkout_refund, sid, aid, rid, amount_usd)
+
+
+def _sqlite_save_checkout_refund(
+    session_id: str, anon_id: str, stripe_refund_id: str, amount_usd: float
+) -> None:
+    conn = _sqlite_connect()
+    try:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO checkout_refunds
+                (session_id, anon_id, stripe_refund_id, amount_usd, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (session_id, anon_id, stripe_refund_id, amount_usd, _now_iso()),
+        )
+        conn.commit()
     finally:
         conn.close()

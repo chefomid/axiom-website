@@ -24,10 +24,12 @@ from billing.packs import CREDIT_PACKS
 from billing.stripe_service import (
     create_checkout_session,
     create_quote_checkout_session,
+    get_checkout_payment_summary,
     get_checkout_status,
     get_embed_checkout_credentials,
     handle_webhook_payload,
     map_checkout_status_exception,
+    refund_checkout_session,
 )
 from billing.quote_checkout import compute_checkout_pricing
 from env_loader import env_status_payload, load_project_env
@@ -36,7 +38,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, HttpUrl
 
-from geocode import geocode_address, search_addresses
+from geocode import geocode_address, proxy_census_coordinates, proxy_census_onelineaddress, search_addresses
 from merger.cope import build_cope_snapshot_from_trusted
 from merger.trust import collect_observations_from_results, resolve_all
 from planner.quote import _api_key_configured, build_quote, warnings_for_selection
@@ -235,6 +237,28 @@ class CheckoutEmbedResponse(BaseModel):
     session_id: str
     status: str
     charge_usd: float | None = None
+
+
+class CheckoutPaymentSummaryResponse(BaseModel):
+    brand: str
+    last4: str
+    amount_usd: float
+    currency: str
+    session_id_prefix: str
+
+
+class CheckoutRefundRequest(BaseModel):
+    session_id: str = Field(..., min_length=8, max_length=256)
+    anon_id: str = Field(..., min_length=8, max_length=128)
+
+
+class CheckoutRefundResponse(BaseModel):
+    ok: bool
+    refund_id: str
+    brand: str
+    last4: str
+    amount_usd: float
+    balance_credits: int
     stripe_publishable_key: str
 
 
@@ -528,6 +552,56 @@ async def billing_checkout_status(
     return CheckoutStatusResponse(**result, confirmation_id=confirmation_id)
 
 
+@app.get("/billing/checkout-payment-summary", response_model=CheckoutPaymentSummaryResponse)
+@limiter.limit("30/minute")
+async def billing_checkout_payment_summary(
+    request: Request,
+    session_id: str = "",
+    anon_id: str = "",
+):
+    sid = session_id.strip()
+    aid = anon_id.strip()
+    if not sid:
+        raise HTTPException(status_code=400, detail="session_id query parameter required")
+    if not aid:
+        raise HTTPException(status_code=400, detail="anon_id query parameter required")
+    if not billing_enabled():
+        raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
+    if not billing_db.is_ready():
+        raise HTTPException(status_code=503, detail="Billing database not ready")
+    try:
+        result = await get_checkout_payment_summary(sid, aid)
+    except ValueError as exc:
+        msg = str(exc)
+        if "does not belong" in msg:
+            raise HTTPException(status_code=403, detail=msg) from exc
+        raise HTTPException(status_code=400, detail=msg) from exc
+    except Exception as exc:
+        raise _billing_stripe_http_exception(exc) from exc
+    return CheckoutPaymentSummaryResponse(**result)
+
+
+@app.post("/billing/refund-checkout", response_model=CheckoutRefundResponse)
+@limiter.limit("3/minute")
+async def billing_refund_checkout(request: Request, body: CheckoutRefundRequest):
+    if not billing_enabled():
+        raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
+    if not billing_db.is_ready():
+        raise HTTPException(status_code=503, detail="Billing database not ready")
+    try:
+        result = await refund_checkout_session(body.session_id.strip(), body.anon_id.strip())
+    except ValueError as exc:
+        msg = str(exc)
+        if "does not belong" in msg:
+            raise HTTPException(status_code=403, detail=msg) from exc
+        if msg == "already_refunded":
+            raise HTTPException(status_code=409, detail="This checkout has already been refunded") from exc
+        raise HTTPException(status_code=400, detail=msg) from exc
+    except Exception as exc:
+        raise _billing_stripe_http_exception(exc) from exc
+    return CheckoutRefundResponse(**result)
+
+
 @app.get("/billing/checkout-resume", response_model=CheckoutResumeResponse)
 @limiter.limit("30/minute")
 async def billing_checkout_resume(
@@ -778,6 +852,40 @@ async def env_status():
 @app.get("/catalog")
 async def catalog():
     return _catalog_payload()
+
+
+@app.get("/geocode/census/onelineaddress")
+@limiter.limit("80/minute")
+async def geocode_census_onelineaddress(
+    request: Request,
+    address: str = "",
+    benchmark: str = "Public_AR_Current",
+    format: str = "json",
+):
+    query = address.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="address query parameter required")
+    try:
+        return await proxy_census_onelineaddress(query, benchmark=benchmark, format=format)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Census geocoder error: {exc}") from exc
+
+
+@app.get("/geocode/census/coordinates")
+@limiter.limit("80/minute")
+async def geocode_census_coordinates(
+    request: Request,
+    x: float | None = None,
+    y: float | None = None,
+    benchmark: str = "Public_AR_Current",
+    format: str = "json",
+):
+    if x is None or y is None:
+        raise HTTPException(status_code=400, detail="x and y query parameters required")
+    try:
+        return await proxy_census_coordinates(x, y, benchmark=benchmark, format=format)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Census reverse geocoder error: {exc}") from exc
 
 
 @app.get("/suggest")

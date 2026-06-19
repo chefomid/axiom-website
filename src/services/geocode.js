@@ -218,9 +218,19 @@ export async function searchAddresses(query, { countryId, bbox, limit = 5, signa
   return dedupeResults(mapped).slice(0, limit)
 }
 
-const CENSUS_BASE = import.meta.env.DEV
-  ? '/api/census/geocoder/locations/onelineaddress'
-  : 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress'
+/** Census blocks browser CORS — dev uses Vite proxy; prod uses property API proxy. */
+function censusLocationsUrl(kind) {
+  if (import.meta.env.DEV) {
+    return `/api/census/geocoder/locations/${kind}`
+  }
+  const apiBase = import.meta.env.VITE_PROPERTY_API_URL?.replace(/\/$/, '')
+  if (apiBase) {
+    return `${apiBase}/geocode/census/${kind}`
+  }
+  return `/api/property/geocode/census/${kind}`
+}
+
+const CENSUS_BASE = censusLocationsUrl('onelineaddress')
 
 async function fetchCensusMatches(address, { signal } = {}) {
   const url = new URL(CENSUS_BASE, window.location.origin)
@@ -362,9 +372,7 @@ export async function searchUsAddressSuggestions(
   return dedupeResults([...census, ...photon]).slice(0, limit)
 }
 
-const CENSUS_REVERSE_BASE = import.meta.env.DEV
-  ? '/api/census/geocoder/locations/coordinates'
-  : 'https://geocoding.geo.census.gov/geocoder/locations/coordinates'
+const CENSUS_REVERSE_BASE = censusLocationsUrl('coordinates')
 
 /**
  * Reverse-geocode GPS coordinates to a US property address.

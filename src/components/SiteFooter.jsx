@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import CareersFooterLink from './careers/CareersFooterLink'
 import { COOKIE_POLICY_PATH, PRIVACY_POLICY_PATH } from '../constants/routes'
+import { CONTACT_EMAIL } from '../constants/site'
 import { openCookieSettings, openDoNotSellOrShare } from './cookie/CookieConsentManager'
 
 const linkClass = 'text-xs text-ink-faint transition-colors hover:text-white'
@@ -32,6 +33,9 @@ export default function SiteFooter({ className = '' }) {
               Privacy Choices
             </button>
             <CareersFooterLink className={linkClass} />
+            <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
+              {CONTACT_EMAIL}
+            </a>
           </nav>
         </div>
         <span className="text-xs text-ink-faint">© 2026</span>

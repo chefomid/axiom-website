@@ -11,6 +11,7 @@ import httpx
 USER_AGENT = "AXIOM-PropertyIntelligence/0.1 (contact: dev@axiom.local)"
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
 CENSUS = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
+CENSUS_COORDINATES = "https://geocoding.geo.census.gov/geocoder/locations/coordinates"
 PHOTON = "https://photon.komoot.io/api/"
 
 US_STATE_ABBR = re.compile(
@@ -91,6 +92,46 @@ async def _nominatim(client: httpx.AsyncClient, address: str, *, countrycodes: s
         address=row.get("address") or {},
         source="nominatim",
     )
+
+
+async def proxy_census_onelineaddress(
+    address: str,
+    *,
+    benchmark: str = "Public_AR_Current",
+    format: str = "json",
+) -> dict[str, Any]:
+    """Proxy US Census onelineaddress geocoder for browser clients (no CORS)."""
+    params = {
+        "address": address.strip(),
+        "benchmark": benchmark,
+        "format": format,
+    }
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+    async with httpx.AsyncClient(timeout=15.0, headers=headers, follow_redirects=True) as client:
+        r = await client.get(CENSUS, params=params)
+        r.raise_for_status()
+        return r.json()
+
+
+async def proxy_census_coordinates(
+    x: float,
+    y: float,
+    *,
+    benchmark: str = "Public_AR_Current",
+    format: str = "json",
+) -> dict[str, Any]:
+    """Proxy US Census reverse geocoder for browser clients (no CORS)."""
+    params = {
+        "x": x,
+        "y": y,
+        "benchmark": benchmark,
+        "format": format,
+    }
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+    async with httpx.AsyncClient(timeout=15.0, headers=headers, follow_redirects=True) as client:
+        r = await client.get(CENSUS_COORDINATES, params=params)
+        r.raise_for_status()
+        return r.json()
 
 
 async def _census_matches(client: httpx.AsyncClient, address: str, *, limit: int = 5) -> list[dict[str, Any]]:

@@ -84,7 +84,7 @@ export function CheckoutPayProvider({ children }) {
   }, [clearPolling])
 
   const completeCheckout = useCallback(
-    ({ paidStatusResponse = null, paidVia = null } = {}) => {
+    ({ paidStatusResponse = null, paidVia = null, paidSessionId = null } = {}) => {
       if (pollStateRef.current?.completed) return
 
       const onComplete = onCompleteRef.current
@@ -95,6 +95,14 @@ export function CheckoutPayProvider({ children }) {
         paidVia,
       )
 
+      let sessionId = paidSessionId
+      const pollState = pollStateRef.current
+      if (!sessionId && pollState) {
+        if (paidVia === 'hosted') sessionId = pollState.hostedSessionId
+        else if (paidVia === 'embedded') sessionId = pollState.embeddedSessionId
+        else sessionId = pollState.hostedSessionId || pollState.embeddedSessionId
+      }
+
       if (confirmationId) {
         console.info(
           `[checkout] completing with confirmation_id ${confirmationId} (source: ${source})`,
@@ -103,10 +111,10 @@ export function CheckoutPayProvider({ children }) {
         console.info(`[checkout] completing without confirmation_id (source: ${source})`)
       }
 
-      if (pollStateRef.current) {
-        pollStateRef.current.completed = true
-        pollStateRef.current.paidConfirmationId = confirmationId
-        pollStateRef.current.paidConfirmationSource = source
+      if (pollState) {
+        pollState.completed = true
+        pollState.paidConfirmationId = confirmationId
+        pollState.paidConfirmationSource = source
       }
       bootstrapIdRef.current += 1
       clearPolling()
@@ -119,9 +127,17 @@ export function CheckoutPayProvider({ children }) {
       onCompleteRef.current = null
       onCancelRef.current = null
       window.dispatchEvent(new Event('axiom:billing-refresh'))
-      onComplete?.(resume)
+      onComplete?.({
+        ...(resume ?? {}),
+        confirmationId,
+        sessionId: sessionId ?? null,
+        paidVia,
+        creditsAdded: paidStatusResponse?.credits_added ?? null,
+        chargeUsd: modal?.chargeUsd ?? storedResume?.confirmedPriceUsd ?? null,
+        purpose: storedResume?.resume ?? resume?.resume ?? null,
+      })
     },
-    [clearPolling],
+    [clearPolling, modal?.chargeUsd],
   )
 
   const trySessionPaid = useCallback(async (sessionId, sessionLabel, state) => {
@@ -197,6 +213,7 @@ export function CheckoutPayProvider({ children }) {
         completeCheckout({
           paidStatusResponse: sessionResult.statusResponse,
           paidVia,
+          paidSessionId: sessionId,
         })
         return true
       }
@@ -224,7 +241,11 @@ export function CheckoutPayProvider({ children }) {
     }
 
     if (paid) {
-      completeCheckout({ paidStatusResponse, paidVia })
+      completeCheckout({
+        paidStatusResponse,
+        paidVia,
+        paidSessionId: state.embeddedSessionId,
+      })
       return true
     }
     return false

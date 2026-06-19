@@ -231,6 +231,27 @@ export async function fetchCheckoutStatus(sessionId, anonId) {
   return parsePropertyResponse(res)
 }
 
+export async function fetchCheckoutPaymentSummary(sessionId, anonId) {
+  const params = new URLSearchParams({
+    session_id: sessionId,
+    anon_id: anonId ?? getOrCreateAnonId(),
+  })
+  const res = await propertyFetch(`/billing/checkout-payment-summary?${params}`)
+  return parsePropertyResponse(res)
+}
+
+export async function requestCheckoutRefund(sessionId, anonId) {
+  const res = await propertyFetch('/billing/refund-checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId,
+      anon_id: anonId ?? getOrCreateAnonId(),
+    }),
+  })
+  return parsePropertyResponse(res)
+}
+
 export async function fetchCheckoutResume(sessionId, anonId) {
   const params = new URLSearchParams({
     session_id: sessionId,

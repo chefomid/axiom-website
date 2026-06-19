@@ -18,7 +18,18 @@ from urllib.parse import quote
 import stripe
 
 from billing.config import frontend_url, stripe_secret_key, stripe_webhook_secret
-from billing.db import add_credits, claim_stripe_event, get_balance
+from billing.db import (
+    add_credits,
+    claim_stripe_event,
+    deduct_credits,
+    get_balance,
+    get_checkout_refund,
+    get_checkout_resume,
+    get_ledger_credit_add,
+    get_report_confirmation,
+    save_checkout_refund,
+    update_report_confirmation,
+)
 from billing.packs import get_pack
 
 logger = logging.getLogger(__name__)
@@ -260,12 +271,19 @@ def create_quote_checkout_session(
     )
 
 
-async def _retrieve_checkout_session(session_id: str, *, attempts: int = 3) -> Any:
+async def _retrieve_checkout_session(
+    session_id: str,
+    *,
+    attempts: int = 3,
+    expand: list[str] | None = None,
+) -> Any:
     """Retrieve Stripe checkout session without blocking the event loop."""
     sid = session_id.strip()
 
     def _retrieve() -> Any:
         stripe.api_key = stripe_secret_key()
+        if expand:
+            return stripe.checkout.Session.retrieve(sid, expand=expand)
         return stripe.checkout.Session.retrieve(sid)
 
     last_exc: Exception | None = None
@@ -417,3 +435,162 @@ async def handle_webhook_payload(payload: bytes, sig_header: str | None) -> dict
         }
 
     return {"ok": True, "ignored": event.type}
+
+
+def _card_details_from_session(session: Any) -> tuple[str, str]:
+    """Extract (brand, last4) from an expanded Checkout Session."""
+    brand = ""
+    last4 = ""
+    payment_intent = _session_field(session, "payment_intent")
+    if not payment_intent:
+        return brand, last4
+
+    charge = None
+    if isinstance(payment_intent, dict):
+        charge = payment_intent.get("latest_charge")
+    else:
+        charge = getattr(payment_intent, "latest_charge", None)
+
+    if not charge:
+        return brand, last4
+
+    pmd = None
+    if isinstance(charge, dict):
+        pmd = (charge.get("payment_method_details") or {}).get("card")
+    else:
+        details = getattr(charge, "payment_method_details", None)
+        pmd = getattr(details, "card", None) if details else None
+
+    if isinstance(pmd, dict):
+        brand = str(pmd.get("brand") or "")
+        last4 = str(pmd.get("last4") or "")
+    elif pmd is not None:
+        brand = str(getattr(pmd, "brand", "") or "")
+        last4 = str(getattr(pmd, "last4", "") or "")
+
+    return brand, last4
+
+
+def _session_amount_usd(session: Any) -> float:
+    amount_total = _session_field(session, "amount_total")
+    if amount_total is None:
+        return 0.0
+    return round(int(amount_total) / 100.0, 2)
+
+
+async def get_checkout_payment_summary(session_id: str, anon_id: str) -> dict[str, Any]:
+    session = await _retrieve_checkout_session(
+        session_id,
+        expand=["payment_intent.latest_charge.payment_method_details.card"],
+    )
+    metadata = _session_metadata(session)
+    if (metadata.get("anon_id") or "").strip() != anon_id.strip():
+        raise ValueError("Session does not belong to this user")
+
+    payment_status = _session_field(session, "payment_status") or "unpaid"
+    session_status = _session_field(session, "status") or "open"
+    is_paid = payment_status == "paid" or session_status == "complete"
+    if not is_paid:
+        raise ValueError("Checkout session is not paid")
+
+    brand, last4 = _card_details_from_session(session)
+    amount_usd = _session_amount_usd(session)
+    sid = _session_field(session, "id") or session_id.strip()
+    return {
+        "brand": brand,
+        "last4": last4,
+        "amount_usd": amount_usd,
+        "currency": (_session_field(session, "currency") or "usd").lower(),
+        "session_id_prefix": _safe_prefix(sid, 12),
+    }
+
+
+async def refund_checkout_session(session_id: str, anon_id: str) -> dict[str, Any]:
+    sid = session_id.strip()
+    aid = anon_id.strip()
+
+    existing = await get_checkout_refund(sid)
+    if existing:
+        raise ValueError("already_refunded")
+
+    session = await _retrieve_checkout_session(
+        sid,
+        expand=["payment_intent.latest_charge.payment_method_details.card"],
+    )
+    metadata = _session_metadata(session)
+    if (metadata.get("anon_id") or "").strip() != aid:
+        raise ValueError("Session does not belong to this user")
+
+    payment_status = _session_field(session, "payment_status") or "unpaid"
+    session_status = _session_field(session, "status") or "open"
+    is_paid = payment_status == "paid" or session_status == "complete"
+    if not is_paid:
+        raise ValueError("Checkout session is not paid")
+
+    ledger_add = await get_ledger_credit_add(sid)
+    if not ledger_add:
+        raise ValueError("No fulfilled payment found for this checkout")
+
+    stored = await get_checkout_resume(sid, aid)
+    confirmation_id = None
+    if stored:
+        confirmation_id = (stored.get("payload") or {}).get("confirmation_id")
+        if confirmation_id:
+            confirmation = await get_report_confirmation(str(confirmation_id))
+            if confirmation and confirmation.get("status") == "ready":
+                raise ValueError("Report already completed; refund not available")
+
+    payment_intent = _session_field(session, "payment_intent")
+    pi_id = None
+    if isinstance(payment_intent, dict):
+        pi_id = payment_intent.get("id")
+    elif payment_intent is not None:
+        pi_id = getattr(payment_intent, "id", None)
+    if not pi_id:
+        raise ValueError("Payment intent not found for this checkout")
+
+    brand, last4 = _card_details_from_session(session)
+    amount_usd = _session_amount_usd(session)
+    credits_to_reverse = int(ledger_add.get("credits") or 0)
+
+    def _create_refund() -> Any:
+        stripe.api_key = stripe_secret_key()
+        return stripe.Refund.create(
+            payment_intent=pi_id,
+            reason="requested_by_customer",
+        )
+
+    refund = await asyncio.to_thread(_create_refund)
+    refund_id = getattr(refund, "id", None) or (refund.get("id") if isinstance(refund, dict) else None)
+    if not refund_id:
+        raise RuntimeError("Stripe refund did not return an id")
+
+    if credits_to_reverse > 0:
+        deducted, balance_after = await deduct_credits(
+            aid,
+            credits_to_reverse,
+            reason=f"stripe_refund:{sid}",
+            reference_id=f"refund:{sid}",
+        )
+        if not deducted:
+            raise RuntimeError("Failed to reverse wallet credits after refund")
+    else:
+        balance_after = await get_balance(aid)
+
+    await save_checkout_refund(sid, aid, str(refund_id), amount_usd)
+
+    if confirmation_id:
+        await update_report_confirmation(
+            str(confirmation_id),
+            status="refunded",
+            payload={"status": "refunded", "session_id": sid},
+        )
+
+    return {
+        "ok": True,
+        "refund_id": str(refund_id),
+        "brand": brand,
+        "last4": last4,
+        "amount_usd": amount_usd,
+        "balance_credits": balance_after,
+    }

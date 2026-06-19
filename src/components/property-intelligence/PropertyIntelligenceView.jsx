@@ -5,9 +5,11 @@ import { SEISMIC_COUNTRY_BBOX } from '../../data/commandMapData'
 
 import { resolveUsLocationFromCoords, inBbox } from '../../services/geocode'
 import { normalizeLatLng, normalizeSuggestion } from '../../utils/coords'
-import { sourcesNeedingUrlIds, fetchBillingPacks, fetchCheckoutPreview, fetchBatchCheckoutPreview, startQuoteCheckout, sourcesMatchQuote, isPaymentRequiredError } from '../../services/propertyApi'
+import { sourcesNeedingUrlIds, fetchBillingPacks, fetchCheckoutPreview, fetchBatchCheckoutPreview, startQuoteCheckout, sourcesMatchQuote, isPaymentRequiredError, requestCheckoutRefund } from '../../services/propertyApi'
 import { loadBillingResume, clearBillingResume } from '../../utils/billingResume'
+import { isReportPostPaymentPurpose } from '../../utils/postPaymentContext'
 import { adoptAnonIdFromSearchParams } from '../../utils/anonId'
+import { usePostPaymentFlow } from '../../hooks/usePostPaymentFlow'
 
 import usePropertyReport from '../../hooks/usePropertyReport'
 import useGeolocation from '../../hooks/useGeolocation'
@@ -30,6 +32,8 @@ import LicensedDataNoticeModal, {
   isLicensedDataNoticeAcked,
   LICENSED_PRESET_IDS,
 } from './LicensedDataNoticeModal'
+import PostPaymentOverlay from './PostPaymentOverlay'
+import RefundConfirmModal from './RefundConfirmModal'
 
 export default function PropertyIntelligenceView() {
 
@@ -59,6 +63,8 @@ export default function PropertyIntelligenceView() {
   const [checkoutPreview, setCheckoutPreview] = useState(null)
   const [mapInstance, setMapInstance] = useState(null)
   const handleGenerateRef = useRef(null)
+  const startPostPaymentFlowRef = useRef(null)
+  const handlePostPaymentCompleteRef = useRef(null)
   const resumeHandledRef = useRef(false)
   const pendingConfirmationRef = useRef(null)
   const [confirmationModalOpen, setConfirmationModalOpen] = useState(false)
@@ -206,15 +212,18 @@ export default function PropertyIntelligenceView() {
     adoptAnonIdFromSearchParams(searchParams)
     const billing = searchParams.get('billing')
     const resume = searchParams.get('resume')
+    const sessionId = searchParams.get('session_id')?.trim() ?? ''
     if (billing === 'success') {
       const resumeData = loadBillingResume()
       window.dispatchEvent(new Event('axiom:billing-refresh'))
+
+      const purpose = resume ?? resumeData?.resume
+      const isReportFlow = isReportPostPaymentPurpose(purpose) && resumeData
 
       if (resume === 'enrich' && resumeData?.address) {
         setAddressDraft(resumeData.address)
         setAddress(resumeData.address)
         if (resumeData.sourceUrls) setSourceUrls(resumeData.sourceUrls)
-        setBillingNotice('Payment received. Generating your report…')
       } else if (resume === 'batch_enrich' && resumeData?.addresses?.length) {
         setInputMode('schedule')
         setScheduleRows(
@@ -225,7 +234,6 @@ export default function PropertyIntelligenceView() {
         )
         if (resumeData.batchQuoteSnapshot) setBatchQuote(resumeData.batchQuoteSnapshot)
         if (resumeData.selectedSources?.length) setSelectedSources(resumeData.selectedSources)
-        setBillingNotice('Payment received. Analyzing your schedule…')
       } else if (resume === 'discover' && resumeData?.address) {
         setAddressDraft(resumeData.address)
         setAddress(resumeData.address)
@@ -234,7 +242,7 @@ export default function PropertyIntelligenceView() {
         window.setTimeout(() => {
           window.dispatchEvent(new CustomEvent('axiom:billing-resume-discover'))
         }, 400)
-      } else {
+      } else if (!isReportFlow) {
         setBillingNotice('Payment received, credits added. You can run reports now.')
       }
 
@@ -243,42 +251,20 @@ export default function PropertyIntelligenceView() {
       next.delete('billing')
       next.delete('resume')
       next.delete('anon_id')
+      next.delete('session_id')
       setSearchParams(next, { replace: true })
 
-      if (resume === 'enrich' && resumeData?.address && !resumeHandledRef.current) {
-        pendingConfirmationRef.current = resumeData.confirmationId ?? null
+      if (isReportFlow && !resumeHandledRef.current) {
         resumeHandledRef.current = true
         window.setTimeout(() => {
-          handleGenerateRef.current?.()
+          void startPostPaymentFlowRef.current?.({
+            ...resumeData,
+            purpose,
+            sessionId: sessionId || resumeData.sessionId || null,
+            confirmationId: resumeData.confirmationId ?? null,
+          })
           resumeHandledRef.current = false
-        }, 900)
-      } else if (resume === 'batch_enrich' && resumeData?.addresses?.length && !resumeHandledRef.current) {
-        pendingConfirmationRef.current = resumeData.confirmationId ?? null
-        resumeHandledRef.current = true
-        window.setTimeout(async () => {
-          setReportPanelOpen(true)
-          try {
-            let confirmedPrice =
-              resumeData.confirmedPriceUsd ?? resumeData.batchQuoteSnapshot?.totals?.user_price_usd
-            if (confirmedPrice == null && resumeData.selectedSources?.length) {
-              const quoted = await requestBatchQuote(resumeData.addresses, resumeData.selectedSources)
-              confirmedPrice = quoted?.totals?.user_price_usd
-            }
-            if (confirmedPrice != null) {
-              await runBatch({
-                addresses: resumeData.addresses,
-                selectedSources: resumeData.selectedSources ?? [],
-                confirmedPriceUsd: confirmedPrice,
-                batchId: pendingConfirmationRef.current,
-              })
-              pendingConfirmationRef.current = null
-            }
-          } catch {
-            setBillingNotice('Payment received, but schedule analysis failed to start. Try again.')
-          } finally {
-            resumeHandledRef.current = false
-          }
-        }, 900)
+        }, 300)
       }
     } else if (billing === 'cancel') {
       setBillingNotice('Checkout canceled, no credits were added.')
@@ -289,7 +275,7 @@ export default function PropertyIntelligenceView() {
       next.delete('anon_id')
       setSearchParams(next, { replace: true })
     }
-  }, [searchParams, setSearchParams, setBatchQuote, setSelectedSources, requestBatchQuote, runBatch])
+  }, [searchParams, setSearchParams, setBatchQuote, setSelectedSources])
 
   useEffect(() => {
     if (!apiOnline) {
@@ -531,12 +517,7 @@ export default function PropertyIntelligenceView() {
             },
             embedded,
           }),
-        onComplete: resume => {
-          pendingConfirmationRef.current = resume?.confirmationId ?? null
-          setBillingNotice('Payment received. Generating your report…')
-          setReportPanelOpen(true)
-          handleGenerateRef.current?.()
-        },
+        onComplete: entry => handlePostPaymentCompleteRef.current?.(entry),
       })
       return true
     },
@@ -575,12 +556,7 @@ export default function PropertyIntelligenceView() {
             },
             embedded,
           }),
-        onComplete: resume => {
-          pendingConfirmationRef.current = resume?.confirmationId ?? null
-          setBillingNotice('Payment received. Analyzing your schedule…')
-          setReportPanelOpen(true)
-          handleGenerateRef.current?.()
-        },
+        onComplete: entry => handlePostPaymentCompleteRef.current?.(entry),
       })
       return true
     },
@@ -686,7 +662,98 @@ export default function PropertyIntelligenceView() {
 
   handleGenerateRef.current = handleGenerate
 
+  const runPostPaymentReport = useCallback(
+    async ctx => {
+      const runAddress = ctx.address ?? activeAddress
+      if (!runAddress) throw new Error('Missing report address.')
+      pendingConfirmationRef.current = ctx.confirmationId ?? null
+      setReportPanelOpen(true)
+      await runReport({
+        address: runAddress,
+        sourceUrls: ctx.sourceUrls ?? sourceUrls,
+        reportId: ctx.confirmationId,
+      })
+    },
+    [activeAddress, runReport, sourceUrls],
+  )
 
+  const runPostPaymentBatch = useCallback(
+    async ctx => {
+      const addresses = ctx.addresses ?? batchAddresses
+      if (!addresses?.length) throw new Error('Missing schedule addresses.')
+      pendingConfirmationRef.current = ctx.confirmationId ?? null
+      setReportPanelOpen(true)
+      let confirmedPrice =
+        ctx.confirmedPriceUsd ?? ctx.batchQuoteSnapshot?.totals?.user_price_usd ?? batchQuote?.totals?.user_price_usd
+      if (confirmedPrice == null && ctx.selectedSources?.length) {
+        const quoted = await requestBatchQuote(addresses, ctx.selectedSources)
+        confirmedPrice = quoted?.totals?.user_price_usd
+      }
+      if (confirmedPrice == null) throw new Error('Could not confirm schedule pricing.')
+      await runBatch({
+        addresses,
+        selectedSources: ctx.selectedSources ?? selectedSources,
+        confirmedPriceUsd: confirmedPrice,
+        batchId: ctx.confirmationId,
+      })
+    },
+    [batchAddresses, batchQuote, requestBatchQuote, runBatch, selectedSources],
+  )
+
+  const {
+    phase: postPaymentPhase,
+    context: postPaymentContext,
+    errorMessage: postPaymentError,
+    refundResult: postPaymentRefundResult,
+    refundModalOpen,
+    refundLoading,
+    showRefundEligible,
+    overlayActive: postPaymentOverlayActive,
+    startFlow: startPostPaymentFlow,
+    resetFlow: resetPostPaymentFlow,
+    setRefundModalOpen,
+    setRefundLoading,
+    completeRefund,
+  } = usePostPaymentFlow({
+    runReport: runPostPaymentReport,
+    runBatch: runPostPaymentBatch,
+  })
+
+  startPostPaymentFlowRef.current = startPostPaymentFlow
+  handlePostPaymentCompleteRef.current = handlePostPaymentComplete
+
+  useEffect(() => {
+    if (postPaymentPhase !== 'report') return
+    setReportPanelOpen(true)
+    setReportExpanded(true)
+    setBillingNotice(null)
+  }, [postPaymentPhase])
+
+  const handlePostPaymentComplete = useCallback(
+    entry => {
+      const purpose = entry?.purpose ?? entry?.resume
+      if (isReportPostPaymentPurpose(purpose)) {
+        void startPostPaymentFlow(entry)
+        return
+      }
+      setBillingNotice('Payment received, credits added. You can run reports now.')
+    },
+    [startPostPaymentFlow],
+  )
+
+  const handleConfirmRefund = useCallback(async () => {
+    const sessionId = postPaymentContext?.sessionId
+    const anonId = postPaymentContext?.anonId
+    if (!sessionId || !anonId) return
+    setRefundLoading(true)
+    try {
+      const result = await requestCheckoutRefund(sessionId, anonId)
+      completeRefund(result)
+    } catch (err) {
+      setRefundLoading(false)
+      setBillingNotice(err?.message ?? 'Refund could not be processed. Please contact support.')
+    }
+  }, [completeRefund, postPaymentContext, setRefundLoading])
 
   const scheduleReady = scheduleMode && validLocationCount >= 1 && Boolean(batchQuote?.totals)
   const activeCheckoutPreview = scheduleMode ? batchCheckoutPreview : checkoutPreview
@@ -1051,6 +1118,24 @@ export default function PropertyIntelligenceView() {
         onReportReady={handleConfirmationReportReady}
         apiOnline={apiOnline}
       />
+      {postPaymentOverlayActive ? (
+        <PostPaymentOverlay
+          phase={postPaymentPhase}
+          context={postPaymentContext}
+          errorMessage={postPaymentError}
+          refundResult={postPaymentRefundResult}
+          showRefundEligible={showRefundEligible}
+          onRequestRefund={() => setRefundModalOpen(true)}
+          onDismiss={resetPostPaymentFlow}
+        />
+      ) : null}
+      <RefundConfirmModal
+        open={refundModalOpen}
+        loading={refundLoading}
+        paymentSummary={postPaymentContext?.paymentSummary}
+        onCancel={() => setRefundModalOpen(false)}
+        onConfirm={() => void handleConfirmRefund()}
+      />
       <div className="flex h-[100dvh] flex-col overflow-hidden">
 
       <PropertyHeader
@@ -1061,6 +1146,7 @@ export default function PropertyIntelligenceView() {
 
 
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        {!postPaymentOverlayActive ? (
         <PropertyWorkflowHud
           inputMode={inputMode}
           onInputModeChange={handleInputModeChange}
@@ -1115,9 +1201,12 @@ export default function PropertyIntelligenceView() {
           displayQuote={displayQuote}
           quoteError={scheduleMode ? batchQuoteError : quoteError}
         />
+        ) : null}
 
         <div
           className={`relative min-w-0 ${
+            postPaymentOverlayActive ? 'pointer-events-none opacity-0' : ''
+          } ${
             showReportPanel
               ? reportExpanded
                 ? 'hidden'
