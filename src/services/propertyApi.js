@@ -357,12 +357,27 @@ export async function emailReportConfirmation({ confirmationId, email, reportNam
   }
   const name = reportName?.trim()
   if (name) body.report_name = name
-  const res = await propertyFetch('/reports/email-confirmation', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  return parsePropertyResponse(res)
+
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), 35000)
+  try {
+    const res = await propertyFetch('/reports/email-confirmation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+    return parsePropertyResponse(res)
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      const timeoutErr = new Error('Request timed out')
+      timeoutErr.name = 'AbortError'
+      throw timeoutErr
+    }
+    throw err
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
 }
 
 export function isPaymentRequiredError(err) {

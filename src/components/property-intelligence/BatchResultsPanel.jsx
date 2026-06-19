@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { formatUsd } from '../../services/propertyApi'
 import { downloadBatchCopeExcel } from '../../utils/copeReportExcel'
+import { isConfirmationEmailSent } from '../../utils/confirmationEmailSent'
 import EmailConfirmationButton from './EmailConfirmationButton'
+import EmailConfirmationCloseModal from './EmailConfirmationCloseModal'
 import { defaultReportNameFromBatch } from '../../utils/reportName'
 import ReportResultsPanel from './ReportResultsPanel'
 
@@ -18,6 +20,23 @@ export default function BatchResultsPanel({
   const [activeIndex, setActiveIndex] = useState(0)
   const [exportingExcel, setExportingExcel] = useState(false)
   const [exportError, setExportError] = useState(null)
+  const [emailFormOpen, setEmailFormOpen] = useState(false)
+  const [emailClosePromptOpen, setEmailClosePromptOpen] = useState(false)
+  const [emailSent, setEmailSent] = useState(() => isConfirmationEmailSent(batchRun?.batch_id))
+
+  useEffect(() => {
+    setEmailSent(isConfirmationEmailSent(batchRun?.batch_id))
+    setEmailFormOpen(false)
+    setEmailClosePromptOpen(false)
+  }, [batchRun?.batch_id])
+
+  const handlePanelClose = () => {
+    if (batchRun?.batch_id && !emailSent && !isConfirmationEmailSent(batchRun.batch_id)) {
+      setEmailClosePromptOpen(true)
+      return
+    }
+    onClose?.()
+  }
 
   const enriched = useMemo(
     () => (batchRun?.locations ?? []).filter(loc => loc.record),
@@ -92,7 +111,7 @@ export default function BatchResultsPanel({
             {onClose ? (
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handlePanelClose}
                 className="rounded border border-panel-border px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-muted transition hover:border-command-live/40 hover:text-white"
               >
                 Close
@@ -116,6 +135,9 @@ export default function BatchResultsPanel({
               <EmailConfirmationButton
                 confirmationId={batchRun.batch_id}
                 defaultReportName={defaultReportNameFromBatch(batchRun)}
+                open={emailFormOpen}
+                onOpenChange={setEmailFormOpen}
+                onSent={() => setEmailSent(true)}
               />
             ) : null}
           </div>
@@ -123,6 +145,18 @@ export default function BatchResultsPanel({
         {exportError ? (
           <p className="mt-1 font-mono text-[9px] text-command-critical">{exportError}</p>
         ) : null}
+        <EmailConfirmationCloseModal
+          open={emailClosePromptOpen}
+          confirmationId={batchRun.batch_id}
+          onSendEmail={() => {
+            setEmailClosePromptOpen(false)
+            setEmailFormOpen(true)
+          }}
+          onCloseAnyway={() => {
+            setEmailClosePromptOpen(false)
+            onClose?.()
+          }}
+        />
         {enriched.length > 1 ? (
           <div className="mt-3">
             <p className="mb-1.5 font-mono text-[8px] uppercase tracking-wider text-ink-faint">
@@ -157,6 +191,7 @@ export default function BatchResultsPanel({
             loading={false}
             apiOnline={apiOnline}
             showHeader={false}
+            hideEmailButton
           />
         ) : (
           <div className="flex flex-1 items-center justify-center p-6">

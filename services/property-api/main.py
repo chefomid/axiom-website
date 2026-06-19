@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+import smtplib
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -1399,6 +1400,18 @@ async def email_report_confirmation(request: Request, body: EmailConfirmationReq
             cid,
             property_label=property_label or None,
         )
+    except smtplib.SMTPAuthenticationError as exc:
+        logger.exception("SMTP authentication failed for %s: %s", cid, exc)
+        raise HTTPException(
+            status_code=503,
+            detail="Email delivery is not configured correctly.",
+        ) from exc
+    except (smtplib.SMTPException, OSError, TimeoutError) as exc:
+        logger.exception("Confirmation email failed for %s: %s", cid, exc)
+        raise HTTPException(
+            status_code=502,
+            detail="We could not send that email right now. Please try again.",
+        ) from exc
     except Exception as exc:
         logger.exception("Confirmation email failed for %s: %s", cid, exc)
         raise HTTPException(

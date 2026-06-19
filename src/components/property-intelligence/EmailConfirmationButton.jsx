@@ -1,16 +1,31 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { CONTACT_EMAIL } from '../../constants/site'
 import { emailReportConfirmation } from '../../services/propertyApi'
+import { markConfirmationEmailSent } from '../../utils/confirmationEmailSent'
 import { formatBillingError, messageFromApiError } from '../../utils/apiErrors'
 
 function formatEmailError(err) {
+  if (err?.name === 'AbortError' || /aborted|timeout/i.test(err?.message ?? '')) {
+    return 'The request timed out. Check your connection and try again.'
+  }
+  if (err?.status === 503) {
+    const msg = messageFromApiError(err, '')
+    if (/not available|not configured/i.test(msg)) {
+      return `Email delivery is not available yet. Save your confirmation number, or contact ${CONTACT_EMAIL}.`
+    }
+    return msg || `Email delivery is not available yet. Contact ${CONTACT_EMAIL}.`
+  }
   if (err?.status === 502) {
-    return 'We could not send that email right now. Please try again.'
+    return `We could not send that email. Try again in a moment, or contact ${CONTACT_EMAIL}.`
   }
-  if (err?.status === 503 || err?.status === 409) {
-    return messageFromApiError(err, 'We could not send that email right now. Please try again.')
+  if (err?.status === 409) {
+    return messageFromApiError(err, 'Report is still being prepared.')
   }
-  return formatBillingError(err, 'We could not send that email right now. Please try again.')
+  if (err?.status === 404) {
+    return 'This confirmation number is not ready for email yet. Save the number shown above.'
+  }
+  return formatBillingError(err, `We could not send that email. Contact ${CONTACT_EMAIL}.`)
 }
 
 export const EMAIL_ACTION_BTN_CLASS =
@@ -20,8 +35,14 @@ export default function EmailConfirmationButton({
   confirmationId,
   defaultReportName = '',
   className = EMAIL_ACTION_BTN_CLASS,
+  open: controlledOpen,
+  onOpenChange,
+  onSent,
 }) {
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = onOpenChange ?? setInternalOpen
+
   const [email, setEmail] = useState('')
   const [reportName, setReportName] = useState(defaultReportName)
   const [phase, setPhase] = useState('idle')
@@ -39,7 +60,7 @@ export default function EmailConfirmationButton({
     setPhase('idle')
     setError(null)
     setSentTo(null)
-  }, [defaultReportName])
+  }, [defaultReportName, setOpen])
 
   const handleSend = useCallback(
     async event => {
@@ -58,14 +79,16 @@ export default function EmailConfirmationButton({
           email: trimmedEmail,
           reportName: trimmedName || undefined,
         })
+        markConfirmationEmailSent(confirmationId)
         setSentTo(trimmedEmail)
         setPhase('sent')
+        onSent?.()
       } catch (err) {
         setPhase('idle')
         setError(formatEmailError(err))
       }
     },
-    [confirmationId, email, reportName],
+    [confirmationId, email, onSent, reportName],
   )
 
   if (!confirmationId?.trim()) return null
@@ -135,6 +158,9 @@ export default function EmailConfirmationButton({
           Cancel
         </button>
       </div>
+      {phase === 'sending' ? (
+        <p className="font-sans text-xs text-ink-muted">Sending from {CONTACT_EMAIL}…</p>
+      ) : null}
       {error ? <p className="font-sans text-xs text-command-critical">{error}</p> : null}
     </form>
   )
