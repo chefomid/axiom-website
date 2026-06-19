@@ -190,6 +190,37 @@ class CheckoutStatusTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["credits_added"], 0)
         self.assertEqual(result["balance_credits"], 47)
 
+    async def test_get_checkout_status_parses_stripe_sdk_session_object(self) -> None:
+        import stripe
+
+        session = stripe.checkout.Session.construct_from(
+            {
+                "id": "cs_test_paid_sdk",
+                "payment_status": "paid",
+                "status": "complete",
+                "metadata": {
+                    "anon_id": "test-anon-id-1234",
+                    "credits": "25",
+                    "checkout_type": "quote",
+                    "purpose": "enrich",
+                },
+            },
+            "sk_test_fake",
+        )
+
+        with patch(
+            "billing.stripe_service._retrieve_checkout_session",
+            new_callable=AsyncMock,
+            return_value=session,
+        ):
+            with patch("billing.stripe_service.add_credits", new_callable=AsyncMock) as mock_add:
+                mock_add.return_value = 25
+                result = await get_checkout_status("cs_test_paid_sdk", "test-anon-id-1234")
+
+        self.assertEqual(result["status"], "paid")
+        self.assertEqual(result["credits_added"], 25)
+        mock_add.assert_awaited_once()
+
 
 class CheckoutEmbedTests(unittest.IsolatedAsyncioTestCase):
     async def test_get_embed_checkout_credentials(self) -> None:

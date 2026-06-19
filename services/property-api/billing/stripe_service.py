@@ -9,6 +9,7 @@ run yet.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -259,33 +260,74 @@ def create_quote_checkout_session(
     )
 
 
+async def _retrieve_checkout_session(session_id: str, *, attempts: int = 3) -> Any:
+    """Retrieve Stripe checkout session without blocking the event loop."""
+    sid = session_id.strip()
+
+    def _retrieve() -> Any:
+        stripe.api_key = stripe_secret_key()
+        return stripe.checkout.Session.retrieve(sid)
+
+    last_exc: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            return await asyncio.to_thread(_retrieve)
+        except (stripe.error.APIConnectionError, stripe.error.APIError, stripe.error.RateLimitError) as exc:
+            last_exc = exc
+            if attempt + 1 < attempts:
+                await asyncio.sleep(0.25 * (attempt + 1))
+                continue
+            raise
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("checkout session retrieve failed")
+
+
 async def get_embed_checkout_credentials(session_id: str, anon_id: str) -> dict[str, Any]:
-    stripe.api_key = stripe_secret_key()
-    session = stripe.checkout.Session.retrieve(session_id.strip())
+    session = await _retrieve_checkout_session(session_id)
     metadata = _session_metadata(session)
     if (metadata.get("anon_id") or "").strip() != anon_id.strip():
         raise ValueError("Session does not belong to this user")
-    if session.get("ui_mode") != "embedded":
+    if _session_field(session, "ui_mode") != "embedded":
         raise ValueError("Session is not an embedded checkout")
 
-    client_secret = session.get("client_secret")
+    client_secret = _session_field(session, "client_secret")
     if not client_secret:
         raise ValueError("Checkout session is missing a client secret")
 
-    amount_total = session.get("amount_total")
+    amount_total = _session_field(session, "amount_total")
     charge_usd = round(int(amount_total or 0) / 100, 2) if amount_total else None
 
     return {
         "client_secret": client_secret,
-        "session_id": session.get("id") or session_id.strip(),
-        "status": session.get("status") or "open",
+        "session_id": _session_field(session, "id") or session_id.strip(),
+        "status": _session_field(session, "status") or "open",
         "charge_usd": charge_usd,
     }
 
 
+def _session_field(session: Any, key: str, default: Any = None) -> Any:
+    """Read a field from a Stripe Session (StripeObject has no .get())."""
+    if callable(getattr(session, "get", None)):
+        val = session.get(key, default)
+        return default if val is None and default is not None else val
+    try:
+        val = session[key]
+        return default if val is None and default is not None else val
+    except KeyError:
+        return default
+
+
 def _session_metadata(session: Any) -> dict[str, str]:
-    raw = session.get("metadata") if hasattr(session, "get") else getattr(session, "metadata", None)
-    return dict(raw or {})
+    raw = _session_field(session, "metadata")
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return {str(k): str(v) for k, v in raw.items()}
+    to_dict = getattr(raw, "to_dict", None)
+    if callable(to_dict):
+        return {str(k): str(v) for k, v in to_dict().items()}
+    return {str(k): str(v) for k, v in raw.items()}
 
 
 def _credits_from_session_metadata(metadata: dict[str, str]) -> int:
@@ -313,7 +355,7 @@ async def fulfill_checkout_session(session: Any) -> dict[str, Any]:
     metadata = _session_metadata(session)
     anon_id = (metadata.get("anon_id") or "").strip()
     credits = _credits_from_session_metadata(metadata)
-    session_id = session.get("id") if hasattr(session, "get") else getattr(session, "id", None)
+    session_id = _session_field(session, "id")
 
     if not anon_id or credits <= 0:
         return {"credits_added": 0, "anon_id": anon_id, "balance_credits": await get_balance(anon_id)}
@@ -328,14 +370,13 @@ async def fulfill_checkout_session(session: Any) -> dict[str, Any]:
 
 
 async def get_checkout_status(session_id: str, anon_id: str) -> dict[str, Any]:
-    stripe.api_key = stripe_secret_key()
-    session = stripe.checkout.Session.retrieve(session_id.strip())
+    session = await _retrieve_checkout_session(session_id)
     metadata = _session_metadata(session)
     if (metadata.get("anon_id") or "").strip() != anon_id.strip():
         raise ValueError("Session does not belong to this user")
 
-    payment_status = session.get("payment_status") or "unpaid"
-    session_status = session.get("status") or "open"
+    payment_status = _session_field(session, "payment_status") or "unpaid"
+    session_status = _session_field(session, "status") or "open"
     is_paid = payment_status == "paid" or session_status == "complete"
     credits_added = 0
     balance = await get_balance(anon_id)
