@@ -9,6 +9,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import { formatUsd } from '../../services/propertyApi'
 import { getStripePromise } from '../../utils/stripeClient'
 
+import { SecuredByStripeBadge } from './StripeWordmark'
+
 import { WORKFLOW_CTL } from './workflowControls'
 
 const EASE_OUT = [0.32, 0.72, 0, 1]
@@ -157,12 +159,12 @@ function EmbeddedCheckoutPanel({ clientSecret, stripePublishableKey, onComplete 
   )
 }
 
-function PhonePaySection({ checkoutUrl, phoneUrlLoading, defaultOpen = false }) {
+function PhonePaySection({ checkoutUrl, phoneUrlLoading, defaultOpen = false, atTop = false }) {
   const [open, setOpen] = useState(defaultOpen)
 
   if (!checkoutUrl && phoneUrlLoading) {
     return (
-      <div className="mt-6 border-t border-panel-border pt-6">
+      <div className={atTop ? 'mb-5' : 'mt-6 border-t border-panel-border pt-6'}>
         <CheckoutQrSkeleton />
       </div>
     )
@@ -170,15 +172,19 @@ function PhonePaySection({ checkoutUrl, phoneUrlLoading, defaultOpen = false }) 
 
   if (!checkoutUrl) return null
 
+  const sectionClass = atTop ? 'mb-5' : 'mt-6 border-t border-panel-border pt-5'
+  const toggleClass =
+    'flex w-full items-center justify-between gap-3 rounded-lg border border-command-watch/35 bg-command-watch/[0.08] px-4 py-3 text-left transition-colors hover:border-command-watch/55 hover:bg-command-watch/[0.14]'
+
   return (
-    <div className="mt-6 border-t border-panel-border pt-5">
+    <div className={sectionClass}>
       <button
         type="button"
         onClick={() => setOpen(value => !value)}
-        className="flex w-full items-center justify-between gap-3 rounded-lg border border-panel-border bg-panel-surface/20 px-4 py-3 text-left transition-colors hover:border-[#333] hover:bg-panel-surface/40"
+        className={`${toggleClass} ${open ? 'rounded-b-none border-b-0' : ''}`}
         aria-expanded={open}
       >
-        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-secondary">
+        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-command-watch">
           Pay on your phone
         </span>
         <svg
@@ -186,7 +192,7 @@ function PhonePaySection({ checkoutUrl, phoneUrlLoading, defaultOpen = false }) 
           height="16"
           viewBox="0 0 16 16"
           fill="none"
-          className={`shrink-0 text-ink-muted transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 text-command-watch transition-transform ${open ? 'rotate-180' : ''}`}
           aria-hidden
         >
           <path
@@ -209,21 +215,13 @@ function PhonePaySection({ checkoutUrl, phoneUrlLoading, defaultOpen = false }) 
             transition={{ duration: 0.2, ease: EASE_OUT }}
             className="overflow-hidden"
           >
-            <div className="pt-4 text-center">
-              <div className="mx-auto flex w-fit items-center justify-center rounded-xl border border-panel-border bg-white p-3">
+            <div className="rounded-b-lg border border-t-0 border-command-watch/25 bg-command-watch/[0.04] px-4 pb-4 pt-3 text-center">
+              <div className="mx-auto flex w-fit items-center justify-center rounded-xl border border-command-watch/20 bg-white p-3">
                 <QRCodeSVG value={checkoutUrl} size={160} level="M" includeMargin={false} />
               </div>
               <p className="mt-3 font-sans text-sm leading-relaxed text-ink-secondary">
                 Scan with your phone&apos;s camera. Apple Pay and saved cards work on mobile.
               </p>
-              <a
-                href={checkoutUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-flex font-mono text-[10px] uppercase tracking-[0.14em] text-command-live underline decoration-command-live/35 underline-offset-2 hover:text-white"
-              >
-                Open checkout on phone
-              </a>
             </div>
           </motion.div>
         ) : null}
@@ -242,13 +240,13 @@ function CheckoutSkeleton() {
       aria-label="Preparing secure checkout"
     >
       <CheckoutLoadingStatus />
-      <CheckoutFormSkeleton />
-      <div className="mt-6 border-t border-panel-border pt-5">
-        <div className="mx-auto h-4 w-40 rounded checkout-skeleton-block" aria-hidden />
+      <div className="mb-5">
+        <div className="mx-auto h-10 w-full max-w-sm rounded-lg border border-command-watch/35 bg-command-watch/[0.08] checkout-skeleton-block checkout-skeleton-block--light" aria-hidden />
         <div className="mt-4 flex justify-center">
           <CheckoutQrSkeleton />
         </div>
       </div>
+      <CheckoutFormSkeleton />
     </div>
   )
 }
@@ -272,6 +270,12 @@ function CheckoutContent({
     >
       {embeddedReady ? (
         <>
+          <PhonePaySection
+            checkoutUrl={checkoutUrl}
+            phoneUrlLoading={phoneUrlLoading}
+            defaultOpen={false}
+            atTop
+          />
           <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-muted">
             Pay on this device
           </p>
@@ -280,22 +284,11 @@ function CheckoutContent({
             stripePublishableKey={stripePublishableKey}
             onComplete={onEmbeddedComplete}
           />
-          <p className="mt-3 flex items-center justify-center gap-2 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-              <path
-                d="M6 1L1 3.5v2.5c0 2.75 2.15 5.32 5 5.95 2.85-.63 5-3.2 5-5.95V3.5L6 1z"
-                stroke="currentColor"
-                strokeWidth="1"
-                strokeLinejoin="round"
-              />
-            </svg>
-            Secured by Stripe
-          </p>
-          <PhonePaySection checkoutUrl={checkoutUrl} phoneUrlLoading={phoneUrlLoading} defaultOpen={false} />
+          <SecuredByStripeBadge />
         </>
       ) : checkoutUrl ? (
         <>
-          <PhonePaySection checkoutUrl={checkoutUrl} phoneUrlLoading={phoneUrlLoading} defaultOpen />
+          <PhonePaySection checkoutUrl={checkoutUrl} phoneUrlLoading={phoneUrlLoading} defaultOpen atTop />
           <div className="mt-6 rounded-lg border border-panel-border bg-panel-surface/30 px-4 py-5 text-center">
             <p className="font-sans text-sm leading-relaxed text-ink-secondary">
               In-page card entry requires your Stripe publishable key on the server. Use the QR code
