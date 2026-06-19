@@ -36,7 +36,7 @@ from env_loader import env_status_payload, load_project_env
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, EmailStr, Field, HttpUrl
 
 from geocode import geocode_address, proxy_census_coordinates, proxy_census_onelineaddress, search_addresses
 from merger.cope import build_cope_snapshot_from_trusted
@@ -62,6 +62,11 @@ from registry_loader import (
     resolve_selected_sources_for_request,
 )
 from public_messages import public_run_message
+from reports.email_confirmation import (
+    is_email_configured,
+    property_label_from_payload,
+    send_confirmation_email_async,
+)
 from report_html import render_report_html
 from report_pdf import (
     check_playwright_ready,
@@ -225,6 +230,16 @@ class ReportConfirmationResponse(BaseModel):
     status: str
     record: dict[str, Any] | None = None
     message: str | None = None
+
+
+class EmailConfirmationRequest(BaseModel):
+    confirmation_id: str = Field(..., max_length=32)
+    email: EmailStr
+    report_name: str | None = Field(default=None, max_length=200)
+
+
+class EmailConfirmationResponse(BaseModel):
+    sent: bool = True
 
 
 class CheckoutResumeResponse(BaseModel):
@@ -1347,6 +1362,51 @@ async def get_report_by_confirmation(request: Request, confirmation_id: str):
         status="failed",
         message=message or "Report could not be completed.",
     )
+
+
+@app.post("/reports/email-confirmation", response_model=EmailConfirmationResponse)
+@limiter.limit("5/minute")
+async def email_report_confirmation(request: Request, body: EmailConfirmationRequest):
+    cid = body.confirmation_id.strip().upper()
+    if not _CONFIRMATION_ID_RE.match(cid):
+        raise HTTPException(status_code=404, detail="Confirmation number not found")
+    if not billing_db.is_ready():
+        raise HTTPException(status_code=503, detail="Billing database not ready")
+    if not is_email_configured():
+        raise HTTPException(status_code=503, detail="Email delivery is not available right now.")
+
+    row = await billing_db.get_report_confirmation(cid)
+    if not row:
+        raise HTTPException(status_code=404, detail="Confirmation number not found")
+
+    row_status = row["status"]
+    if row_status == "pending":
+        raise HTTPException(status_code=409, detail="Report is still being prepared.")
+    if row_status == "failed":
+        payload = row.get("payload")
+        message = payload.get("message") if isinstance(payload, dict) else None
+        raise HTTPException(
+            status_code=422,
+            detail=message or "Report could not be completed.",
+        )
+    if row_status != "ready":
+        raise HTTPException(status_code=404, detail="Confirmation number not found")
+
+    property_label = (body.report_name or "").strip() or property_label_from_payload(row.get("payload"))
+    try:
+        await send_confirmation_email_async(
+            str(body.email),
+            cid,
+            property_label=property_label or None,
+        )
+    except Exception as exc:
+        logger.exception("Confirmation email failed for %s: %s", cid, exc)
+        raise HTTPException(
+            status_code=502,
+            detail="We could not send that email right now. Please try again.",
+        ) from exc
+
+    return EmailConfirmationResponse()
 
 
 @app.get("/reports/health")

@@ -19,6 +19,8 @@ import {
 import { isReportPostPaymentPurpose } from '../../utils/postPaymentContext'
 import PostPaymentOverlay from './PostPaymentOverlay'
 import RefundConfirmModal from './RefundConfirmModal'
+import EmailConfirmationButton from './EmailConfirmationButton'
+import { defaultReportNameFromContext } from '../../utils/reportName'
 
 const MOBILE_POLL_FAST_MS = 2000
 const MOBILE_POLL_SLOW_MS = 2000
@@ -332,6 +334,12 @@ export default function MobilePaymentReturn() {
               <p className="mt-4 font-sans text-xs leading-relaxed text-ink-faint">
                 Open Property Intelligence on desktop to view the full report, or save this number to retrieve it later.
               </p>
+              <div className="mx-auto mt-4 flex w-full max-w-sm flex-wrap items-start justify-center gap-2">
+                <EmailConfirmationButton
+                  confirmationId={reportConfirmation}
+                  defaultReportName={defaultReportNameFromContext(postPaymentContext)}
+                />
+              </div>
             </div>
           ) : null}
         </div>

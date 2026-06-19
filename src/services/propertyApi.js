@@ -350,6 +350,21 @@ export async function fetchReportByConfirmation(confirmationId) {
   return parsePropertyResponse(res)
 }
 
+export async function emailReportConfirmation({ confirmationId, email, reportName }) {
+  const body = {
+    confirmation_id: confirmationId.trim().toUpperCase(),
+    email: email.trim(),
+  }
+  const name = reportName?.trim()
+  if (name) body.report_name = name
+  const res = await propertyFetch('/reports/email-confirmation', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return parsePropertyResponse(res)
+}
+
 export function isPaymentRequiredError(err) {
   return err?.status === 402 || Boolean(err?.paymentRequired)
 }

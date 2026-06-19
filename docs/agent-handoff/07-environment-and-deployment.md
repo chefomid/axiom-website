@@ -88,6 +88,50 @@ Copy from `.env.example` and `services/property-api/.env.example` if present.
 | `STRIPE_WEBHOOK_SECRET` | For billing webhooks | From Stripe CLI or Dashboard |
 | `FRONTEND_URL` | Production | CORS + Checkout redirect (e.g. `https://www.axiompropertycasualty.com`) |
 | `DATABASE_URL` | Production billing | Postgres; omit for local SQLite fallback |
+| `SMTP_USER` | For confirmation emails | Google Workspace mailbox (e.g. `contact@axiompropertycasualty.com`) |
+| `SMTP_APP_PASSWORD` | For confirmation emails | Gmail/Workspace App Password (2FA required) |
+| `SMTP_HOST` | Optional | Default `smtp.gmail.com` |
+| `SMTP_PORT` | Optional | Default `587` |
+| `EMAIL_FROM` | Optional | Defaults to `SMTP_USER` |
+| `EMAIL_FROM_NAME` | Optional | Default `AXIOM Property & Casualty` |
+
+### Confirmation email on Render (`axiom-report-api`)
+
+Used when users click **Email confirmation number** after a report completes. Mail is sent from your Google Workspace inbox via SMTP.
+
+**1. Google Workspace (one-time)**
+
+1. Verify domain `axiompropertycasualty.com` in [Google Admin](https://admin.google.com/) (or finish DNS verification if in progress).
+2. Create or use mailbox **`contact@axiompropertycasualty.com`**.
+3. Enable **2-Step Verification** on that Google account.
+4. Go to [Google App Passwords](https://myaccount.google.com/apppasswords) → create an app password (name e.g. `Render axiom-report-api`) → copy the 16-character password (no spaces).
+
+**2. Render environment variables**
+
+1. Open [Render Dashboard](https://dashboard.render.com/) → **axiom-report-api** → **Environment**.
+2. Add:
+
+| Key | Value |
+|-----|--------|
+| `SMTP_USER` | `contact@axiompropertycasualty.com` |
+| `SMTP_APP_PASSWORD` | *(paste App Password from step 1)* |
+
+Optional (defaults are fine for Gmail):
+
+| Key | Value |
+|-----|--------|
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_PORT` | `587` |
+| `EMAIL_FROM` | `contact@axiompropertycasualty.com` |
+| `EMAIL_FROM_NAME` | `AXIOM Property & Casualty` |
+
+3. Click **Save Changes** — Render redeploys automatically.
+
+**3. Verify**
+
+After deploy, run a report → **Email confirmation number** → send to your inbox. If SMTP is missing, the API returns *Email delivery is not available right now.*
+
+Local dev: add the same vars to `services/property-api/.env` or repo-root `.env.local` (loaded by property-api).
 
 ### Careers application (Vercel serverless)
 

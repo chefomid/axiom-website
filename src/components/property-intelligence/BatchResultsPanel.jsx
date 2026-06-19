@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { formatUsd } from '../../services/propertyApi'
 import { downloadBatchCopeExcel } from '../../utils/copeReportExcel'
+import EmailConfirmationButton from './EmailConfirmationButton'
+import { defaultReportNameFromBatch } from '../../utils/reportName'
 import ReportResultsPanel from './ReportResultsPanel'
 
 export default function BatchResultsPanel({
@@ -98,15 +100,25 @@ export default function BatchResultsPanel({
             ) : null}
           </div>
         </div>
-        {enriched.length > 0 ? (
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            disabled={exportingExcel}
-            className="mt-3 rounded border border-panel-border px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-secondary hover:border-command-live/40 hover:text-white disabled:opacity-50"
-          >
-            {exportingExcel ? 'Exporting…' : 'Export batch Excel'}
-          </button>
+        {enriched.length > 0 || batchRun.batch_id ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {enriched.length > 0 ? (
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                disabled={exportingExcel}
+                className="rounded border border-panel-border px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-secondary hover:border-command-live/40 hover:text-white disabled:opacity-50"
+              >
+                {exportingExcel ? 'Exporting…' : 'Export batch Excel'}
+              </button>
+            ) : null}
+            {batchRun.batch_id ? (
+              <EmailConfirmationButton
+                confirmationId={batchRun.batch_id}
+                defaultReportName={defaultReportNameFromBatch(batchRun)}
+              />
+            ) : null}
+          </div>
         ) : null}
         {exportError ? (
           <p className="mt-1 font-mono text-[9px] text-command-critical">{exportError}</p>

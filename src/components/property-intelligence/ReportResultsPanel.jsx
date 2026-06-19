@@ -10,6 +10,8 @@ import ReportHazardsPanel from './ReportHazardsPanel'
 import ReportSourceFields from './ReportSourceFields'
 import ReportSovPanel from './ReportSovPanel'
 import ReportVisionPanel from './ReportVisionPanel'
+import EmailConfirmationButton from './EmailConfirmationButton'
+import { defaultReportNameFromRecord } from '../../utils/reportName'
 
 const BASE_TABS = [
   { id: 'cope', label: 'COPE' },
@@ -202,6 +204,12 @@ export default function ReportResultsPanel({
               {exportingExcel ? 'Exporting…' : 'Export COPE Excel'}
             </button>
           </>
+        ) : null}
+        {record.report_id ? (
+          <EmailConfirmationButton
+            confirmationId={record.report_id}
+            defaultReportName={defaultReportNameFromRecord(record)}
+          />
         ) : null}
         {exportError ? (
           <span className="font-sans text-xs text-command-critical">{exportError}</span>

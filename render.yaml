@@ -29,3 +29,7 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_APP_PASSWORD
+        sync: false
