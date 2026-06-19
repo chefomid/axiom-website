@@ -3,7 +3,20 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { fetchCheckoutStatus } from '../../services/propertyApi'
 import { adoptAnonIdFromSearchParams, getOrCreateAnonId } from '../../utils/anonId'
-import { formatBillingError } from '../../utils/apiErrors'
+import { formatBillingError, isRateLimitError } from '../../utils/apiErrors'
+
+const MOBILE_POLL_FAST_MS = 2000
+const MOBILE_POLL_SLOW_MS = 2000
+const MOBILE_POLL_FAST_ATTEMPTS = 30
+const MOBILE_POLL_MAX_ATTEMPTS = 60
+
+function isRetryableCheckoutStatusError(err) {
+  const status = err?.status
+  if (status === 403) return false
+  if (status === 502 || status === 503 || status === 429) return true
+  if (err?.name === 'TypeError' || err?.message === 'Failed to fetch') return true
+  return isRateLimitError(err)
+}
 
 function MobileShell({ children }) {
   return (
@@ -95,38 +108,50 @@ export default function MobilePaymentReturn() {
     const anonId = urlAnonId || getOrCreateAnonId()
 
     async function waitForPaid() {
-      for (let attempt = 0; attempt < 60; attempt += 1) {
+      for (let attempt = 0; attempt < MOBILE_POLL_MAX_ATTEMPTS; attempt += 1) {
         try {
           const status = await fetchCheckoutStatus(sessionId, anonId)
           if (status.status === 'paid') {
-            return status.confirmation_id ?? null
+            return { paid: true, confirmationId: status.confirmation_id ?? null }
           }
         } catch (err) {
           if (cancelled) return null
-          if (attempt >= 4) {
+          const httpStatus = err?.status ?? 'unknown'
+          if (httpStatus === 429) {
+            console.warn('[checkout] mobile checkout-status rate limited (HTTP 429); retrying.')
+          } else if (httpStatus === 502 || httpStatus === 503) {
+            console.warn(
+              `[checkout] mobile checkout-status unavailable (HTTP ${httpStatus}); retrying.`,
+              err?.message ?? err,
+            )
+          } else if (!isRetryableCheckoutStatusError(err)) {
             throw err
           }
         }
-        await new Promise(resolve => window.setTimeout(resolve, attempt < 30 ? 500 : 2000))
+        const delay = attempt < MOBILE_POLL_FAST_ATTEMPTS ? MOBILE_POLL_FAST_MS : MOBILE_POLL_SLOW_MS
+        await new Promise(resolve => window.setTimeout(resolve, delay))
         if (cancelled) return null
       }
-      return null
+      return { paid: false, confirmationId: null }
     }
 
     async function run() {
       try {
-        const confirmed = await waitForPaid()
+        const result = await waitForPaid()
         if (cancelled) return
-        if (!confirmed) {
+        if (!result?.paid) {
           setPhase('error')
-          setError('Payment is taking longer than expected. Save your receipt email and try retrieving your report later.')
+          setError(
+            'Payment is taking longer than expected. Save your receipt email and try retrieving your report later.',
+          )
           return
         }
-        setConfirmationId(confirmed)
+        setConfirmationId(result.confirmationId)
         setPhase('done')
         clearParams()
       } catch (err) {
         if (cancelled) return
+        console.warn('[checkout] mobile payment confirmation failed:', err?.status, err?.message ?? err)
         setPhase('error')
         setError(formatBillingError(err, 'We could not confirm your payment right now. Please try again shortly.'))
       }
@@ -172,20 +197,24 @@ export default function MobilePaymentReturn() {
       <div className="mx-4 mt-10 px-2 text-center">
         <p className="font-display text-2xl font-semibold text-white">Thank you</p>
         <p className="mt-2 font-sans text-sm text-ink-secondary">Payment received.</p>
-        <p className="mt-1 font-sans text-sm text-ink-muted">Your report is being prepared.</p>
+        <p className="mt-1 font-sans text-sm text-ink-muted">
+          {confirmationId ? 'Your report is being prepared.' : 'Your credits have been added.'}
+        </p>
 
-        <div className="mx-auto mt-8 max-w-sm rounded-lg border border-panel-border bg-panel-surface/40 px-5 py-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Confirmation</p>
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
-            <span className="font-mono text-lg tabular-nums tracking-wide text-command-live">
-              {confirmationId}
-            </span>
-            <CopyButton value={confirmationId} />
+        {confirmationId ? (
+          <div className="mx-auto mt-8 max-w-sm rounded-lg border border-panel-border bg-panel-surface/40 px-5 py-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Confirmation</p>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
+              <span className="font-mono text-lg tabular-nums tracking-wide text-command-live">
+                {confirmationId}
+              </span>
+              <CopyButton value={confirmationId} />
+            </div>
+            <p className="mt-4 font-sans text-xs leading-relaxed text-ink-faint">
+              Save this number to retrieve your report anytime.
+            </p>
           </div>
-          <p className="mt-4 font-sans text-xs leading-relaxed text-ink-faint">
-            Save this number to retrieve your report anytime.
-          </p>
-        </div>
+        ) : null}
       </div>
     </MobileShell>
   )
