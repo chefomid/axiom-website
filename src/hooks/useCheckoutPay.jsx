@@ -141,6 +141,12 @@ export function CheckoutPayProvider({ children }) {
         console.warn(
           `[checkout] checkout-status rate limited (HTTP 429) for ${sessionLabel} ${sessionId}; retrying.`,
         )
+      } else if (httpStatus === 403) {
+        console.error(
+          `[checkout] checkout-status rejected (HTTP 403) for ${sessionLabel} ${sessionId} —`,
+          'anon_id in localStorage may not match this session. Compare with Stripe session metadata anon_id.',
+          err?.message ?? err,
+        )
       } else {
         console.warn(
           `[checkout] checkout-status failed (HTTP ${httpStatus}) for ${sessionLabel} ${sessionId}:`,
@@ -179,19 +185,28 @@ export function CheckoutPayProvider({ children }) {
     const state = pollStateRef.current
     if (!state || state.completed) return false
 
-    const sessionResult = await trySessionPaid(state.hostedSessionId, 'hosted session', state)
-    let paid = sessionResult.paid
-    let paidStatusResponse = sessionResult.statusResponse
-    let paidVia = sessionResult.paid ? 'hosted' : null
+    const sessionTargets = [
+      [state.hostedSessionId, 'hosted session', 'hosted'],
+      [state.embeddedSessionId, 'embedded session', 'embedded'],
+    ]
 
-    if (!paid) {
-      paid = await tryBalancePaid(state)
+    for (const [sessionId, sessionLabel, paidVia] of sessionTargets) {
+      if (!sessionId) continue
+      const sessionResult = await trySessionPaid(sessionId, sessionLabel, state)
+      if (sessionResult.paid) {
+        completeCheckout({
+          paidStatusResponse: sessionResult.statusResponse,
+          paidVia,
+        })
+        return true
+      }
     }
 
-    if (paid) {
-      completeCheckout({ paidStatusResponse, paidVia })
+    if (await tryBalancePaid(state)) {
+      completeCheckout({ paidStatusResponse: null, paidVia: 'balance' })
       return true
     }
+
     return false
   }, [completeCheckout, tryBalancePaid, trySessionPaid])
 

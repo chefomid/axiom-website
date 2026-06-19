@@ -1,7 +1,7 @@
 /**
  * Poll target selection for dual-session checkout (embedded A + hosted B).
- * QR / main waiting loop → hosted session B.
- * Embedded onComplete verification → embedded session A.
+ * QR / main waiting loop tries hosted B first, then embedded A, then balance.
+ * Embedded onComplete verification → embedded session A only.
  */
 
 export function hostedPollSessionId(pollState) {
