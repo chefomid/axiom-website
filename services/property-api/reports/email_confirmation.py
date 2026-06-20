@@ -1,44 +1,32 @@
-"""Send report confirmation numbers via Gmail / Google Workspace SMTP."""
+"""Send report confirmation numbers via Resend HTTP API."""
 
 from __future__ import annotations
 
-import asyncio
+import logging
 import os
 import re
-import smtplib
-from email.message import EmailMessage
 from typing import Any
 
+import httpx
+
 from billing.config import frontend_url
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_FROM = "contact@axiompropertycasualty.com"
 DEFAULT_FROM_NAME = "AXIOM Property & Casualty"
 SUBJECT = "Your AXIOM report confirmation number"
+RESEND_API_URL = "https://api.resend.com/emails"
+HTTP_TIMEOUT = 8
 _ZIP_SUFFIX_RE = re.compile(r",?\s*\d{5}(?:-\d{4})?\s*$", re.IGNORECASE)
 
 
-def smtp_host() -> str:
-    return (os.environ.get("SMTP_HOST") or "smtp.gmail.com").strip()
-
-
-def smtp_port() -> int:
-    raw = (os.environ.get("SMTP_PORT") or "587").strip()
-    try:
-        return int(raw)
-    except ValueError:
-        return 587
-
-
-def smtp_user() -> str:
-    return (os.environ.get("SMTP_USER") or "").strip()
-
-
-def smtp_app_password() -> str:
-    return (os.environ.get("SMTP_APP_PASSWORD") or "").strip()
+def resend_api_key() -> str:
+    return (os.environ.get("RESEND_API_KEY") or "").strip()
 
 
 def email_from() -> str:
-    return (os.environ.get("EMAIL_FROM") or smtp_user() or DEFAULT_FROM).strip()
+    return (os.environ.get("EMAIL_FROM") or DEFAULT_FROM).strip()
 
 
 def email_from_name() -> str:
@@ -46,7 +34,7 @@ def email_from_name() -> str:
 
 
 def is_email_configured() -> bool:
-    return bool(smtp_user() and smtp_app_password())
+    return bool(resend_api_key())
 
 
 def format_address_without_zip(raw: str) -> str:
@@ -124,20 +112,24 @@ def build_confirmation_email(
     return SUBJECT, "\n".join(lines)
 
 
-def _send_smtp_sync(to_email: str, subject: str, body: str) -> None:
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = f"{email_from_name()} <{email_from()}>"
-    msg["To"] = to_email
-    msg.set_content(body)
+async def _send_resend(to_email: str, subject: str, body: str) -> None:
+    payload = {
+        "from": f"{email_from_name()} <{email_from()}>",
+        "to": [to_email],
+        "subject": subject,
+        "text": body,
+    }
+    headers = {
+        "Authorization": f"Bearer {resend_api_key()}",
+        "Content-Type": "application/json",
+    }
+    logger.info("Sending confirmation email via Resend to %s", to_email)
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        response = await client.post(RESEND_API_URL, json=payload, headers=headers)
+        response.raise_for_status()
 
-    with smtplib.SMTP(smtp_host(), smtp_port(), timeout=15) as server:
-        server.starttls()
-        server.login(smtp_user(), smtp_app_password())
-        server.send_message(msg)
 
-
-def send_confirmation_email(
+async def send_confirmation_email_async(
     to_email: str,
     confirmation_id: str,
     *,
@@ -147,18 +139,4 @@ def send_confirmation_email(
         confirmation_id,
         property_label=property_label,
     )
-    _send_smtp_sync(to_email.strip(), subject, body)
-
-
-async def send_confirmation_email_async(
-    to_email: str,
-    confirmation_id: str,
-    *,
-    property_label: str | None = None,
-) -> None:
-    await asyncio.to_thread(
-        send_confirmation_email,
-        to_email,
-        confirmation_id,
-        property_label=property_label,
-    )
+    await _send_resend(to_email.strip(), subject, body)

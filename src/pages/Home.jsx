@@ -193,7 +193,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
     {
       label: '02',
       title: 'Edge AI',
-      body: "Edge AI solutions are custom to the insured's operations. Hardware that captures vision, audio, and environmental data, processes it on-device through proprietary fine-tuned models, and streams to the AXIOM software stack in real time.",
+      body: "Edge AI for insured operations is in development, not yet available. We're designing custom hardware to capture vision, audio, and environmental data, process it on-device through fine-tuned models, and integrate with the AXIOM software stack in real time.",
     },
   ]
 
