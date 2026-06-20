@@ -29,6 +29,28 @@ const ACTION_BTN_CLASS =
 const HAZARD_LINK_CLASS =
   'inline-flex items-center gap-1 font-sans text-xs text-white transition hover:underline'
 
+function CollapseChevron({ expanded, onToggle, label = 'report details' }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      aria-label={expanded ? `Collapse ${label}` : `Expand ${label}`}
+      className="shrink-0 rounded border border-panel-border px-2 py-1.5 text-ink-muted transition hover:border-command-live/40 hover:text-white"
+      title={expanded ? 'Collapse details' : 'Expand details'}
+    >
+      <span
+        className={`block font-mono text-[11px] leading-none transition-transform duration-150 ${
+          expanded ? 'rotate-180' : ''
+        }`}
+        aria-hidden
+      >
+        ▾
+      </span>
+    </button>
+  )
+}
+
 function LoadingState({ variant }) {
   return (
     <div
@@ -97,10 +119,15 @@ export default function ReportResultsPanel({
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
   const [exportError, setExportError] = useState(null)
+  const [summaryExpanded, setSummaryExpanded] = useState(true)
 
   useEffect(() => {
     if (record) setOpen(true)
   }, [record])
+
+  useEffect(() => {
+    setSummaryExpanded(true)
+  }, [record?.report_id])
 
   if (loading) {
     return <LoadingState variant={variant} />
@@ -152,7 +179,7 @@ export default function ReportResultsPanel({
     }
   }
 
-  const reportBody = (
+  const reportSummary = (
     <>
       <div className="border-b border-panel-border/60 px-5 py-3">
         {record.report_id ? (
@@ -208,26 +235,45 @@ export default function ReportResultsPanel({
           <span className="font-sans text-xs text-command-critical">{exportError}</span>
         ) : null}
       </div>
+    </>
+  )
 
-      <div
-        className="flex gap-1.5 overflow-x-auto border-b border-panel-border/60 px-5 py-3 sleek-scrollbar"
-        role="tablist"
-        aria-label="Report result views"
-      >
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`shrink-0 rounded-md border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide transition ${
-              activeTab === tab.id ? TAB_ACTIVE_CLASS : TAB_INACTIVE_CLASS
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+  const reportBody = (
+    <>
+      {summaryExpanded ? reportSummary : null}
+
+      <div className="flex items-center gap-2 border-b border-panel-border/60 px-5 py-2">
+        {!summaryExpanded && record.report_id ? (
+          <span className="min-w-0 truncate font-mono text-[10px] tabular-nums text-command-watch">
+            {record.report_id}
+          </span>
+        ) : null}
+        <div
+          className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto sleek-scrollbar"
+          role="tablist"
+          aria-label="Report result views"
+        >
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`shrink-0 rounded-md border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide transition ${
+                activeTab === tab.id ? TAB_ACTIVE_CLASS : TAB_INACTIVE_CLASS
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {!showHeader ? (
+          <CollapseChevron
+            expanded={summaryExpanded}
+            onToggle={() => setSummaryExpanded(expanded => !expanded)}
+          />
+        ) : null}
       </div>
 
       <div
@@ -276,11 +322,19 @@ export default function ReportResultsPanel({
               <div className="min-w-0 flex-1">
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Report results</p>
                 <p className={`mt-1 font-display text-lg font-semibold capitalize ${statusTone}`}>{record.status}</p>
-                {record.display_name ? (
+                {summaryExpanded && record.display_name ? (
                   <p className="mt-1.5 font-sans text-sm leading-relaxed text-ink-primary">{record.display_name}</p>
+                ) : null}
+                {!summaryExpanded && record.display_name ? (
+                  <p className="mt-1 line-clamp-1 font-sans text-xs text-ink-secondary">{record.display_name}</p>
                 ) : null}
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
+                <CollapseChevron
+                  expanded={summaryExpanded}
+                  onToggle={() => setSummaryExpanded(expanded => !expanded)}
+                  label="report summary"
+                />
                 {onToggleExpand ? (
                   <button
                     type="button"
