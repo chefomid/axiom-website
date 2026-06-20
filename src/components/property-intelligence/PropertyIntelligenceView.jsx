@@ -1264,10 +1264,6 @@ export default function PropertyIntelligenceView() {
                 apiOnline={apiOnline}
                 expanded={reportExpanded}
                 onToggleExpand={() => setReportExpanded(expanded => !expanded)}
-                onClose={() => {
-                  setReportPanelOpen(false)
-                  setReportExpanded(false)
-                }}
                 onPreviewLocation={handlePreviewScheduleLocation}
               />
             ) : (
@@ -1279,10 +1275,6 @@ export default function PropertyIntelligenceView() {
                 apiOnline={apiOnline}
                 expanded={reportExpanded}
                 onToggleExpand={() => setReportExpanded(expanded => !expanded)}
-                onClose={() => {
-                  setReportPanelOpen(false)
-                  setReportExpanded(false)
-                }}
               />
             )}
           </aside>

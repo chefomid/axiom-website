@@ -110,7 +110,6 @@ export default function ReportResultsPanel({
   variant = 'embedded',
   expanded = false,
   onToggleExpand,
-  onClose,
   showHeader = true,
 }) {
   const isPanel = variant === 'panel'
@@ -343,16 +342,6 @@ export default function ReportResultsPanel({
                     title={expanded ? 'Show map alongside report' : 'Expand report to full width'}
                   >
                     {expanded ? 'Split view' : 'Expand'}
-                  </button>
-                ) : null}
-                {onClose ? (
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded border border-panel-border px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-muted transition hover:border-command-live/40 hover:text-white"
-                    aria-label="Close report"
-                  >
-                    Close
                   </button>
                 ) : null}
               </div>

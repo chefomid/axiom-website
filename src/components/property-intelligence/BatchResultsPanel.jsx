@@ -11,7 +11,6 @@ export default function BatchResultsPanel({
   apiOnline,
   expanded = false,
   onToggleExpand,
-  onClose,
   onPreviewLocation,
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
@@ -86,15 +85,6 @@ export default function BatchResultsPanel({
                 className="rounded border border-panel-border px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-muted transition hover:border-command-live/40 hover:text-white"
               >
                 {expanded ? 'Split view' : 'Expand'}
-              </button>
-            ) : null}
-            {onClose ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded border border-panel-border px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-muted transition hover:border-command-live/40 hover:text-white"
-              >
-                Close
               </button>
             ) : null}
           </div>
