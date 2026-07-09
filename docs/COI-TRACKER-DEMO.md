@@ -8,7 +8,7 @@ Interactive COI Tracker demo linked from the marketing site. The demo is the ful
 |-----------|------|-----|
 | Marketing site | Vercel (this repo) | `https://www.axiompropertycasualty.com` |
 | Demo UI | Vercel (COI Tracker repo) | `https://demo-coi.axiompropertycasualty.com` |
-| Demo API | Render (COI Tracker `render.yaml`) | `https://coi-demo-api.onrender.com` |
+| Demo API | Render (COI Tracker `infra/render.yaml`) | `https://coi-demo-api.onrender.com` |
 
 The website links out to the demo. Do not embed the demo in an iframe.
 
@@ -45,8 +45,8 @@ Key files:
 | Path | Role |
 |------|------|
 | `DEMONSTRATION/` | Demo kit (seed, middleware, banner, scripts) |
-| `vercel.json` | Demo frontend build (`demo:apply` + Vite) |
-| `render.yaml` | Demo API + Postgres on Render |
+| `vercel.json` | Demo frontend build (`demo:apply` + Vite). Use Vercel project **`coi-demo-ui`** (Vite, not Services). |
+| `infra/render.yaml` | Demo API + Postgres on Render (Blueprint path: `infra/render.yaml`) |
 
 See `DEMONSTRATION/INTEGRATION.md` in the COI Tracker repo for full kit documentation.
 
@@ -86,7 +86,7 @@ Open http://localhost:5173, click **COI Tracker** on the home page, then **Try t
 ### Demo API (Render)
 
 1. Connect the COI Tracker Git repo to Render.
-2. Apply `render.yaml` (creates `coi-demo-api` + `coi_tracker_demo` Postgres).
+2. **New → Blueprint** → set Blueprint path to **`infra/render.yaml`** (creates `coi-demo-api` + `coi_tracker_demo` Postgres).
 3. After first deploy, run once (Render shell or local against prod DB):
 
    ```powershell
@@ -99,11 +99,12 @@ Open http://localhost:5173, click **COI Tracker** on the home page, then **Try t
 
 5. Optional: nightly cron `npm run demo:reset` to restore seed data.
 
-### Demo UI (Vercel, new project)
+### Demo UI (Vercel project `coi-demo-ui`)
 
-1. Connect COI Tracker repo; root directory = repo root.
+1. Create a **Vite** project (not Services). Do not run `vercel link` on a repo that also has `infra/render.yaml` at root without setting framework to `vite` first.
 2. Custom domain: `demo-coi.axiompropertycasualty.com` (CNAME → Vercel).
-3. Build uses `vercel.json` (`npm run demo:apply && npm run build`).
+3. Deploy via CLI as **chefomid**: `vercel deploy --prod --scope chefomids-projects --archive=tgz`
+4. Build uses `vercel.json` (`npm run demo:apply && npm run build`).
 
 | Variable | Value |
 |----------|-------|
