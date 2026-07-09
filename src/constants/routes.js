@@ -27,6 +27,14 @@ export const MISSION_PATH = '/mission'
 export const LEGACY_IMPACT_MAP_PATH = '/impact-map'
 export const LEGACY_BETTER_WORLD_PATH = '/a-better-world'
 
+/** Marketing site canonical URL */
+export const MARKETING_SITE_URL = 'https://www.axiompropertycasualty.com'
+
+/** Live COI Tracker interactive demo (separate deployed app) */
+export const COI_TRACKER_DEMO_URL =
+  import.meta.env.VITE_COI_TRACKER_DEMO_URL?.trim() ||
+  (import.meta.env.DEV ? 'http://localhost:5180' : '')
+
 /** Deep-link Public Data Command to a lat/lng (local scope). */
 export function publicDataCommandAtLocation(lat, lng) {
   const params = new URLSearchParams({

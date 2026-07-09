@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DossierMobileNav } from './dossier/DossierMobileNav'
+import { isCoiTrackerDemoEnabled } from '../config/features'
+import { COI_TRACKER_DEMO_URL } from '../constants/routes'
 
 const NAV_SECTIONS = [
   { id: 'intro', label: 'Overview', shortLabel: 'Overview' },
@@ -346,6 +348,16 @@ export default function CoiTrackerModal({ open, onClose }) {
                     </li>
                   ))}
                 </ul>
+                {isCoiTrackerDemoEnabled() && COI_TRACKER_DEMO_URL ? (
+                  <a
+                    href={COI_TRACKER_DEMO_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-8 inline-flex min-h-[44px] items-center justify-center rounded border border-[#5c5c5c] bg-[#141414] px-6 font-display text-sm font-medium text-white transition-colors hover:border-[#9AA0A8] hover:bg-[#1a1a1a]"
+                  >
+                    Try the live demo
+                  </a>
+                ) : null}
               </div>
             </motion.section>
 

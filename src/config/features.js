@@ -31,3 +31,11 @@ export function isPublicDataCommandEnabled() {
   }
   return false
 }
+
+/**
+ * COI Tracker live demo: always on in local dev; production requires VITE_COI_TRACKER_DEMO_URL.
+ */
+export function isCoiTrackerDemoEnabled() {
+  if (import.meta.env.DEV) return true
+  return Boolean(import.meta.env.VITE_COI_TRACKER_DEMO_URL?.trim())
+}

@@ -6,11 +6,13 @@ import SiteFooter from '../components/SiteFooter'
 import CoiTrackerModal from '../components/CoiTrackerModal'
 import InsuranceManagerModal from '../components/InsuranceManagerModal'
 import {
+  COI_TRACKER_DEMO_URL,
   PROPERTY_INTELLIGENCE_LABEL,
   PROPERTY_INTELLIGENCE_PATH,
   PUBLIC_DATA_COMMAND_LABEL,
   PUBLIC_DATA_COMMAND_PATH,
 } from '../constants/routes'
+import { isCoiTrackerDemoEnabled } from '../config/features'
 
 const fade = {
   hidden: { opacity: 0, y: 24 },
@@ -187,6 +189,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
           name: 'COI Tracker',
           description: 'Autonomous certificate intelligence. Batch parses COIs, matches policies to properties and tenants, flags non-compliance with structured assessment notes, and runs an autonomous mailroom that drafts, sends, and tracks tenant threads.',
           onClick: onOpenCoi,
+          demoUrl: isCoiTrackerDemoEnabled() && COI_TRACKER_DEMO_URL ? COI_TRACKER_DEMO_URL : null,
         },
       ],
     },
@@ -264,6 +267,17 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
                           )}
                         </span>
                         <p className="text-xs leading-relaxed text-ink-muted sm:text-[11px]">{t.description}</p>
+                        {t.demoUrl ? (
+                          <a
+                            href={t.demoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="mt-1 w-fit font-mono text-[9px] uppercase tracking-[0.14em] text-[#9AA0A8] underline underline-offset-2 transition-colors hover:text-white"
+                          >
+                            Live demo
+                          </a>
+                        ) : null}
                         {t.onClick && (
                           <span className="mt-auto pt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-[#9AA0A8] sm:hidden">
                             Tap to explore

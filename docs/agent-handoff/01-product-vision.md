@@ -84,7 +84,7 @@ flowchart LR
 | Item | Location | Notes |
 |------|----------|-------|
 | **Insurance Manager** | `InsuranceManager/` | Separate product; marketing deliverable kit only (deck/screenshots). Not routed in the website. |
-| **COI Tracker** | Home modal only | Placeholder modal on marketing page |
+| **COI Tracker** | Home modal + external demo | Screenshot dossier on marketing site; live demo at `demo-coi.axiompropertycasualty.com` (separate COI Tracker repo). See [../COI-TRACKER-DEMO.md](../COI-TRACKER-DEMO.md). |
 | **CoreLogic / Cotality** | Backend adapters exist | Not yet selectable in catalog; ATTOM is the primary insurance-grade vendor |
 
 ---
