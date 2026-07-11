@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { TelemetryProvider, useTelemetry } from '../../context/TelemetryContext'
 import {
   COUNTRIES,
@@ -29,12 +29,15 @@ import {
   scopeAppliedMessage,
   TELEMETRY_SOURCE,
 } from '../../utils/userTelemetry'
+import {
+  earthquakeAnalysisAtLocation,
+  EARTHQUAKE_ANALYSIS_PATH,
+} from '../../constants/routes'
 import CommandHeader from './CommandHeader'
 import FeedStatusBar from './FeedStatusBar'
 import IntelligencePanel from './IntelligencePanel'
 import MapErrorBoundary from './MapErrorBoundary'
 import CommandMap from './CommandMap'
-import EarthquakeAnalysisModal from './EarthquakeAnalysisModal'
 import PublicDataCommandMobileView from './PublicDataCommandMobileView'
 import PublicDataCommandIntroModal, {
   ackPublicDataCommandIntro,
@@ -54,6 +57,7 @@ export default function PublicDataCommandView() {
 function PublicDataCommandViewInner() {
   const { pushEvent } = useTelemetry()
   const isLgUp = useIsLgUp()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const deepLat = parseFloat(searchParams.get('lat') ?? '')
   const deepLng = parseFloat(searchParams.get('lng') ?? '')
@@ -82,7 +86,6 @@ function PublicDataCommandViewInner() {
   const [introOpen, setIntroOpen] = useState(() => !isPublicDataCommandIntroAcked())
   const [scopeModalOpen, setScopeModalOpen] = useState(false)
   const [scopeApplyKey, setScopeApplyKey] = useState(0)
-  const [analysisOpen, setAnalysisOpen] = useState(false)
   const [minEarthquakeMag, setMinEarthquakeMag] = useState(2.5)
 
   useEffect(() => {
@@ -114,8 +117,6 @@ function PublicDataCommandViewInner() {
     breakPinChainBlocked,
     clearPins,
   } = useMapPins({ pushEvent })
-
-  const [analysisPinCenter, setAnalysisPinCenter] = useState(null)
 
   const usgsEnabled = activeDataSources.has('usgs') && activeLayers.has('earthquake')
   const {
@@ -396,32 +397,31 @@ function PublicDataCommandViewInner() {
   )
 
   const handleOpenAnalysis = useCallback(() => {
-    setAnalysisPinCenter(null)
-    setAnalysisOpen(true)
-  }, [])
+    const params = new URLSearchParams()
+    if (Number.isFinite(minEarthquakeMag)) params.set('mag', String(minEarthquakeMag))
+    if (countryId) params.set('country', countryId)
+    const qs = params.toString()
+    navigate(qs ? `${EARTHQUAKE_ANALYSIS_PATH}?${qs}` : EARTHQUAKE_ANALYSIS_PATH)
+  }, [navigate, minEarthquakeMag, countryId])
 
   const handleAnalyzeAtPin = useCallback(
     pin => {
       if (!pin) return
-      setAnalysisPinCenter({
-        lat: pin.lat,
-        lng: pin.lng,
-        label: pin.label ?? `${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}`,
-      })
-      setAnalysisOpen(true)
       pushEvent({
         text: `Earthquake analysis at ${pin.label ?? 'pin'}`,
         type: 'live',
         source: TELEMETRY_SOURCE.earthquake,
       })
+      navigate(
+        earthquakeAnalysisAtLocation(
+          pin.lat,
+          pin.lng,
+          pin.label ?? `${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}`,
+        ),
+      )
     },
-    [pushEvent],
+    [navigate, pushEvent],
   )
-
-  const handleCloseAnalysis = useCallback(() => {
-    setAnalysisOpen(false)
-    setAnalysisPinCenter(null)
-  }, [])
 
   const layerLoading = useMemo(
     () => ({
@@ -631,7 +631,7 @@ function PublicDataCommandViewInner() {
                     : 0
                 }
                 usgsEnabled={usgsEnabled}
-                analysisOpen={analysisOpen}
+                analysisOpen={false}
                 onOpenAnalysis={handleOpenAnalysis}
                 zoneCount={visibleZones.length}
                 pinMode={pinMode}
@@ -679,16 +679,6 @@ function PublicDataCommandViewInner() {
           </div>
         </details>
       </div>
-
-      <EarthquakeAnalysisModal
-        open={analysisOpen && usgsEnabled}
-        onClose={handleCloseAnalysis}
-        scope={scope}
-        userLocation={userLocation}
-        countryId={countryId}
-        initialMinMagnitude={minEarthquakeMag}
-        initialCenterOverride={analysisPinCenter}
-      />
     </div>
   )
 }

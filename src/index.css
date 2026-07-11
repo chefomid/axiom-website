@@ -187,6 +187,18 @@ html::-webkit-scrollbar-thumb:hover,
   z-index: 0;
 }
 
+/* Scanline is portaled into the map host; keep it above the canvas but under controls. */
+.command-map-host .command-scanline {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.command-map-host .maplibregl-control-container {
+  z-index: 3;
+}
+
 .command-map-user-dot {
   display: block;
   width: 14px;

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence } from 'framer-motion'
 import maplibregl from '../../lib/maplibre'
 import { MapCornerControls } from '../../lib/mapCornerControls'
@@ -1322,9 +1323,15 @@ export default function CommandMap({
 
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,transparent_60%,rgba(0,0,0,0.35)_100%)]" />
 
-      <div className="command-scanline pointer-events-none absolute inset-0 z-[2]">
-        <div className="command-scanline__beam" />
-      </div>
+      {/* Scanline lives inside the map host so corner controls (z-index above) stay on top. */}
+      {mapReady &&
+        mapContainerRef.current &&
+        createPortal(
+          <div className="command-scanline" aria-hidden>
+            <div className="command-scanline__beam" />
+          </div>,
+          mapContainerRef.current,
+        )}
 
       {measureLabels.map(label => (
         <div

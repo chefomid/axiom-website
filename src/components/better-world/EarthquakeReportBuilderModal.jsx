@@ -212,7 +212,7 @@ export default function EarthquakeReportBuilderModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className="eq-report-no-print flex max-h-[min(92vh,860px)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-[#333] bg-[#0d0d0d]/98 shadow-2xl"
+            className="eq-report-no-print flex max-h-[min(92vh,860px)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-[#333] bg-[#0d0d0d] shadow-2xl"
             role="dialog"
             aria-labelledby="eq-report-builder-title"
           >

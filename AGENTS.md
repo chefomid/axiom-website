@@ -23,6 +23,16 @@ Install or update: `npm run install:superpowers`
 
 Property API lives in `services/property-api/`. See `docs/PROPERTY-INTELLIGENCE.md`.
 
+## Accounts and Git identity
+
+Use **only** the `orcc_omid` / **chefomid** accounts for deploys and commits. Do **not** use `omid.rezaee@oit.edu` or GitHub `omidrezaee1` for Vercel-linked work; those commits trigger blocked GitHub auto-deploys.
+
+| Service | Account |
+|---------|---------|
+| Vercel CLI / team | `chefomid` (`chefomids-projects`), signed in as `orcc_omid@outlook.com` |
+| Git author | `orcc_omid@outlook.com` |
+| COI demo UI deploy | `vercel deploy --prod --scope chefomids-projects --archive=tgz` (do not rely on Git auto-deploy for `coi-demo-ui`) |
+
 ## Quick start
 
 ```powershell

@@ -96,7 +96,7 @@ export default function EarthquakeAnalysisModal({
   const [centerOverride, setCenterOverride] = useState(null)
   const [recenterKey, setRecenterKey] = useState(0)
   const [annularViewId, setAnnularViewId] = useState('density')
-  const [showFaultLines, setShowFaultLines] = useState(false)
+  const [showFaultLines, setShowFaultLines] = useState(true)
   const [showNoDataNotice, setShowNoDataNotice] = useState(false)
   const [digestOpen, setDigestOpen] = useState(false)
   const [digestExpanded, setDigestExpanded] = useState(true)
@@ -344,7 +344,7 @@ export default function EarthquakeAnalysisModal({
           <EarthquakeAnalysisSidebar
             onClose={onClose}
             onOpenReport={() => setReportBuilderOpen(true)}
-            headerTitle="Earthquake frequency by radius"
+            headerTitle="Seismic/EQ Analysis"
             headerMeta={
               globalAnalysis
                 ? `${resolved.locationLabel} · ${resolved.scopeLabel} · ${yearPreset.label} · M${minMagnitude}+`

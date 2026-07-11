@@ -4,6 +4,7 @@ import RouteErrorFallback from './components/RouteErrorFallback'
 import RootLayout from './components/RootLayout'
 import Home from './pages/Home'
 import PublicDataCommand from './pages/PublicDataCommand'
+import EarthquakeAnalysis from './pages/EarthquakeAnalysis'
 import PropertyIntelligence from './pages/PropertyIntelligence'
 import ReportPrint from './pages/ReportPrint'
 import PrivacyPolicy from './pages/PrivacyPolicy'
@@ -15,6 +16,7 @@ import {
   CAREERS_ADMIN_PATH,
   CAREERS_PATH,
   COOKIE_POLICY_PATH,
+  EARTHQUAKE_ANALYSIS_PATH,
   LEGACY_BETTER_WORLD_PATH,
   LEGACY_IMPACT_MAP_PATH,
   MISSION_PATH,
@@ -32,6 +34,7 @@ const router = createBrowserRouter([
       { path: MISSION_PATH, element: <BetterWorld /> },
       { path: LEGACY_BETTER_WORLD_PATH, element: <Navigate to={MISSION_PATH} replace /> },
       { path: PUBLIC_DATA_COMMAND_PATH, element: <PublicDataCommand /> },
+      { path: EARTHQUAKE_ANALYSIS_PATH, element: <EarthquakeAnalysis /> },
       {
         path: PROPERTY_INTELLIGENCE_PATH,
         element: <PropertyIntelligence />,

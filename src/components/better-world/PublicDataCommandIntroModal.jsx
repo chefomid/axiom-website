@@ -48,9 +48,9 @@ function IntroBody({ isMobile }) {
             Mobile view
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-ink-secondary">
-            Browse live hazard signals and filter by region. The interactive map, pin analysis, and
-            earthquake analytics are available on{' '}
-            <span className="text-white">desktop</span> (screen width 1024px or larger).
+            Browse live hazard signals and filter by region. The interactive map and pin tools are
+            available on <span className="text-white">desktop</span> (screen width 1024px or larger).
+            Seismic/EQ Analysis is available from the top navigation.
           </p>
         </div>
       )}

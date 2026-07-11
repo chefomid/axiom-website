@@ -405,7 +405,7 @@ export default function MapControlsDock({
 
             <DockTab active={analysisOpen} accent="watch" onClick={() => onOpenAnalysis?.()}>
 
-              Analysis
+              Seismic/EQ
 
             </DockTab>
 

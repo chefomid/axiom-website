@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  EARTHQUAKE_ANALYSIS_LABEL,
+  EARTHQUAKE_ANALYSIS_PATH,
   PROPERTY_INTELLIGENCE_LABEL,
   PROPERTY_INTELLIGENCE_PATH,
   PUBLIC_DATA_COMMAND_LABEL,
@@ -11,20 +13,15 @@ import {
 const linkClass = 'hover:text-white transition-colors duration-300'
 
 const navLinks = [
-  { to: PUBLIC_DATA_COMMAND_PATH, label: PUBLIC_DATA_COMMAND_LABEL, short: 'PDC' },
-  { to: PROPERTY_INTELLIGENCE_PATH, label: PROPERTY_INTELLIGENCE_LABEL, short: 'Property Intel' },
-]
-
-const mobileMenuLinks = [
-  {
-    to: '/',
-    label: 'Home',
-    description: 'AXIOM overview and product showcase',
-  },
   {
     to: PUBLIC_DATA_COMMAND_PATH,
     label: PUBLIC_DATA_COMMAND_LABEL,
-    description: 'Live government hazard feeds and regional intelligence',
+    description: 'Live hazard feeds and regional intelligence',
+  },
+  {
+    to: EARTHQUAKE_ANALYSIS_PATH,
+    label: EARTHQUAKE_ANALYSIS_LABEL,
+    description: 'USGS frequency by radius, timeline, and location',
   },
   {
     to: PROPERTY_INTELLIGENCE_PATH,
@@ -33,12 +30,26 @@ const mobileMenuLinks = [
   },
 ]
 
+const mobileMenuLinks = [
+  {
+    to: '/',
+    label: 'Home',
+    description: 'AXIOM overview and product showcase',
+  },
+  ...navLinks,
+]
+
+function pathActive(pathname, to) {
+  return pathname === to || (to !== '/' && pathname.startsWith(`${to}/`))
+}
+
 function NavLink({ to, label, pathname, className = linkClass, onClick }) {
+  const active = pathActive(pathname, to)
   return (
     <Link
       to={to}
       onClick={onClick}
-      className={`${className} ${pathname === to ? 'text-white' : ''}`}
+      className={`${className} ${active ? 'text-white' : ''}`}
     >
       {label}
     </Link>
@@ -68,39 +79,41 @@ function MobileMenuPanel({ open, onClose, pathname }) {
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
             className="safe-bottom-bar relative z-10 flex h-full flex-col bg-[#050505] px-6 pb-6 pt-[calc(var(--safe-top)+5.25rem)]"
           >
-              <div className="flex items-center justify-between border-b border-[#222] pb-4">
-                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-muted">Navigation</p>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#333] text-ink-muted transition-colors hover:border-[#555] hover:text-white"
-                  aria-label="Close menu"
-                >
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
-                    <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
+            <div className="flex items-center justify-between border-b border-[#222] pb-4">
+              <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-muted">Navigation</p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#333] text-ink-muted transition-colors hover:border-[#555] hover:text-white"
+                aria-label="Close menu"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+                  <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
 
-              <ul className="mt-2 flex flex-1 flex-col">
-                {mobileMenuLinks.map(link => {
-                  const active = pathname === link.to
-                  return (
-                    <li key={link.to} className="border-b border-[#1a1a1a]">
-                      <Link
-                        to={link.to}
-                        onClick={onClose}
-                        className={`block py-4 transition-colors ${
-                          active ? 'text-white' : 'text-ink-muted hover:text-white'
-                        }`}
-                      >
-                        <span className="font-display text-base font-medium tracking-tight">{link.label}</span>
-                        <span className="mt-1 block text-[12px] leading-relaxed text-ink-faint">{link.description}</span>
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
+            <ul className="mt-2 flex flex-1 flex-col">
+              {mobileMenuLinks.map(item => {
+                const active = pathActive(pathname, item.to)
+                return (
+                  <li key={item.to} className="border-b border-[#1a1a1a]">
+                    <Link
+                      to={item.to}
+                      onClick={onClose}
+                      className={`block py-4 transition-colors ${
+                        active ? 'text-white' : 'text-ink-muted hover:text-white'
+                      }`}
+                    >
+                      <span className="font-display text-base font-medium tracking-tight">{item.label}</span>
+                      <span className="mt-1 block text-[12px] leading-relaxed text-ink-faint">
+                        {item.description}
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
           </motion.nav>
         </motion.div>
       )}

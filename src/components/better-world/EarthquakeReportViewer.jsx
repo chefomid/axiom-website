@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import useEarthquakeAnalytics from '../../hooks/useEarthquakeAnalytics'
-import { downloadReportPdf, checkReportApiHealth } from '../../services/reportApi'
 import { assessTemporalPeriodQuality, dateRangeForYears } from '../../utils/earthquakeAnalytics'
 import { buildReportNarrative } from '../../utils/earthquakeReport'
-import { buildReportDocument, validateReportDocument } from '../../utils/reportDocument'
+import { buildReportDocument } from '../../utils/reportDocument'
 import {
   DepthBreakdownGuide,
   MagnitudeDistributionGuide,
@@ -106,11 +105,6 @@ export default function EarthquakeReportViewer({
   yearPresetId,
   minMagnitude,
 }) {
-  const reportRef = useRef(null)
-  const [pdfBusy, setPdfBusy] = useState(false)
-  const [pdfError, setPdfError] = useState(null)
-  const [pdfServiceOk, setPdfServiceOk] = useState(null)
-
   const {
     loading,
     error,
@@ -219,27 +213,6 @@ export default function EarthquakeReportViewer({
     yearPreset,
   ])
 
-  useEffect(() => {
-    if (!open || !reportReady) {
-      setPdfServiceOk(null)
-      return
-    }
-    let cancelled = false
-    checkReportApiHealth().then(result => {
-      if (!cancelled) {
-        setPdfServiceOk(result.ok)
-        if (!result.ok && result.detail) {
-          setPdfError(result.detail)
-        } else if (result.ok) {
-          setPdfError(null)
-        }
-      }
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [open, reportReady])
-
   const guideProps = {
     center: config?.centerOverride,
     temporalAnnular,
@@ -273,24 +246,6 @@ export default function EarthquakeReportViewer({
     }
   }
 
-  const handleDownloadPdf = useCallback(async () => {
-    if (pdfBusy || !reportDocument) return
-    setPdfError(null)
-    setPdfBusy(true)
-    try {
-      const validation = validateReportDocument(reportDocument)
-      if (!validation.ok) {
-        throw new Error(validation.errors.join(' '))
-      }
-      const locationLabel = reportDocument.meta.location
-      await downloadReportPdf(reportDocument, locationLabel)
-    } catch (err) {
-      setPdfError(err.message ?? 'Report PDF service unavailable.')
-    } finally {
-      setPdfBusy(false)
-    }
-  }, [pdfBusy, reportDocument])
-
   const showCharts = config?.includeCharts && !showGenerating && dataQuality?.level !== 'none'
 
   return (
@@ -311,23 +266,6 @@ export default function EarthquakeReportViewer({
                 </p>
               ) : null}
             </div>
-            {!showGenerating && reportReady ? (
-              <div className="flex flex-col items-end gap-1">
-                {pdfError ? (
-                  <p className="max-w-xs text-right font-mono text-[9px] leading-snug text-command-critical">
-                    {pdfError}
-                  </p>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={handleDownloadPdf}
-                  disabled={pdfBusy || !reportDocument || pdfServiceOk === false}
-                  className="rounded-lg border border-[#ff9348]/40 bg-[#ff9348]/10 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[#ff9348] transition hover:border-[#ff9348]/60 hover:bg-[#ff9348]/15 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {pdfBusy ? 'Generating PDF…' : pdfServiceOk === null ? 'Checking PDF…' : 'Download PDF'}
-                </button>
-              </div>
-            ) : null}
             <button
               type="button"
               onClick={onClose}
@@ -343,7 +281,7 @@ export default function EarthquakeReportViewer({
             ) : displayError ? (
               <p className="py-16 text-center font-mono text-[11px] text-command-critical">{displayError}</p>
             ) : config && reportDocument && narrative ? (
-              <article ref={reportRef} className="eq-report-doc pb-12">
+              <article className="eq-report-doc pb-12">
                 <header className="eq-report-hero">
                   <span className="eq-report-hero__eyebrow">{reportDocument.meta.dataSource}</span>
                   <h1 className="eq-report-hero__title">{reportDocument.meta.title}</h1>
@@ -352,12 +290,6 @@ export default function EarthquakeReportViewer({
                   <FilterPills filterSummary={narrative.filterSummary} />
                   <p className="eq-report-hero__date">Generated {reportDocument.meta.generatedDate}</p>
                 </header>
-
-                {pdfError ? (
-                  <p className="eq-report-no-print mb-4 rounded border border-command-critical/40 bg-command-critical/10 px-4 py-3 font-mono text-[11px] text-command-critical">
-                    {pdfError}
-                  </p>
-                ) : null}
 
                 {reportDocument.noData ? (
                   <ReportBlock title="No catalog data">

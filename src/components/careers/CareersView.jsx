@@ -383,7 +383,7 @@ export default function CareersView() {
       <main className="mx-auto max-w-3xl px-6 pb-[calc(5.5rem+var(--safe-bottom))] pt-28 sm:px-8 sm:pt-32 md:pb-24">
         <header>
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Careers at AXIOM
+            Contribute at AXIOM
           </p>
           <h1 className="mt-4 font-display text-3xl font-medium tracking-tight text-white sm:text-4xl">
             {APPLICATION_TITLE}

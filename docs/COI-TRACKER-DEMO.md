@@ -103,7 +103,11 @@ Open http://localhost:5173, click **COI Tracker** on the home page, then **Try t
 
 1. Create a **Vite** project (not Services). Do not run `vercel link` on a repo that also has `infra/render.yaml` at root without setting framework to `vite` first.
 2. Custom domain: `demo-coi.axiompropertycasualty.com` (CNAME → Vercel).
-3. Deploy via CLI as **chefomid**: `vercel deploy --prod --scope chefomids-projects --archive=tgz`
+3. Deploy via CLI as **chefomid** (`orcc_omid@outlook.com`). Do **not** use `omid.rezaee@oit.edu` / GitHub `omidrezaee1` for commits; Vercel blocks those deploys. Use:
+
+   ```powershell
+   vercel deploy --prod --scope chefomids-projects --archive=tgz
+   ```
 4. Build uses `vercel.json` (`npm run demo:apply && npm run build`).
 
 | Variable | Value |

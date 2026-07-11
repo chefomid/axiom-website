@@ -2,6 +2,10 @@
 export const PUBLIC_DATA_COMMAND_PATH = '/public-data-command'
 export const PUBLIC_DATA_COMMAND_LABEL = 'Public Data Command'
 
+/** USGS seismic / EQ frequency analysis (under Public Data Command) */
+export const EARTHQUAKE_ANALYSIS_PATH = '/earthquake-analysis'
+export const EARTHQUAKE_ANALYSIS_LABEL = 'Seismic/EQ Analysis'
+
 /** Address / property enrichment (Crawl4AI-backed API) */
 export const PROPERTY_INTELLIGENCE_PATH = '/property-intelligence'
 export const PROPERTY_INTELLIGENCE_LABEL = 'Property Intelligence'
@@ -14,7 +18,7 @@ export const CAREERS_ADMIN_PATH = '/careers/admin'
 
 /** Careers, AXIOM / ATLAS development application */
 export const CAREERS_PATH = '/careers'
-export const CAREERS_LABEL = 'Careers'
+export const CAREERS_LABEL = 'Contribute'
 
 /** Legal / privacy */
 export const PRIVACY_POLICY_PATH = '/privacy'
@@ -43,4 +47,14 @@ export function publicDataCommandAtLocation(lat, lng) {
     scope: 'local',
   })
   return `${PUBLIC_DATA_COMMAND_PATH}?${params}`
+}
+
+/** Deep-link Seismic/EQ Analysis to a lat/lng (optional label). */
+export function earthquakeAnalysisAtLocation(lat, lng, label) {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lng: String(lng),
+  })
+  if (label?.trim()) params.set('label', label.trim())
+  return `${EARTHQUAKE_ANALYSIS_PATH}?${params}`
 }
