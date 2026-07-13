@@ -1,8 +1,10 @@
 import { useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import EarthquakeAnalysisModal from '../components/better-world/EarthquakeAnalysisModal'
+import EarthquakeAnalysisOverview from '../components/better-world/EarthquakeAnalysisOverview'
 import PublicDataCommandBlockedModal from '../components/better-world/PublicDataCommandBlockedModal'
 import { isPublicDataCommandEnabled } from '../config/features'
+import { useIsLgUp } from '../hooks/useMediaQuery'
 
 function parseCenterOverride(searchParams) {
   const lat = Number.parseFloat(searchParams.get('lat') ?? '')
@@ -18,9 +20,11 @@ function parseCenterOverride(searchParams) {
 
 /**
  * Standalone Seismic/EQ Analysis page (under Public Data Command).
+ * Mobile/tablet: information overview only (workspace needs desktop width).
  */
 export default function EarthquakeAnalysis() {
   const enabled = isPublicDataCommandEnabled()
+  const isLgUp = useIsLgUp()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -43,6 +47,10 @@ export default function EarthquakeAnalysis() {
 
   if (!enabled) {
     return <PublicDataCommandBlockedModal />
+  }
+
+  if (!isLgUp) {
+    return <EarthquakeAnalysisOverview />
   }
 
   return (
