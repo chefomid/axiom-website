@@ -74,7 +74,7 @@ export function formatBillingError(err, fallback = BILLING_VERIFY_MESSAGE) {
     return 'Payment not completed yet. Please try again in a moment.'
   }
   if (err?.status === 404) {
-    return 'We could not find that confirmation number. Check the number and try again.'
+    return 'We could not find that Analysis ID#. Check the number and try again.'
   }
   if (msg === '0' || msg === 'Failed to fetch' || err?.name === 'TypeError') {
     return fallback

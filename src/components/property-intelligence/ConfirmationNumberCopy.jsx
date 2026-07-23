@@ -35,6 +35,7 @@ export default function ConfirmationNumberCopy({
   if (compact) {
     return (
       <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+        <span className={`${labelClass} mr-1`}>Analysis ID#</span>
         <span className={`${idClass} text-sm`}>{id}</span>
         <button type="button" onClick={() => void handleCopy()} className={copyBtnClass}>
           {copied ? 'Copied' : 'Copy'}
@@ -49,13 +50,9 @@ export default function ConfirmationNumberCopy({
         isDossier ? 'dossier-card' : 'rounded-md border border-command-watch/25 bg-command-watch/8'
       } px-3 py-2.5 ${className}`}
     >
-      <p className={labelClass}>
-        Confirmation number
-      </p>
+      <p className={labelClass}>Analysis ID#</p>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
-        <span className={`${idClass} text-base font-semibold`}>
-          {id}
-        </span>
+        <span className={`${idClass} text-base font-semibold`}>{id}</span>
         <button type="button" onClick={() => void handleCopy()} className={copyBtnClass}>
           {copied ? 'Copied' : 'Copy'}
         </button>
@@ -65,8 +62,8 @@ export default function ConfirmationNumberCopy({
           isDossier ? 'text-ink-secondary' : 'text-ink-muted'
         }`}
       >
-        Save this number somewhere safe so you can retrieve your report later with &quot;Retrieve with
-        confirmation number&quot; on Property Intelligence.
+        Save this Analysis ID# so you can retrieve your report later with &quot;Retrieve with Analysis
+        ID#&quot; on Property Intelligence.
       </p>
     </div>
   )

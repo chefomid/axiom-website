@@ -34,6 +34,7 @@ import LicensedDataNoticeModal, {
 } from './LicensedDataNoticeModal'
 import PostPaymentOverlay from './PostPaymentOverlay'
 import RefundConfirmModal from './RefundConfirmModal'
+import NewReportExitModal from './NewReportExitModal'
 
 export default function PropertyIntelligenceView() {
 
@@ -68,6 +69,7 @@ export default function PropertyIntelligenceView() {
   const resumeHandledRef = useRef(false)
   const pendingConfirmationRef = useRef(null)
   const [confirmationModalOpen, setConfirmationModalOpen] = useState(false)
+  const [newReportExitOpen, setNewReportExitOpen] = useState(false)
 
   const [inputMode, setInputMode] = useState('single')
   const [scheduleRows, setScheduleRows] = useState([])
@@ -366,6 +368,7 @@ export default function PropertyIntelligenceView() {
     setReportExpanded(false)
     setBillingNotice(null)
     setCheckoutPreview(null)
+    setNewReportExitOpen(false)
     clearAddressComposing()
 
     clear()
@@ -1086,6 +1089,17 @@ export default function PropertyIntelligenceView() {
       Boolean(record) ||
       Boolean(error) ||
       (scheduleMode && (loadingBatchRun || Boolean(batchRun) || Boolean(batchRunError))))
+  const dossierFocus =
+    showReportPanel &&
+    !loadingReport &&
+    !loadingBatchRun &&
+    (Boolean(record) || Boolean(batchRun)) &&
+    !error &&
+    !batchRunError
+
+  useEffect(() => {
+    if (dossierFocus) setReportExpanded(true)
+  }, [dossierFocus])
 
   const displayQuote = record?.receipt
 
@@ -1176,7 +1190,7 @@ export default function PropertyIntelligenceView() {
 
 
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        {!postPaymentOverlayActive ? (
+        {!postPaymentOverlayActive && !dossierFocus ? (
         <PropertyWorkflowHud
           inputMode={inputMode}
           onInputModeChange={handleInputModeChange}
@@ -1216,7 +1230,7 @@ export default function PropertyIntelligenceView() {
           sourceUrls={sourceUrls}
           onSourceUrlsChange={setSourceUrls}
           onGenerate={handleGenerate}
-          onNewReport={handleClear}
+          onNewReport={() => setNewReportExitOpen(true)}
           billingEnabled={billingEnabled}
           checkoutPreview={activeCheckoutPreview}
           generateDisabled={Boolean(generateBlockReason)}
@@ -1236,13 +1250,15 @@ export default function PropertyIntelligenceView() {
 
         <div
           className={`relative min-w-0 ${
-            postPaymentOverlayActive ? 'pointer-events-none opacity-0' : ''
+            postPaymentOverlayActive || dossierFocus ? 'pointer-events-none opacity-0' : ''
           } ${
-            showReportPanel
-              ? reportExpanded
-                ? 'hidden'
-                : 'h-[30vh] shrink-0 lg:h-auto lg:min-h-0 lg:flex-[1]'
-              : 'min-h-[42vh] flex-1 lg:min-h-0'
+            dossierFocus
+              ? 'hidden'
+              : showReportPanel
+                ? reportExpanded
+                  ? 'hidden'
+                  : 'h-[30vh] shrink-0 lg:h-auto lg:min-h-0 lg:flex-[1]'
+                : 'min-h-[42vh] flex-1 lg:min-h-0'
           }`}
         >
           <PropertyMap
@@ -1282,7 +1298,7 @@ export default function PropertyIntelligenceView() {
         {showReportPanel ? (
           <aside
             className={`flex min-h-0 w-full flex-col border-t border-panel-border bg-[#f6f6f4] lg:border-l lg:border-t-0 ${
-              reportExpanded
+              dossierFocus || reportExpanded
                 ? 'min-h-0 flex-1'
                 : 'min-h-0 flex-1 lg:w-[min(40rem,46vw)] lg:min-w-[30rem] lg:max-w-[680px] lg:flex-none'
             }`}
@@ -1294,8 +1310,10 @@ export default function PropertyIntelligenceView() {
                 error={batchRunError}
                 apiOnline={apiOnline}
                 expanded={reportExpanded}
-                onToggleExpand={() => setReportExpanded(expanded => !expanded)}
+                onToggleExpand={dossierFocus ? undefined : () => setReportExpanded(expanded => !expanded)}
                 onPreviewLocation={handlePreviewScheduleLocation}
+                onRequestNewReport={() => setNewReportExitOpen(true)}
+                dossierFocus={dossierFocus}
               />
             ) : (
               <ReportResultsPanel
@@ -1305,13 +1323,27 @@ export default function PropertyIntelligenceView() {
                 loading={loadingReport}
                 apiOnline={apiOnline}
                 expanded={reportExpanded}
-                onToggleExpand={() => setReportExpanded(expanded => !expanded)}
+                onToggleExpand={dossierFocus ? undefined : () => setReportExpanded(expanded => !expanded)}
+                onRequestNewReport={() => setNewReportExitOpen(true)}
+                dossierFocus={dossierFocus}
               />
             )}
           </aside>
         ) : null}
 
       </main>
+
+      <NewReportExitModal
+        open={newReportExitOpen}
+        onClose={() => setNewReportExitOpen(false)}
+        onConfirmNewReport={() => {
+          setNewReportExitOpen(false)
+          handleClear()
+        }}
+        analysisId={record?.report_id ?? batchRun?.batch_id ?? null}
+        record={record}
+        batchRun={batchRun}
+      />
 
       <ScheduleUploadModal
         open={scheduleModalOpen}

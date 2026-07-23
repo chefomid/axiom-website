@@ -3,21 +3,25 @@ import ExcelJS from 'exceljs'
 import { buildCopeReportDocument } from './copeReportDocument'
 import { formatCopeSourceLabel } from './copeSourceLabels'
 
+/** AXIOM dossier palette: black / paper white / command orange */
 const THEME = {
-  headerFill: 'FF080808',
-  headerFont: 'FFFFFFFF',
-  bodyFont: 'FF111111',
-  bodyFill: 'FFFFFFFF',
-  stripeFill: 'FFF5F5F5',
-  border: 'FFD0D0D0',
-  labelFill: 'FFF0F0F0',
+  black: 'FF080808',
+  paper: 'FFF6F6F4',
+  white: 'FFFFFFFF',
+  ink: 'FF141414',
+  inkMuted: 'FF5A5A5A',
+  border: 'FFD6D6D2',
+  orange: 'FFE8A838',
+  orangeWash: 'FFFFF1D6',
+  stripe: 'FFF0F0EE',
+  labelFill: 'FFEFEEEC',
 }
 
 const SECTION_ACCENTS = {
-  C: 'FFD6E8FF',
-  O: 'FFD9F5E8',
-  P: 'FFFFF0D6',
-  E: 'FFFDE0E0',
+  C: 'FFFFF1D6',
+  O: 'FFFFF1D6',
+  P: 'FFFFF1D6',
+  E: 'FFFFF1D6',
 }
 
 const COPE_COLUMNS = [
@@ -27,7 +31,6 @@ const COPE_COLUMNS = [
   { key: 'confidence', header: 'Confidence', width: 14 },
   { key: 'status', header: 'Status', width: 12 },
 ]
-
 
 function slugifyLocation(label) {
   return String(label ?? 'location')
@@ -45,10 +48,10 @@ function thinBorder(color = THEME.border) {
 function applyHeaderRow(row) {
   row.height = 22
   row.eachCell(cell => {
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.headerFill } }
-    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: THEME.headerFont } }
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.black } }
+    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: THEME.white } }
     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
-    cell.border = thinBorder('FF333333')
+    cell.border = thinBorder(THEME.black)
   })
 }
 
@@ -56,12 +59,12 @@ function applyBodyCell(cell, { stripe = false, center = false, mono = false } = 
   cell.fill = {
     type: 'pattern',
     pattern: 'solid',
-    fgColor: { argb: stripe ? THEME.stripeFill : THEME.bodyFill },
+    fgColor: { argb: stripe ? THEME.stripe : THEME.white },
   }
   cell.font = {
     name: mono ? 'Consolas' : 'Calibri',
     size: 10,
-    color: { argb: THEME.bodyFont },
+    color: { argb: THEME.ink },
   }
   cell.alignment = {
     vertical: 'top',
@@ -75,7 +78,7 @@ function applySectionHeader(row, accentArgb) {
   row.height = 24
   row.eachCell(cell => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: accentArgb } }
-    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: THEME.bodyFont } }
+    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: THEME.ink } }
     cell.alignment = { vertical: 'middle', horizontal: 'left' }
     cell.border = thinBorder()
   })
@@ -86,7 +89,7 @@ function sectionAccent(section) {
     .trim()
     .charAt(0)
     .toUpperCase()
-  return SECTION_ACCENTS[letter] ?? SECTION_ACCENTS.C
+  return SECTION_ACCENTS[letter] ?? THEME.orangeWash
 }
 
 function fieldDisplayValue(field) {
@@ -95,39 +98,45 @@ function fieldDisplayValue(field) {
   return 'Unknown'
 }
 
-function buildSummarySheet(workbook, doc, sheetName = 'Summary') {
+function buildSummarySheet(workbook, doc, sheetName = 'Cover') {
   const sheet = workbook.addWorksheet(sheetName, {
     views: [{ showGridLines: false }],
     properties: { defaultColWidth: 18 },
   })
 
-  sheet.columns = [
-    { width: 22 },
-    { width: 52 },
-  ]
+  sheet.columns = [{ width: 24 }, { width: 54 }]
 
   const meta = doc.meta ?? {}
   const score = doc.copeScore ?? {}
 
-  const titleRow = sheet.addRow([meta.preparedBy ?? 'AXIOM Property & Casualty'])
-  sheet.mergeCells(titleRow.number, 1, titleRow.number, 2)
-  titleRow.height = 28
-  titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.headerFill } }
-  titleRow.getCell(1).font = { name: 'Calibri', size: 14, bold: true, color: { argb: THEME.headerFont } }
-  titleRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  const brandRow = sheet.addRow(['AXIOM Property Intelligence'])
+  sheet.mergeCells(brandRow.number, 1, brandRow.number, 2)
+  brandRow.height = 30
+  brandRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.black } }
+  brandRow.getCell(1).font = { name: 'Calibri', size: 14, bold: true, color: { argb: THEME.white } }
+  brandRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
 
-  const subtitleRow = sheet.addRow([meta.title ?? 'COPE Underwriting Dossier'])
-  sheet.mergeCells(subtitleRow.number, 1, subtitleRow.number, 2)
-  subtitleRow.height = 22
-  subtitleRow.getCell(1).font = { name: 'Calibri', size: 12, bold: true, color: { argb: THEME.bodyFont } }
-  subtitleRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  const accentRow = sheet.addRow(['Paid underwriting dossier'])
+  sheet.mergeCells(accentRow.number, 1, accentRow.number, 2)
+  accentRow.height = 18
+  accentRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.orange } }
+  accentRow.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: THEME.ink } }
+  accentRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+
+  const titleRow = sheet.addRow([meta.title ?? 'COPE Underwriting Dossier'])
+  sheet.mergeCells(titleRow.number, 1, titleRow.number, 2)
+  titleRow.height = 24
+  titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.paper } }
+  titleRow.getCell(1).font = { name: 'Calibri', size: 12, bold: true, color: { argb: THEME.ink } }
+  titleRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
 
   sheet.addRow([])
 
   const metadata = [
+    ['Analysis ID#', meta.reportId ?? '-'],
     ['Location', meta.location ?? '-'],
-    ['Report ID', meta.reportId ?? '-'],
     ['Generated', meta.generatedDate ?? '-'],
+    ['Prepared by', meta.preparedBy ?? 'AXIOM Property Intelligence'],
     ['Data source', meta.dataSource ?? 'AXIOM Property Intelligence'],
   ]
   if (meta.visionIsoClass || meta.visionIsoLabel) {
@@ -143,10 +152,25 @@ function buildSummarySheet(workbook, doc, sheetName = 'Summary') {
   for (const [label, value] of metadata) {
     const row = sheet.addRow([label, value])
     row.height = 20
-    row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.labelFill } }
-    row.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: THEME.bodyFont } }
+    const isId = label.startsWith('Analysis ID')
+    row.getCell(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: isId ? THEME.orangeWash : THEME.labelFill },
+    }
+    row.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: THEME.ink } }
     row.getCell(1).border = thinBorder()
-    row.getCell(2).font = { name: 'Calibri', size: 10, color: { argb: THEME.bodyFont } }
+    row.getCell(2).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: isId ? THEME.orangeWash : THEME.white },
+    }
+    row.getCell(2).font = {
+      name: isId ? 'Consolas' : 'Calibri',
+      size: isId ? 11 : 10,
+      bold: isId,
+      color: { argb: isId ? 'FFB87A10' : THEME.ink },
+    }
     row.getCell(2).alignment = { wrapText: true, vertical: 'middle' }
     row.getCell(2).border = thinBorder()
   }
@@ -155,7 +179,8 @@ function buildSummarySheet(workbook, doc, sheetName = 'Summary') {
 
   const kpiHeader = sheet.addRow(['COPE completeness'])
   sheet.mergeCells(kpiHeader.number, 1, kpiHeader.number, 2)
-  applySectionHeader(kpiHeader, SECTION_ACCENTS.C)
+  applySectionHeader(kpiHeader, THEME.orangeWash)
+  kpiHeader.getCell(1).font = { name: 'Calibri', size: 11, bold: true, color: { argb: THEME.ink } }
 
   const kpis = [
     ['Completeness', `${score.completeness_pct ?? 0}%`],
@@ -174,19 +199,21 @@ function buildSummarySheet(workbook, doc, sheetName = 'Summary') {
 
   sheet.addRow([])
 
-  const footerRow = sheet.addRow(['Generated by AXIOM Property Intelligence'])
+  const footerRow = sheet.addRow([
+    'Confidential. Generated by AXIOM Property Intelligence. Retain your Analysis ID# for retrieval.',
+  ])
   sheet.mergeCells(footerRow.number, 1, footerRow.number, 2)
   footerRow.getCell(1).font = {
     name: 'Calibri',
     size: 9,
     italic: true,
-    color: { argb: 'FF666666' },
+    color: { argb: THEME.inkMuted },
   }
 }
 
-function buildCopeSheet(workbook, doc, sheetName = 'COPE') {
+function buildCopeSheet(workbook, doc, sheetName = 'COPE Runway') {
   const sheet = workbook.addWorksheet(sheetName, {
-    views: [{ state: 'frozen', ySplit: 1, showGridLines: true }],
+    views: [{ state: 'frozen', ySplit: 1, showGridLines: false }],
   })
 
   sheet.columns = COPE_COLUMNS.map(col => ({ key: col.key, width: col.width }))
@@ -198,15 +225,21 @@ function buildCopeSheet(workbook, doc, sheetName = 'COPE') {
 
   for (const section of doc.copeSections ?? []) {
     const sectionLabel = section.cope_letter
-      ? `${section.cope_letter}, ${section.label ?? section.id ?? 'Section'}`
+      ? `${section.cope_letter}  ${section.label ?? section.id ?? 'Section'}`
       : section.label ?? section.id ?? 'Section'
 
     const sectionRow = sheet.addRow([sectionLabel, '', '', '', ''])
     sheet.mergeCells(sectionRow.number, 1, sectionRow.number, COPE_COLUMNS.length)
     applySectionHeader(sectionRow, sectionAccent(section))
 
-    const completeness = section.completeness ? ` (${section.completeness})` : ''
+    const completeness = section.completeness ? `  ·  ${section.completeness}` : ''
     sectionRow.getCell(1).value = `${sectionLabel}${completeness}`
+    sectionRow.getCell(1).font = {
+      name: 'Calibri',
+      size: 11,
+      bold: true,
+      color: { argb: THEME.ink },
+    }
 
     for (const field of section.fields ?? []) {
       const dataRow = sheet.addRow([
@@ -280,33 +313,54 @@ function excelSheetName(label, index, suffix = '') {
 }
 
 function buildBatchOverviewSheet(workbook, batchRun) {
-  const sheet = workbook.addWorksheet('Batch Summary', {
+  const sheet = workbook.addWorksheet('Batch Cover', {
     views: [{ showGridLines: false }],
     properties: { defaultColWidth: 18 },
   })
-  sheet.columns = [{ width: 22 }, { width: 48 }, { width: 16 }, { width: 14 }]
+  sheet.columns = [{ width: 22 }, { width: 48 }, { width: 16 }, { width: 16 }]
 
-  const titleRow = sheet.addRow(['AXIOM Property Intelligence, Batch Export'])
+  const titleRow = sheet.addRow(['AXIOM Property Intelligence'])
   sheet.mergeCells(titleRow.number, 1, titleRow.number, 4)
-  titleRow.height = 26
-  titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.headerFill } }
-  titleRow.getCell(1).font = { name: 'Calibri', size: 13, bold: true, color: { argb: THEME.headerFont } }
+  titleRow.height = 28
+  titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.black } }
+  titleRow.getCell(1).font = { name: 'Calibri', size: 14, bold: true, color: { argb: THEME.white } }
+
+  const accentRow = sheet.addRow(['Batch schedule export'])
+  sheet.mergeCells(accentRow.number, 1, accentRow.number, 4)
+  accentRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.orange } }
+  accentRow.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: THEME.ink } }
 
   sheet.addRow([])
   const meta = [
-    ['Batch ID', batchRun.batch_id ?? '-'],
+    ['Analysis ID#', batchRun.batch_id ?? '-'],
     ['Total charged', batchRun.totals?.user_price_usd != null ? `$${batchRun.totals.user_price_usd.toFixed(2)}` : '-'],
     ['Locations quoted', String(batchRun.totals?.location_count ?? 0)],
     ['Completed', String((batchRun.locations ?? []).filter(loc => loc.record).length)],
   ]
   for (const [label, value] of meta) {
     const row = sheet.addRow([label, value])
-    row.getCell(1).font = { name: 'Calibri', size: 10, bold: true }
-    row.getCell(2).font = { name: 'Calibri', size: 10 }
+    const isId = label.startsWith('Analysis ID')
+    row.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: THEME.ink } }
+    row.getCell(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: isId ? THEME.orangeWash : THEME.labelFill },
+    }
+    row.getCell(2).font = {
+      name: isId ? 'Consolas' : 'Calibri',
+      size: isId ? 11 : 10,
+      bold: isId,
+      color: { argb: isId ? 'FFB87A10' : THEME.ink },
+    }
+    row.getCell(2).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: isId ? THEME.orangeWash : THEME.white },
+    }
   }
 
   sheet.addRow([])
-  const header = sheet.addRow(['#', 'Address', 'Status', 'Report ID'])
+  const header = sheet.addRow(['#', 'Address', 'Status', 'Analysis ID#'])
   applyHeaderRow(header)
 
   ;(batchRun.locations ?? []).forEach((loc, index) => {
@@ -318,13 +372,13 @@ function buildBatchOverviewSheet(workbook, batchRun) {
     ])
     const stripe = index % 2 === 1
     row.eachCell((cell, colNumber) => {
-      applyBodyCell(cell, { stripe, center: colNumber === 1 || colNumber === 4 })
+      applyBodyCell(cell, { stripe, center: colNumber === 1 || colNumber === 4, mono: colNumber === 4 })
     })
   })
 }
 
 /** Multi-location workbook: summary sheet plus COPE sheets per successful location. */
-export async function downloadBatchCopeExcel(batchRun, { prefix = 'cope-batch' } = {}) {
+export async function downloadBatchCopeExcel(batchRun, { prefix = 'axiom-batch' } = {}) {
   if (!batchRun?.locations?.length) {
     throw new Error('No batch locations to export.')
   }
@@ -340,7 +394,7 @@ export async function downloadBatchCopeExcel(batchRun, { prefix = 'cope-batch' }
   enriched.forEach((loc, index) => {
     const doc = buildCopeReportDocument(loc.record)
     const label = loc.display_name ?? loc.address_input ?? `Location ${index + 1}`
-    const summaryName = excelSheetName(label, index, '-sum')
+    const summaryName = excelSheetName(label, index, '-cover')
     const copeName = excelSheetName(label, index, '-cope')
     buildSummarySheet(workbook, doc, summaryName)
     buildCopeSheet(workbook, doc, copeName)

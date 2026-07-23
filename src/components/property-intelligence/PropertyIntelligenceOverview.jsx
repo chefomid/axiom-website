@@ -163,7 +163,7 @@ export default function PropertyIntelligenceOverview({ comingSoon = true }) {
                     onClick={() => setConfirmationModalOpen(true)}
                     className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint underline decoration-ink-faint/40 underline-offset-4 transition-colors hover:text-ink-secondary"
                   >
-                    Retrieve with confirmation number
+                    Retrieve with Analysis ID#
                   </button>
                 ) : null}
               </div>

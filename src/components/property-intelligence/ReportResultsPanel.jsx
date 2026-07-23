@@ -102,6 +102,8 @@ export default function ReportResultsPanel({
   expanded = false,
   onToggleExpand,
   showHeader = true,
+  onRequestNewReport = null,
+  dossierFocus = false,
 }) {
   const isPanel = variant === 'panel'
   const [open, setOpen] = useState(Boolean(record))
@@ -171,19 +173,14 @@ export default function ReportResultsPanel({
 
   const reportSummary = (
     <>
-      <div className="border-b border-panel-border/60 px-5 py-3">
-        {record.report_id ? (
-          <ConfirmationNumberCopy confirmationId={record.report_id} tone="dossier" />
-        ) : null}
-        {hazardLink ? (
-          publicDataCommandEnabled ? (
+      {hazardLink ? (
+        <div className="border-b border-panel-border/60 px-5 py-3">
+          {publicDataCommandEnabled ? (
             <Link
               to={hazardLink}
               target="_blank"
               rel="noopener noreferrer"
-              className={`dossier-link inline-flex items-center gap-1 font-sans text-xs ${
-                record.report_id ? 'mt-3' : ''
-              }`}
+              className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
             >
               Live hazards at this location
               <span className="font-mono text-[10px] text-ink-muted" aria-hidden>
@@ -194,15 +191,13 @@ export default function ReportResultsPanel({
             <button
               type="button"
               onClick={() => setActiveTab('hazards')}
-              className={`dossier-link inline-flex items-center gap-1 font-sans text-xs ${
-                record.report_id ? 'mt-3' : ''
-              }`}
+              className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
             >
               View hazards for this location
             </button>
-          )
-        ) : null}
-      </div>
+          )}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2 border-b border-panel-border/60 px-5 py-3">
         {record.cope?.sections?.length ? (
@@ -239,7 +234,7 @@ export default function ReportResultsPanel({
       <div className="flex items-center gap-2 border-b border-panel-border/60 px-5 py-2">
         {!summaryExpanded && record.report_id ? (
           <span className="dossier-value min-w-0 truncate font-mono text-[10px] tabular-nums">
-            {record.report_id}
+            Analysis ID# {record.report_id}
           </span>
         ) : null}
         <div
@@ -329,23 +324,43 @@ export default function ReportResultsPanel({
                     {record.display_name}
                   </p>
                 ) : null}
+                {record.report_id ? (
+                  <div className="mt-2">
+                    <ConfirmationNumberCopy
+                      confirmationId={record.report_id}
+                      tone="dossier"
+                      compact
+                    />
+                  </div>
+                ) : null}
               </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <CollapseChevron
-                  expanded={summaryExpanded}
-                  onToggle={() => setSummaryExpanded(expanded => !expanded)}
-                  label="report summary"
-                />
-                {onToggleExpand ? (
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                {onRequestNewReport ? (
                   <button
                     type="button"
-                    onClick={onToggleExpand}
-                    className="dossier-btn-ghost"
-                    title={expanded ? 'Show map alongside report' : 'Expand report to full width'}
+                    onClick={onRequestNewReport}
+                    className="dossier-btn-primary"
                   >
-                    {expanded ? 'Split view' : 'Expand'}
+                    New report
                   </button>
                 ) : null}
+                <div className="flex items-center gap-1.5">
+                  <CollapseChevron
+                    expanded={summaryExpanded}
+                    onToggle={() => setSummaryExpanded(expanded => !expanded)}
+                    label="report summary"
+                  />
+                  {onToggleExpand && !dossierFocus ? (
+                    <button
+                      type="button"
+                      onClick={onToggleExpand}
+                      className="dossier-btn-ghost"
+                      title={expanded ? 'Show map alongside report' : 'Expand report to full width'}
+                    >
+                      {expanded ? 'Split view' : 'Expand'}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>

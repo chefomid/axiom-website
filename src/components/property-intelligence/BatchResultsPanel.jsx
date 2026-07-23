@@ -12,6 +12,8 @@ export default function BatchResultsPanel({
   expanded = false,
   onToggleExpand,
   onPreviewLocation,
+  onRequestNewReport = null,
+  dossierFocus = false,
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [exportingExcel, setExportingExcel] = useState(false)
@@ -77,8 +79,13 @@ export default function BatchResultsPanel({
               {enriched.length} / {batchRun.totals?.location_count} completed
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {onToggleExpand ? (
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            {onRequestNewReport ? (
+              <button type="button" onClick={onRequestNewReport} className="dossier-btn-primary">
+                New report
+              </button>
+            ) : null}
+            {onToggleExpand && !dossierFocus ? (
               <button type="button" onClick={onToggleExpand} className="dossier-btn-ghost">
                 {expanded ? 'Split view' : 'Expand'}
               </button>
@@ -86,7 +93,12 @@ export default function BatchResultsPanel({
           </div>
         </div>
         {batchRun.batch_id ? (
-          <ConfirmationNumberCopy confirmationId={batchRun.batch_id} tone="dossier" className="mt-3" />
+          <ConfirmationNumberCopy
+            confirmationId={batchRun.batch_id}
+            tone="dossier"
+            compact
+            className="mt-3"
+          />
         ) : null}
         {enriched.length > 0 ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -111,7 +111,7 @@ export default function ReportConfirmationModal({ open, onClose, onReportReady, 
       event.preventDefault()
       const confirmationId = normalizeConfirmationInput(input)
       if (!confirmationId) {
-        setError('Enter your confirmation number (for example AX-1A2B3C4D).')
+        setError('Enter your Analysis ID# (for example AX-1A2B3C4D).')
         return
       }
       setError(null)
@@ -149,7 +149,7 @@ export default function ReportConfirmationModal({ open, onClose, onReportReady, 
             <div className="shrink-0 border-b border-panel-border px-5 py-4 md:px-6">
               <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Report retrieval</p>
               <h2 id="report-confirmation-title" className="font-display mt-1 text-lg font-semibold text-white">
-                Retrieve with confirmation number
+                Retrieve with Analysis ID#
               </h2>
             </div>
 
@@ -174,7 +174,7 @@ export default function ReportConfirmationModal({ open, onClose, onReportReady, 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <label className="block">
                     <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
-                      Confirmation number
+                      Analysis ID#
                     </span>
                     <input
                       type="text"
@@ -196,7 +196,7 @@ export default function ReportConfirmationModal({ open, onClose, onReportReady, 
 
                   {phase === 'pending-timeout' ? (
                     <p className="font-sans text-sm leading-relaxed text-ink-secondary">
-                      Your report is still processing. Try again in a few minutes with the same confirmation number.
+                      Your report is still processing. Try again in a few minutes with the same Analysis ID#.
                     </p>
                   ) : null}
 
