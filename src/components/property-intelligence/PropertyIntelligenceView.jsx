@@ -77,6 +77,10 @@ export default function PropertyIntelligenceView() {
   )
   const mainSplitRef = useRef(null)
   const splitDraggingRef = useRef(false)
+  const splitReportPctRef = useRef(50)
+  const splitMapPaneRef = useRef(null)
+  const splitReportPaneRef = useRef(null)
+  const mapInstanceRef = useRef(null)
 
   const [inputMode, setInputMode] = useState('single')
   const [scheduleRows, setScheduleRows] = useState([])
@@ -1147,18 +1151,40 @@ export default function PropertyIntelligenceView() {
     if (!dossierFocus) return undefined
     setReportExpanded(false)
     setSplitReportPct(50)
+    splitReportPctRef.current = 50
     return undefined
   }, [dossierFocus, record?.report_id, batchRun?.batch_id])
 
-  const updateSplitFromClientX = useCallback(clientX => {
-    const root = mainSplitRef.current
-    if (!root) return
-    const rect = root.getBoundingClientRect()
-    if (rect.width < 1) return
-    const reportWidth = rect.right - clientX
-    const pct = (reportWidth / rect.width) * 100
-    setSplitReportPct(Math.min(72, Math.max(28, pct)))
+  const applySplitPaneWidths = useCallback(pct => {
+    const reportPct = Math.min(72, Math.max(28, pct))
+    const mapPct = 100 - reportPct
+    splitReportPctRef.current = reportPct
+    const mapPane = splitMapPaneRef.current
+    const reportPane = splitReportPaneRef.current
+    if (mapPane) {
+      mapPane.style.flex = `0 0 ${mapPct}%`
+      mapPane.style.width = `${mapPct}%`
+      mapPane.style.maxWidth = `${mapPct}%`
+    }
+    if (reportPane) {
+      reportPane.style.flex = `0 0 ${reportPct}%`
+      reportPane.style.width = `${reportPct}%`
+      reportPane.style.maxWidth = `${reportPct}%`
+    }
+    return reportPct
   }, [])
+
+  const updateSplitFromClientX = useCallback(
+    clientX => {
+      const root = mainSplitRef.current
+      if (!root) return
+      const rect = root.getBoundingClientRect()
+      if (rect.width < 1) return
+      const reportWidth = rect.right - clientX
+      applySplitPaneWidths((reportWidth / rect.width) * 100)
+    },
+    [applySplitPaneWidths],
+  )
 
   const handleSplitPointerDown = useCallback(
     event => {
@@ -1166,6 +1192,7 @@ export default function PropertyIntelligenceView() {
       event.preventDefault()
       event.stopPropagation()
       splitDraggingRef.current = true
+      document.body.dataset.splitDragging = '1'
       setSplitDragging(true)
       updateSplitFromClientX(event.clientX)
     },
@@ -1184,11 +1211,21 @@ export default function PropertyIntelligenceView() {
       updateSplitFromClientX(event.clientX)
     }
     const onUp = () => {
+      if (!splitDraggingRef.current) return
       splitDraggingRef.current = false
+      delete document.body.dataset.splitDragging
+      setSplitReportPct(splitReportPctRef.current)
       setSplitDragging(false)
+      window.requestAnimationFrame(() => {
+        try {
+          mapInstanceRef.current?.resize?.()
+        } catch {
+          /* map may be gone */
+        }
+      })
     }
 
-    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointermove', onMove, { passive: true })
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onUp)
     return () => {
@@ -1197,6 +1234,7 @@ export default function PropertyIntelligenceView() {
       window.removeEventListener('pointercancel', onUp)
       document.body.style.cursor = prevCursor
       document.body.style.userSelect = prevUserSelect
+      delete document.body.dataset.splitDragging
     }
   }, [splitDragging, updateSplitFromClientX])
 
@@ -1357,6 +1395,7 @@ export default function PropertyIntelligenceView() {
         ) : null}
 
         <div
+          ref={splitMapPaneRef}
           className={`relative min-w-0 ${
             postPaymentOverlayActive || splitDragging ? 'pointer-events-none' : ''
           } ${postPaymentOverlayActive ? 'opacity-0' : ''} ${
@@ -1389,7 +1428,10 @@ export default function PropertyIntelligenceView() {
             showPlaceholder={false}
             locationLocked={Boolean(mapCoords) && (locationLocked || scheduleMode)}
             locationPhase={mapCoords ? (scheduleMode || locationLocked ? 'locked' : locationPhase) : locationPhase}
-            onMapReady={setMapInstance}
+            onMapReady={map => {
+              mapInstanceRef.current = map
+              setMapInstance(map)
+            }}
             scheduleLocations={scheduleMapLocations}
             scheduleFocusRowIndex={scheduleFocusRowIndex}
             scheduleFitAllSignal={scheduleFitAllSignal}
@@ -1433,10 +1475,14 @@ export default function PropertyIntelligenceView() {
             onKeyDown={event => {
               if (event.key === 'ArrowLeft') {
                 event.preventDefault()
-                setSplitReportPct(pct => Math.min(72, pct + 2))
+                const next = applySplitPaneWidths(splitReportPctRef.current + 2)
+                setSplitReportPct(next)
+                window.requestAnimationFrame(() => mapInstanceRef.current?.resize?.())
               } else if (event.key === 'ArrowRight') {
                 event.preventDefault()
-                setSplitReportPct(pct => Math.max(28, pct - 2))
+                const next = applySplitPaneWidths(splitReportPctRef.current - 2)
+                setSplitReportPct(next)
+                window.requestAnimationFrame(() => mapInstanceRef.current?.resize?.())
               }
             }}
           >
@@ -1457,11 +1503,12 @@ export default function PropertyIntelligenceView() {
 
         {showReportPanel ? (
           <aside
-            className={`flex min-h-0 w-full flex-col border-t border-panel-border bg-[#f6f6f4] lg:border-t-0 ${
+            ref={splitReportPaneRef}
+            className={`flex min-h-0 min-w-0 w-full flex-col border-t border-panel-border bg-[#f6f6f4] lg:border-t-0 ${
               reportExpanded
                 ? 'min-h-0 flex-1'
                 : dossierFocus
-                  ? 'pi-split-report min-h-0 flex-1 lg:flex-none'
+                  ? 'pi-split-report min-h-0 min-w-0 flex-1 lg:flex-none'
                   : 'min-h-0 flex-1 lg:w-[min(40rem,46vw)] lg:min-w-[30rem] lg:max-w-[680px] lg:flex-none lg:border-l'
             }`}
             style={

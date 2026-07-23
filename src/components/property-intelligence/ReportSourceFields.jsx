@@ -8,12 +8,10 @@ function formatFieldKey(key) {
 }
 
 function FieldRow({ field }) {
-  const confidence = String(field.confidence ?? '').toLowerCase()
-
   return (
-    <li className={`sources-rail__field sources-rail__field--${confidence || 'unknown'}`}>
+    <li className="sources-rail__field">
       <p className="sources-rail__field-key">{formatFieldKey(field.key)}</p>
-      {field.value ? <p className="sources-rail__field-value">{field.value}</p> : null}
+      {field.value ? <p className="sources-rail__field-value dossier-value">{field.value}</p> : null}
     </li>
   )
 }

@@ -294,8 +294,8 @@ export default function ReportResultsPanel({
       <div
         className={
           isPanel
-            ? 'min-h-0 flex-1 overflow-y-auto sleek-scrollbar'
-            : 'max-h-[min(50vh,420px)] overflow-y-auto sleek-scrollbar'
+            ? 'report-dossier-body min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto sleek-scrollbar'
+            : 'max-h-[min(50vh,420px)] overflow-x-hidden overflow-y-auto sleek-scrollbar'
         }
       >
         {activeTab === 'cope' ? <CopeSnapshot cope={record.cope} /> : null}
@@ -345,7 +345,7 @@ export default function ReportResultsPanel({
                   <div className="mt-2">
                     <ConfirmationNumberCopy
                       confirmationId={record.report_id}
-                      tone="dossier"
+                      tone="dossierHeader"
                       compact
                     />
                   </div>

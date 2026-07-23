@@ -268,10 +268,24 @@ export default function PropertyMap({
 
     init()
 
-    const ro = new ResizeObserver(() => map?.resize())
+    let resizeRaf = 0
+    const ro = new ResizeObserver(() => {
+      // Skip thrashing MapLibre resize while the split handle is dragging.
+      if (document.body.dataset.splitDragging === '1') return
+      if (resizeRaf) return
+      resizeRaf = window.requestAnimationFrame(() => {
+        resizeRaf = 0
+        try {
+          map?.resize()
+        } catch {
+          /* */
+        }
+      })
+    })
     ro.observe(container)
 
     return () => {
+      if (resizeRaf) window.cancelAnimationFrame(resizeRaf)
       ro.disconnect()
       if (attributionRef.current && map) {
         try {

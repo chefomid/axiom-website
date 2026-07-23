@@ -11,9 +11,12 @@ export default function ConfirmationNumberCopy({
   if (!id) return null
 
   const isDossier = tone === 'dossier'
-  const copyBtnClass = isDossier
-    ? 'dossier-btn-ghost !px-2.5 !py-1'
-    : 'rounded border border-panel-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-secondary transition-colors hover:border-command-watch/40 hover:text-command-watch'
+  const isDossierHeader = tone === 'dossierHeader'
+  const copyBtnClass = isDossierHeader
+    ? 'rounded border border-[#e8a838]/55 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#e8a838] transition hover:bg-[#e8a838]/15'
+    : isDossier
+      ? 'dossier-btn-ghost !px-2.5 !py-1'
+      : 'rounded border border-panel-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-secondary transition-colors hover:border-command-watch/40 hover:text-command-watch'
 
   const handleCopy = useCallback(async () => {
     try {
@@ -25,12 +28,16 @@ export default function ConfirmationNumberCopy({
     }
   }, [id])
 
-  const idClass = isDossier
-    ? 'font-mono tabular-nums tracking-wide dossier-value'
-    : 'font-mono tabular-nums tracking-wide text-command-watch'
-  const labelClass = isDossier
-    ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted'
-    : 'font-mono text-[9px] uppercase tracking-[0.14em] text-command-watch'
+  const idClass = isDossierHeader
+    ? 'font-mono tabular-nums tracking-wide text-white'
+    : isDossier
+      ? 'font-mono tabular-nums tracking-wide dossier-value'
+      : 'font-mono tabular-nums tracking-wide text-command-watch'
+  const labelClass = isDossierHeader
+    ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-[#e8a838]'
+    : isDossier
+      ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted'
+      : 'font-mono text-[9px] uppercase tracking-[0.14em] text-command-watch'
 
   if (compact) {
     return (

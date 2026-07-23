@@ -95,7 +95,7 @@ export default function BatchResultsPanel({
         {batchRun.batch_id ? (
           <ConfirmationNumberCopy
             confirmationId={batchRun.batch_id}
-            tone="dossier"
+            tone="dossierHeader"
             compact
             className="mt-3"
           />
