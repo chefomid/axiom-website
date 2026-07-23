@@ -2829,6 +2829,7 @@ html::-webkit-scrollbar-thumb:hover,
 
 .report-dossier-body {
   min-width: 0;
+  background: var(--dossier-surface, #ffffff);
 }
 
 .dossier-btn-primary,
