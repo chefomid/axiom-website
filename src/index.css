@@ -3011,7 +3011,8 @@ html::-webkit-scrollbar-thumb:hover,
 
 .cope-runway {
   min-width: 0;
-  background: var(--dossier-bg, #f6f6f4);
+  min-height: 100%;
+  background: var(--dossier-surface, #ffffff);
 }
 
 .cope-runway__scroll {

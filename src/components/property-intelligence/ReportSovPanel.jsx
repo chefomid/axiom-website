@@ -18,8 +18,8 @@ const SOV_FIELD_META = [
 
 const CONFIDENCE_CLASS = {
   high: 'text-command-stable',
-  medium: 'text-ink-secondary',
-  low: 'text-ink-faint',
+  medium: 'text-[#b45309]',
+  low: 'text-[#ca8a04]',
   unknown: 'text-ink-faint',
 }
 
