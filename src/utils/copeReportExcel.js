@@ -1,27 +1,38 @@
 import ExcelJS from 'exceljs'
 
-import { buildCopeReportDocument } from './copeReportDocument'
+import { buildCopeReportDocument, buildSovReportDocument } from './copeReportDocument'
 import { formatCopeSourceLabel } from './copeSourceLabels'
 
-/** AXIOM dossier palette: black / paper white / command orange */
+/**
+ * SovExcel master workbook palette.
+ * Charcoal / paper / restrained amber accent / pine-teal brand green.
+ */
 const THEME = {
-  black: 'FF080808',
-  paper: 'FFF6F6F4',
+  black: 'FF1C1C1C',
+  paper: 'FFFAFAF8',
   white: 'FFFFFFFF',
-  ink: 'FF141414',
-  inkMuted: 'FF5A5A5A',
-  border: 'FFD6D6D2',
-  orange: 'FFE8A838',
-  orangeWash: 'FFFFF1D6',
-  stripe: 'FFF0F0EE',
-  labelFill: 'FFEFEEEC',
+  ink: 'FF2C2C2C',
+  inkMuted: 'FF6B6B6B',
+  inkFaint: 'FF8A8A8A',
+  border: 'FFD0D0CC',
+  borderStrong: 'FFB4B4AE',
+  orange: 'FFD4962A',
+  orangeWash: 'FFFFF8EB',
+  stripe: 'FFF7F7F5',
+  labelFill: 'FFF1F1EE',
+  sectionFill: 'FFF3F3F0',
+  brandGreen: 'FF0F6B54',
+  brandGreenWash: 'FFE8F4F0',
+  confidenceHigh: 'FF1F7A4D',
+  confidenceMedium: 'FFB45309',
+  confidenceLow: 'FFCA8A04',
 }
 
 const SECTION_ACCENTS = {
-  C: 'FFFFF1D6',
-  O: 'FFFFF1D6',
-  P: 'FFFFF1D6',
-  E: 'FFFFF1D6',
+  C: THEME.sectionFill,
+  O: THEME.sectionFill,
+  P: THEME.sectionFill,
+  E: THEME.sectionFill,
 }
 
 const COPE_COLUMNS = [
@@ -46,16 +57,21 @@ function thinBorder(color = THEME.border) {
 }
 
 function applyHeaderRow(row) {
-  row.height = 22
+  row.height = 24
   row.eachCell(cell => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.black } }
-    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: THEME.white } }
-    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
+    cell.font = {
+      name: 'Calibri',
+      size: 10,
+      bold: true,
+      color: { argb: THEME.white },
+    }
+    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true, indent: 0.5 }
     cell.border = thinBorder(THEME.black)
   })
 }
 
-function applyBodyCell(cell, { stripe = false, center = false, mono = false } = {}) {
+function applyBodyCell(cell, { stripe = false, center = false, mono = false, muted = false } = {}) {
   cell.fill = {
     type: 'pattern',
     pattern: 'solid',
@@ -64,23 +80,34 @@ function applyBodyCell(cell, { stripe = false, center = false, mono = false } = 
   cell.font = {
     name: mono ? 'Consolas' : 'Calibri',
     size: 10,
-    color: { argb: THEME.ink },
+    color: { argb: muted ? THEME.inkMuted : THEME.ink },
   }
   cell.alignment = {
-    vertical: 'top',
+    vertical: 'middle',
     horizontal: center ? 'center' : 'left',
     wrapText: true,
   }
   cell.border = thinBorder()
 }
 
-function applySectionHeader(row, accentArgb) {
-  row.height = 24
-  row.eachCell(cell => {
+function applySectionHeader(row, accentArgb = THEME.sectionFill) {
+  row.height = 22
+  row.eachCell((cell, colNumber) => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: accentArgb } }
-    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: THEME.ink } }
-    cell.alignment = { vertical: 'middle', horizontal: 'left' }
-    cell.border = thinBorder()
+    cell.font = {
+      name: 'Calibri',
+      size: 10,
+      bold: true,
+      color: { argb: THEME.ink },
+    }
+    cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 0.5 }
+    cell.border = thinBorder(THEME.borderStrong)
+    if (colNumber === 1) {
+      cell.border = {
+        ...thinBorder(THEME.borderStrong),
+        left: { style: 'medium', color: { argb: THEME.brandGreen } },
+      }
+    }
   })
 }
 
@@ -89,7 +116,15 @@ function sectionAccent(section) {
     .trim()
     .charAt(0)
     .toUpperCase()
-  return SECTION_ACCENTS[letter] ?? THEME.orangeWash
+  return SECTION_ACCENTS[letter] ?? THEME.sectionFill
+}
+
+function confidenceFontColor(confidence) {
+  const value = String(confidence ?? '').toLowerCase()
+  if (value === 'high') return THEME.confidenceHigh
+  if (value === 'medium') return THEME.confidenceMedium
+  if (value === 'low') return THEME.confidenceLow
+  return THEME.inkMuted
 }
 
 function isFieldPopulated(field) {
@@ -114,33 +149,58 @@ function buildSummarySheet(workbook, doc, sheetName = 'Cover') {
     properties: { defaultColWidth: 18 },
   })
 
-  sheet.columns = [{ width: 24 }, { width: 54 }]
+  sheet.columns = [{ width: 26 }, { width: 56 }]
 
   const meta = doc.meta ?? {}
-  const score = doc.copeScore ?? {}
+  const hasCope = Boolean(doc.copeSections?.length)
+  const hasSov = Boolean(doc.statementOfValues && Object.keys(doc.statementOfValues).length)
+  const contents = [
+    hasCope ? 'COPE runway' : null,
+    hasSov ? 'Statement of values' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   const brandRow = sheet.addRow(['AXIOM Property Intelligence'])
   sheet.mergeCells(brandRow.number, 1, brandRow.number, 2)
-  brandRow.height = 30
+  brandRow.height = 28
   brandRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.black } }
-  brandRow.getCell(1).font = { name: 'Calibri', size: 14, bold: true, color: { argb: THEME.white } }
+  brandRow.getCell(1).font = {
+    name: 'Calibri',
+    size: 13,
+    bold: true,
+    color: { argb: THEME.white },
+  }
   brandRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
 
-  const accentLabel =
-    meta.type === 'sov' ? 'Statement of values export' : 'Paid underwriting dossier'
-  const accentRow = sheet.addRow([accentLabel])
+  const accentRow = sheet.addRow(['SovExcel master workbook'])
   sheet.mergeCells(accentRow.number, 1, accentRow.number, 2)
   accentRow.height = 18
-  accentRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.orange } }
-  accentRow.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: THEME.ink } }
+  accentRow.getCell(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: THEME.brandGreen },
+  }
+  accentRow.getCell(1).font = {
+    name: 'Calibri',
+    size: 9,
+    bold: true,
+    color: { argb: THEME.white },
+  }
   accentRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
 
-  const titleRow = sheet.addRow([meta.title ?? 'COPE Underwriting Dossier'])
+  const titleRow = sheet.addRow([meta.location ?? meta.title ?? 'Property dossier'])
   sheet.mergeCells(titleRow.number, 1, titleRow.number, 2)
-  titleRow.height = 24
+  titleRow.height = 22
   titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.paper } }
-  titleRow.getCell(1).font = { name: 'Calibri', size: 12, bold: true, color: { argb: THEME.ink } }
+  titleRow.getCell(1).font = {
+    name: 'Calibri',
+    size: 11,
+    bold: true,
+    color: { argb: THEME.ink },
+  }
   titleRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  titleRow.getCell(1).border = thinBorder(THEME.borderStrong)
 
   sheet.addRow([])
 
@@ -149,7 +209,7 @@ function buildSummarySheet(workbook, doc, sheetName = 'Cover') {
     ['Location', meta.location ?? '-'],
     ['Generated', meta.generatedDate ?? '-'],
     ['Prepared by', meta.preparedBy ?? 'AXIOM Property Intelligence'],
-    ['Data source', meta.dataSource ?? 'AXIOM Property Intelligence'],
+    ['Workbook contents', contents || '-'],
   ]
   if (meta.visionIsoClass || meta.visionIsoLabel) {
     metadata.push([
@@ -157,69 +217,37 @@ function buildSummarySheet(workbook, doc, sheetName = 'Cover') {
       [meta.visionIsoClass, meta.visionIsoLabel].filter(Boolean).join(', ') || '-',
     ])
   }
-  if (meta.visionDisclaimer) {
-    metadata.push(['Image analysis note', meta.visionDisclaimer])
-  }
 
   for (const [label, value] of metadata) {
     const row = sheet.addRow([label, value])
-    row.height = 20
+    row.height = 19
     const isId = label.startsWith('Analysis ID')
     row.getCell(1).fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: isId ? THEME.orangeWash : THEME.labelFill },
+      fgColor: { argb: THEME.labelFill },
     }
-    row.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: THEME.ink } }
+    row.getCell(1).font = {
+      name: 'Calibri',
+      size: 9,
+      bold: true,
+      color: { argb: THEME.inkMuted },
+    }
     row.getCell(1).border = thinBorder()
+    row.getCell(1).alignment = { vertical: 'middle', indent: 0.5 }
     row.getCell(2).fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: isId ? THEME.orangeWash : THEME.white },
+      fgColor: { argb: isId ? THEME.brandGreenWash : THEME.white },
     }
     row.getCell(2).font = {
       name: isId ? 'Consolas' : 'Calibri',
-      size: isId ? 11 : 10,
+      size: isId ? 10 : 10,
       bold: isId,
-      color: { argb: isId ? 'FFB87A10' : THEME.ink },
+      color: { argb: isId ? THEME.brandGreen : THEME.ink },
     }
     row.getCell(2).alignment = { wrapText: true, vertical: 'middle' }
     row.getCell(2).border = thinBorder()
-  }
-
-  if (meta.type !== 'sov') {
-    sheet.addRow([])
-
-    const kpiHeader = sheet.addRow(['COPE completeness'])
-    sheet.mergeCells(kpiHeader.number, 1, kpiHeader.number, 2)
-    applySectionHeader(kpiHeader, THEME.orangeWash)
-    kpiHeader.getCell(1).font = { name: 'Calibri', size: 11, bold: true, color: { argb: THEME.ink } }
-
-    const kpis = [
-      ['Completeness', `${score.completeness_pct ?? 0}%`],
-      ['Observed fields', String(score.observed ?? 0)],
-      ['Unknown fields', String(score.unknown ?? 0)],
-      ['Total fields', String(score.total ?? 0)],
-    ]
-
-    kpis.forEach(([label, value], index) => {
-      const row = sheet.addRow([label, value])
-      row.height = 20
-      applyBodyCell(row.getCell(1), { stripe: index % 2 === 1 })
-      applyBodyCell(row.getCell(2), { stripe: index % 2 === 1, center: true })
-      row.getCell(1).font = { ...row.getCell(1).font, bold: true }
-    })
-  } else {
-    const sovCount = Object.keys(doc.statementOfValues || {}).length
-    sheet.addRow([])
-    const kpiHeader = sheet.addRow(['SOV schedule'])
-    sheet.mergeCells(kpiHeader.number, 1, kpiHeader.number, 2)
-    applySectionHeader(kpiHeader, THEME.orangeWash)
-    const row = sheet.addRow(['Reconciled fields', String(sovCount)])
-    row.height = 20
-    applyBodyCell(row.getCell(1))
-    applyBodyCell(row.getCell(2), { center: true })
-    row.getCell(1).font = { ...row.getCell(1).font, bold: true }
   }
 
   sheet.addRow([])
@@ -230,9 +258,9 @@ function buildSummarySheet(workbook, doc, sheetName = 'Cover') {
   sheet.mergeCells(footerRow.number, 1, footerRow.number, 2)
   footerRow.getCell(1).font = {
     name: 'Calibri',
-    size: 9,
+    size: 8,
     italic: true,
-    color: { argb: THEME.inkMuted },
+    color: { argb: THEME.inkFaint },
   }
 }
 
@@ -296,20 +324,27 @@ function buildSovSheet(workbook, doc, sheetName = 'Statement of Values') {
 
   entries.forEach(([fieldId, entry], index) => {
     const lanes = Array.isArray(entry?.supporting_lanes) ? entry.supporting_lanes.join(', ') : '-'
+    const confidence = entry?.confidence || '-'
     const row = sheet.addRow([
       sovFieldLabel(fieldId),
       entry?.value != null && entry.value !== '' ? String(entry.value) : '-',
       formatCopeSourceLabel(entry?.primary_source) || entry?.primary_source || '-',
-      entry?.confidence || '-',
+      confidence,
       lanes || '-',
     ])
-    row.height = 20
+    row.height = 19
     const stripe = index % 2 === 1
-    applyBodyCell(row.getCell(1), { stripe })
+    applyBodyCell(row.getCell(1), { stripe, muted: true })
     applyBodyCell(row.getCell(2), { stripe, mono: true })
     applyBodyCell(row.getCell(3), { stripe })
     applyBodyCell(row.getCell(4), { stripe, center: true })
-    applyBodyCell(row.getCell(5), { stripe })
+    row.getCell(4).font = {
+      name: 'Calibri',
+      size: 9,
+      bold: true,
+      color: { argb: confidenceFontColor(confidence) },
+    }
+    applyBodyCell(row.getCell(5), { stripe, muted: true })
   })
 
   const discrepancies = doc.sovAnalysis?.discrepancies || []
@@ -317,7 +352,7 @@ function buildSovSheet(workbook, doc, sheetName = 'Statement of Values') {
     sheet.addRow([])
     const section = sheet.addRow(['Lane discrepancies', '', '', '', ''])
     sheet.mergeCells(section.number, 1, section.number, SOV_COLUMNS.length)
-    applySectionHeader(section, THEME.orangeWash)
+    applySectionHeader(section, THEME.brandGreenWash)
 
     const discHeader = sheet.addRow(['Field', 'Status', 'Resolved value', 'Rationale', 'Lane values'])
     applyHeaderRow(discHeader)
@@ -347,7 +382,7 @@ function buildSovSheet(workbook, doc, sheetName = 'Statement of Values') {
     sheet.addRow([])
     const section = sheet.addRow(['Gap fills', '', '', '', ''])
     sheet.mergeCells(section.number, 1, section.number, SOV_COLUMNS.length)
-    applySectionHeader(section, THEME.orangeWash)
+    applySectionHeader(section, THEME.brandGreenWash)
 
     const enrichHeader = sheet.addRow(['Field', 'Value', 'Source', 'Note', ''])
     applyHeaderRow(enrichHeader)
@@ -368,7 +403,7 @@ function buildSovSheet(workbook, doc, sheetName = 'Statement of Values') {
   }
 }
 
-function buildCopeSheet(workbook, doc, sheetName = 'COPE Runway') {
+function buildCopeSheet(workbook, doc, sheetName = 'COPE') {
   const sheet = workbook.addWorksheet(sheetName, {
     views: [{ state: 'frozen', ySplit: 1, showGridLines: false }],
   })
@@ -388,15 +423,7 @@ function buildCopeSheet(workbook, doc, sheetName = 'COPE Runway') {
     const sectionRow = sheet.addRow([sectionLabel, '', ''])
     sheet.mergeCells(sectionRow.number, 1, sectionRow.number, COPE_COLUMNS.length)
     applySectionHeader(sectionRow, sectionAccent(section))
-
-    const completeness = section.completeness ? `  ·  ${section.completeness}` : ''
-    sectionRow.getCell(1).value = `${sectionLabel}${completeness}`
-    sectionRow.getCell(1).font = {
-      name: 'Calibri',
-      size: 11,
-      bold: true,
-      color: { argb: THEME.ink },
-    }
+    sectionRow.getCell(1).value = sectionLabel
 
     for (const field of section.fields ?? []) {
       const dataRow = sheet.addRow([
@@ -406,9 +433,10 @@ function buildCopeSheet(workbook, doc, sheetName = 'COPE Runway') {
       ])
       dataRow.height = 18
       const stripe = rowIndex % 2 === 1
-      applyBodyCell(dataRow.getCell(1), { stripe })
-      applyBodyCell(dataRow.getCell(2), { stripe, mono: true })
-      applyBodyCell(dataRow.getCell(3), { stripe })
+      const missing = !isFieldPopulated(field)
+      applyBodyCell(dataRow.getCell(1), { stripe, muted: true })
+      applyBodyCell(dataRow.getCell(2), { stripe, mono: true, muted: missing })
+      applyBodyCell(dataRow.getCell(3), { stripe, muted: missing })
       rowIndex += 1
     }
 
@@ -416,37 +444,35 @@ function buildCopeSheet(workbook, doc, sheetName = 'COPE Runway') {
   }
 }
 
-export async function buildCopeExcelWorkbook(doc) {
-  const workbook = new ExcelJS.Workbook()
-  workbook.creator = doc.meta?.preparedBy ?? 'AXIOM Property Intelligence'
-  workbook.created = new Date()
-  workbook.modified = new Date()
-
-  buildSummarySheet(workbook, doc)
-  buildCopeSheet(workbook, doc)
-  if (doc.statementOfValues && Object.keys(doc.statementOfValues).length) {
-    buildSovSheet(workbook, doc)
-  }
-
-  return workbook
-}
-
+/** Master SovExcel workbook: Cover + COPE (when present) + Statement of Values (when present). */
 export async function buildSovExcelWorkbook(doc) {
   const workbook = new ExcelJS.Workbook()
   workbook.creator = doc.meta?.preparedBy ?? 'AXIOM Property Intelligence'
   workbook.created = new Date()
   workbook.modified = new Date()
 
-  const sovDoc = {
+  const masterDoc = {
     ...doc,
     meta: {
       ...(doc.meta ?? {}),
-      title: 'Statement of Values',
+      title: doc.meta?.location ?? 'SovExcel dossier',
     },
   }
-  buildSummarySheet(workbook, sovDoc, 'Cover')
-  buildSovSheet(workbook, sovDoc)
+
+  buildSummarySheet(workbook, masterDoc, 'Cover')
+  if (masterDoc.copeSections?.length) {
+    buildCopeSheet(workbook, masterDoc, 'COPE')
+  }
+  if (masterDoc.statementOfValues && Object.keys(masterDoc.statementOfValues).length) {
+    buildSovSheet(workbook, masterDoc, 'Statement of Values')
+  }
+
   return workbook
+}
+
+/** @deprecated Prefer buildSovExcelWorkbook; kept for batch/exit-modal callers. */
+export async function buildCopeExcelWorkbook(doc) {
+  return buildSovExcelWorkbook(doc)
 }
 
 function saveExcelBlob(buffer, locationLabel, prefix = 'cope-report') {
@@ -464,20 +490,12 @@ function saveExcelBlob(buffer, locationLabel, prefix = 'cope-report') {
   URL.revokeObjectURL(url)
 }
 
-/** Build workbook from report document and trigger browser download. */
-export async function downloadCopeExcel(doc, locationLabel, { prefix = 'cope-report' } = {}) {
-  const workbook = await buildCopeExcelWorkbook(doc)
-  const buffer = await workbook.xlsx.writeBuffer()
-  if (!buffer?.byteLength) {
-    throw new Error('Excel export returned an empty file.')
-  }
-  saveExcelBlob(buffer, locationLabel, prefix)
-}
-
-/** Dedicated SOV workbook: cover + statement of values schedule. */
-export async function downloadSovExcel(doc, locationLabel, { prefix = 'sov-report' } = {}) {
-  if (!doc?.statementOfValues || !Object.keys(doc.statementOfValues).length) {
-    throw new Error('Statement of Values is required to export SOV Excel.')
+/** Download master SovExcel workbook (Cover + COPE + SOV sheets as available). */
+export async function downloadSovExcel(doc, locationLabel, { prefix = 'sovexcel' } = {}) {
+  const hasCope = Boolean(doc?.copeSections?.length)
+  const hasSov = Boolean(doc?.statementOfValues && Object.keys(doc.statementOfValues).length)
+  if (!hasCope && !hasSov) {
+    throw new Error('No COPE or Statement of Values data available to export.')
   }
   const workbook = await buildSovExcelWorkbook(doc)
   const buffer = await workbook.xlsx.writeBuffer()
@@ -487,10 +505,17 @@ export async function downloadSovExcel(doc, locationLabel, { prefix = 'sov-repor
   saveExcelBlob(buffer, locationLabel, prefix)
 }
 
+/** @deprecated Prefer downloadSovExcel; kept for exit-modal / batch callers. */
+export async function downloadCopeExcel(doc, locationLabel, { prefix = 'sovexcel' } = {}) {
+  await downloadSovExcel(doc, locationLabel, { prefix })
+}
+
 /** Convenience: build document from enrich record, then download. */
-export async function downloadCopeExcelFromRecord(record, locationLabel, { prefix = 'cope-report' } = {}) {
-  const doc = buildCopeReportDocument(record)
-  await downloadCopeExcel(doc, locationLabel, { prefix })
+export async function downloadCopeExcelFromRecord(record, locationLabel, { prefix = 'sovexcel' } = {}) {
+  const doc = record?.cope?.sections?.length
+    ? buildCopeReportDocument(record)
+    : buildSovReportDocument(record)
+  await downloadSovExcel(doc, locationLabel, { prefix })
 }
 
 function excelSheetName(label, index, suffix = '') {
@@ -512,10 +537,19 @@ function buildBatchOverviewSheet(workbook, batchRun) {
   titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.black } }
   titleRow.getCell(1).font = { name: 'Calibri', size: 14, bold: true, color: { argb: THEME.white } }
 
-  const accentRow = sheet.addRow(['Batch schedule export'])
+  const accentRow = sheet.addRow(['SovExcel batch export'])
   sheet.mergeCells(accentRow.number, 1, accentRow.number, 4)
-  accentRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: THEME.orange } }
-  accentRow.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: THEME.ink } }
+  accentRow.getCell(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: THEME.brandGreen },
+  }
+  accentRow.getCell(1).font = {
+    name: 'Calibri',
+    size: 9,
+    bold: true,
+    color: { argb: THEME.white },
+  }
 
   sheet.addRow([])
   const meta = [
@@ -527,23 +561,30 @@ function buildBatchOverviewSheet(workbook, batchRun) {
   for (const [label, value] of meta) {
     const row = sheet.addRow([label, value])
     const isId = label.startsWith('Analysis ID')
-    row.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: THEME.ink } }
+    row.getCell(1).font = {
+      name: 'Calibri',
+      size: 9,
+      bold: true,
+      color: { argb: THEME.inkMuted },
+    }
     row.getCell(1).fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: isId ? THEME.orangeWash : THEME.labelFill },
+      fgColor: { argb: THEME.labelFill },
     }
+    row.getCell(1).border = thinBorder()
     row.getCell(2).font = {
       name: isId ? 'Consolas' : 'Calibri',
-      size: isId ? 11 : 10,
+      size: 10,
       bold: isId,
-      color: { argb: isId ? 'FFB87A10' : THEME.ink },
+      color: { argb: isId ? THEME.brandGreen : THEME.ink },
     }
     row.getCell(2).fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: isId ? THEME.orangeWash : THEME.white },
+      fgColor: { argb: isId ? THEME.brandGreenWash : THEME.white },
     }
+    row.getCell(2).border = thinBorder()
   }
 
   sheet.addRow([])

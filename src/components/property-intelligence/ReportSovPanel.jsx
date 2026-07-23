@@ -73,159 +73,171 @@ function CollapsibleSection({ title, open, onToggle, children }) {
         </span>
         <span className="cope-runway__count font-mono text-sm leading-none">{open ? '−' : '+'}</span>
       </button>
-      {open ? <div className="border-t border-panel-border/60 px-4 py-3">{children}</div> : null}
+      {open ? <div className="border-t border-panel-border/60">{children}</div> : null}
     </section>
   )
 }
 
-function SovFieldRow({ fieldId, entry }) {
-  const tone = confidenceTone(entry.confidence)
-  const source = formatCopeSourceLabel(entry.primary_source) || entry.primary_source || '-'
-  const lanes = Array.isArray(entry.supporting_lanes) ? entry.supporting_lanes : []
-
+function TableShell({ children, minWidth = '40rem' }) {
   return (
-    <li className="rounded border border-panel-border bg-panel-surface/60 px-3 py-2.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
-          {formatFieldLabel(fieldId)}
-        </p>
-        {entry.confidence ? (
-          <span className={`shrink-0 font-mono text-[8px] uppercase ${CONFIDENCE_CLASS[tone] ?? ''}`}>
-            {entry.confidence}
-          </span>
-        ) : null}
-      </div>
-      <p className="dossier-value mt-1 font-mono text-[11px] leading-snug">{entry.value ?? '-'}</p>
-      <div className="mt-1.5 space-y-0.5 border-t border-panel-border/50 pt-1.5">
-        <p className="font-mono text-[8px] text-ink-faint">From {source}</p>
-        {lanes.length > 0 ? (
-          <p className="font-mono text-[8px] uppercase tracking-wider text-ink-faint">
-            Lanes: {lanes.join(' · ')}
-          </p>
-        ) : null}
-      </div>
-    </li>
-  )
-}
-
-function DiscrepancyCard({ item }) {
-  const laneEntries = Object.entries(item.lane_values || {}).filter(
-    ([, value]) => value != null && value !== '',
-  )
-
-  return (
-    <li className="rounded border border-panel-border border-l-[3px] border-l-command-watch/70 bg-panel-surface/40 px-3 py-2.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="font-mono text-[11px] font-medium text-ink-primary">
-          {formatFieldLabel(item.field_id)}
-        </p>
-        <span className="font-mono text-[8px] uppercase tracking-wider text-ink-faint">
-          {item.status || 'unresolved'}
-        </span>
-      </div>
-      {item.resolved_value != null && item.resolved_value !== '' ? (
-        <p className="mt-1 font-mono text-[10px] text-ink-secondary">
-          Resolved: {String(item.resolved_value)}
-        </p>
-      ) : null}
-      {item.rationale ? (
-        <p className="mt-1 font-mono text-[10px] leading-relaxed text-ink-muted">{item.rationale}</p>
-      ) : null}
-      {laneEntries.length > 0 ? (
-        <ul className="mt-2 space-y-1 border-t border-panel-border/50 pt-2">
-          {laneEntries.map(([lane, value]) => (
-            <li key={lane} className="flex items-baseline justify-between gap-3">
-              <span className="font-mono text-[8px] uppercase tracking-wider text-ink-faint">
-                {lane.replace(/_/g, ' ')}
-              </span>
-              <span className="font-mono text-[10px] text-ink-primary">{String(value)}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </li>
-  )
-}
-
-export default function ReportSovPanel({ statementOfValues, sovAnalysis, onExportExcel, exportingExcel }) {
-  const [issuesOpen, setIssuesOpen] = useState(true)
-  const [fillsOpen, setFillsOpen] = useState(false)
-  const entries = orderSovEntries(statementOfValues)
-  const discrepancies = sovAnalysis?.discrepancies || []
-  const enrichments = sovAnalysis?.enrichments || []
-
-  if (!entries.length) {
-    return (
-      <p className="p-4 font-mono text-[10px] text-ink-faint">
-        Statement of Values was not generated for this report.
-      </p>
-    )
-  }
-
-  return (
-    <div className="space-y-4 border-b border-panel-border p-4">
-      <section className="overflow-hidden rounded-lg border border-panel-border/80 bg-panel-surface/30">
-        <SectionHeader>Statement of values</SectionHeader>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-panel-border/60 px-4 py-2.5">
-          <p className="font-mono text-[9px] text-ink-muted">
-            {entries.length} field{entries.length === 1 ? '' : 's'} reconciled across source lanes
-          </p>
-          {onExportExcel ? (
-            <button
-              type="button"
-              onClick={onExportExcel}
-              disabled={exportingExcel}
-              className="dossier-btn-secondary"
-            >
-              {exportingExcel ? 'Exporting…' : 'Export SOV Excel'}
-            </button>
-          ) : null}
-        </div>
-        <ul className="space-y-1.5 p-3">
-          {entries.map(([fieldId, entry]) => (
-            <SovFieldRow key={fieldId} fieldId={fieldId} entry={entry} />
-          ))}
-        </ul>
-      </section>
-
-      {discrepancies.length > 0 ? (
-        <CollapsibleSection
-          title={`Lane discrepancies · ${discrepancies.length}`}
-          open={issuesOpen}
-          onToggle={() => setIssuesOpen(v => !v)}
-        >
-          <ul className="space-y-1.5">
-            {discrepancies.map((item, i) => (
-              <DiscrepancyCard key={`${item.field_id}-${i}`} item={item} />
-            ))}
-          </ul>
-        </CollapsibleSection>
-      ) : null}
-
-      {enrichments.length > 0 ? (
-        <CollapsibleSection
-          title={`Gap fills · ${enrichments.length}`}
-          open={fillsOpen}
-          onToggle={() => setFillsOpen(v => !v)}
-        >
-          <ul className="space-y-1.5">
-            {enrichments.map((item, i) => (
-              <li
-                key={`${item.field_id}-${i}`}
-                className="rounded border border-panel-border bg-panel-surface/60 px-3 py-2.5"
-              >
-                <p className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
-                  {formatFieldLabel(item.field_id)}
-                </p>
-                <p className="dossier-value mt-1 font-mono text-[11px] leading-snug">{item.value}</p>
-                <p className="mt-1 font-mono text-[8px] text-ink-faint">
-                  From {formatCopeSourceLabel(item.source) || item.source || '-'}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </CollapsibleSection>
-      ) : null}
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-left" style={{ minWidth }}>
+        {children}
+      </table>
     </div>
   )
+}
+
+function Th({ children, className = '' }) {
+  return (
+    <th
+      className={`border-b border-panel-border/70 bg-panel-surface/50 px-3 py-2 font-mono text-[8px] font-medium uppercase tracking-[0.12em] text-ink-faint ${className}`}
+    >
+      {children}
+    </th>
+  )
+}
+
+function Td({ children, className = '' }) {
+  return (
+    <td className={`border-b border-panel-border/40 px-3 py-2 align-top font-mono text-[10px] text-ink-primary ${className}`}>
+      {children}
+    </td>
+  )
+}
+
+function SovFieldsTable({ entries }) {
+  return (
+    <TableShell minWidth="44rem">
+      <thead>
+        <tr>
+          <Th className="w-[22%]">Field</Th>
+          <Th className="w-[28%]">Value</Th>
+          <Th className="w-[20%]">Primary source</Th>
+          <Th className="w-[12%]">Confidence</Th>
+          <Th className="w-[18%]">Supporting lanes</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {entries.map(([fieldId, entry]) => {
+          const tone = confidenceTone(entry.confidence)
+          const source = formatCopeSourceLabel(entry.primary_source) || entry.primary_source || '-'
+          const lanes = Array.isArray(entry.supporting_lanes) ? entry.supporting_lanes : []
+
+          return (
+            <tr key={fieldId} className="bg-panel-surface/20 hover:bg-panel-surface/45">
+              <Td className="text-[9px] uppercase tracking-wider text-ink-muted">
+                {formatFieldLabel(fieldId)}
+              </Td>
+              <Td className="dossier-value text-[11px] leading-snug">{entry.value ?? '-'}</Td>
+              <Td className="text-[9px] text-ink-faint">{source}</Td>
+              <Td>
+                {entry.confidence ? (
+                  <span className={`text-[8px] uppercase ${CONFIDENCE_CLASS[tone] ?? ''}`}>
+                    {entry.confidence}
+                  </span>
+                ) : (
+                  <span className="text-ink-faint">-</span>
+                )}
+              </Td>
+              <Td className="text-[8px] uppercase tracking-wider text-ink-faint">
+                {lanes.length > 0 ? lanes.join(' · ') : '-'}
+              </Td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </TableShell>
+  )
+}
+
+function DiscrepanciesTable({ items }) {
+  return (
+    <TableShell minWidth="48rem">
+      <thead>
+        <tr>
+          <Th className="w-[16%]">Field</Th>
+          <Th className="w-[12%]">Status</Th>
+          <Th className="w-[16%]">Resolved</Th>
+          <Th className="w-[28%]">Rationale</Th>
+          <Th className="w-[28%]">Lane values</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item, i) => {
+          const laneEntries = Object.entries(item.lane_values || {}).filter(
+            ([, value]) => value != null && value !== '',
+          )
+
+          return (
+            <tr
+              key={`${item.field_id}-${i}`}
+              className="border-l-[3px] border-l-command-watch/70 bg-panel-surface/20 hover:bg-panel-surface/45"
+            >
+              <Td className="text-[10px] font-medium">{formatFieldLabel(item.field_id)}</Td>
+              <Td className="text-[8px] uppercase tracking-wider text-ink-faint">
+                {item.status || 'unresolved'}
+              </Td>
+              <Td className="text-[10px] text-ink-secondary">
+                {item.resolved_value != null && item.resolved_value !== ''
+                  ? String(item.resolved_value)
+                  : '-'}
+              </Td>
+              <Td className="text-[10px] leading-relaxed text-ink-muted">
+                {item.rationale || '-'}
+              </Td>
+              <Td>
+                {laneEntries.length > 0 ? (
+                  <ul className="space-y-1">
+                    {laneEntries.map(([lane, value]) => (
+                      <li key={lane} className="flex items-baseline justify-between gap-3">
+                        <span className="text-[8px] uppercase tracking-wider text-ink-faint">
+                          {lane.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-[10px] text-ink-primary">{String(value)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="text-ink-faint">-</span>
+                )}
+              </Td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </TableShell>
+  )
+}
+
+function EnrichmentsTable({ items }) {
+  return (
+    <TableShell minWidth="32rem">
+      <thead>
+        <tr>
+          <Th className="w-[28%]">Field</Th>
+          <Th className="w-[44%]">Value</Th>
+          <Th className="w-[28%]">Source</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item, i) => (
+          <tr key={`${item.field_id}-${i}`} className="bg-panel-surface/20 hover:bg-panel-surface/45">
+            <Td className="text-[9px] uppercase tracking-wider text-ink-muted">
+              {formatFieldLabel(item.field_id)}
+            </Td>
+            <Td className="dossier-value text-[11px] leading-snug">{item.value ?? '-'}</Td>
+            <Td className="text-[9px] text-ink-faint">
+              {formatCopeSourceLabel(item.source) || item.source || '-'}
+            </Td>
+          </tr>
+        ))}
+      </tbody>
+    </TableShell>
+  )
+}
+
+export default function ReportSovPanel({ statementOfValues, sovCtrlAnalysis, onExportExcel, exportingExcel }) {
+  // Keep prop name compatible with callers (sovAnalysis)
+  return null
 }

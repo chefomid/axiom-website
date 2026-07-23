@@ -8,7 +8,7 @@ import {
   buildSovReportDocument,
   validateCopeReportDocument,
 } from '../../utils/copeReportDocument'
-import { downloadCopeExcel, downloadSovExcel } from '../../utils/copeReportExcel'
+import { downloadSovExcel } from '../../utils/copeReportExcel'
 import CopeSnapshot from './CopeSnapshot'
 import ReportHazardsPanel from './ReportHazardsPanel'
 import ReportSourceFields from './ReportSourceFields'
@@ -113,7 +113,6 @@ export default function ReportResultsPanel({
   const [open, setOpen] = useState(Boolean(record))
   const [activeTab, setActiveTab] = useState('cope')
   const [exportingPdf, setExportingPdf] = useState(false)
-  const [exportingExcel, setExportingExcel] = useState(false)
   const [exportingSovExcel, setExportingSovExcel] = useState(false)
   const [exportError, setExportError] = useState(null)
   const [summaryExpanded, setSummaryExpanded] = useState(true)
@@ -161,43 +160,64 @@ export default function ReportResultsPanel({
     }
   }
 
-  async function handleExportExcel() {
-    setExportError(null)
-    setExportingExcel(true)
-    try {
-      const doc = buildCopeReportDocument(record)
-      const errors = validateCopeReportDocument(doc)
-      if (errors.length) throw new Error(errors.join(' '))
-      await downloadCopeExcel(doc, record.display_name || record.address_input, { prefix: 'cope-report' })
-    } catch (err) {
-      setExportError(err?.message ?? 'Excel export failed')
-    } finally {
-      setExportingExcel(false)
-    }
-  }
-
   async function handleExportSovExcel() {
     setExportError(null)
     setExportingSovExcel(true)
     try {
-      const doc = buildSovReportDocument(record)
-      await downloadSovExcel(doc, record.display_name || record.address_input, { prefix: 'sov-report' })
+      const doc = record.cope?.sections?.length
+        ? buildCopeReportDocument(record)
+        : buildSovReportDocument(record)
+      if (record.cope?.sections?.length) {
+        const errors = validateCopeReportDocument(doc)
+        if (errors.length) throw new Error(errors.join(' '))
+      }
+      await downloadSovExcel(doc, record.display_name || record.address_input, { prefix: 'sovexcel' })
     } catch (err) {
-      setExportError(err?.message ?? 'SOV Excel export failed')
+      setExportError(err?.message ?? 'SovExcel export failed')
     } finally {
       setExportingSovExcel(false)
     }
   }
 
+  const canExportSovExcel = Boolean(
+    record.cope?.sections?.length ||
+      (record.statement_of_values && Object.keys(record.statement_of_values).length),
+  )
+
   const reportSummary = (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-panel-border/60 px-5 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {record.cope?.sections?.length ? (
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={exportingPdf || exportingSovExcel}
+            className="dossier-btn-primary"
+          >
+            {exportingPdf ? 'Exporting…' : 'Export COPE PDF'}
+          </button>
+        ) : null}
+        {canExportSovExcel ? (
+          <button
+            type="button"
+            onClick={handleExportSovExcel}
+            disabled={exportingPdf || exportingSovExcel}
+            className="dossier-btn-sovexcel"
+          >
+            {exportingSovExcel ? 'Exporting…' : 'Export SovExcel'}
+          </button>
+        ) : null}
+        {exportError ? (
+          <span className="font-sans text-xs text-command-critical">{exportError}</span>
+        ) : null}
+      </div>
       {hazardLink ? (
         publicDataCommandEnabled ? (
           <Link
             to={hazardLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
+            className="dossier-link ml-auto inline-flex items-center gap-1 font-sans text-xs"
           >
             Live hazards at this location
             <span className="font-mono text-[10px] text-ink-muted" aria-hidden>
@@ -208,47 +228,12 @@ export default function ReportResultsPanel({
           <button
             type="button"
             onClick={() => setActiveTab('hazards')}
-            className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
+            className="dossier-link ml-auto inline-flex items-center gap-1 font-sans text-xs"
           >
             View hazards for this location
           </button>
         )
       ) : null}
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        {record.cope?.sections?.length ? (
-          <>
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={exportingPdf || exportingExcel}
-              className="dossier-btn-primary"
-            >
-              {exportingPdf ? 'Exporting…' : 'Export COPE PDF'}
-            </button>
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              disabled={exportingPdf || exportingExcel || exportingSovExcel}
-              className="dossier-btn-secondary"
-            >
-              {exportingExcel ? 'Exporting…' : 'Export COPE Excel'}
-            </button>
-          </>
-        ) : null}
-        {record.statement_of_values ? (
-          <button
-            type="button"
-            onClick={handleExportSovExcel}
-            disabled={exportingPdf || exportingExcel || exportingSovExcel}
-            className="dossier-btn-secondary"
-          >
-            {exportingSovExcel ? 'Exporting…' : 'Export SOV Excel'}
-          </button>
-        ) : null}
-        {exportError ? (
-          <span className="font-sans text-xs text-command-critical">{exportError}</span>
-        ) : null}
-      </div>
     </div>
   )
 
