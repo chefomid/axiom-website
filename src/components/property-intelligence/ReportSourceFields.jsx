@@ -1,70 +1,41 @@
 import { useMemo } from 'react'
 import { formatCopeSourceLabel } from '../../utils/copeSourceLabels'
 
-const CONFIDENCE_CLASS = {
-  high: 'text-command-stable',
-  medium: 'text-ink-secondary',
-  low: 'text-ink-faint',
-  unknown: 'text-ink-faint',
-}
-
 function formatFieldKey(key) {
   return String(key ?? '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase())
 }
 
-function FieldCard({ field }) {
+function FieldRow({ field }) {
+  const confidence = String(field.confidence ?? '').toLowerCase()
+
   return (
-    <li className="rounded border border-panel-border bg-panel-surface/60 px-2.5 py-2">
-      <div className="flex items-baseline justify-between gap-1.5">
-        <span className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
-          {formatFieldKey(field.key)}
-        </span>
-        {field.confidence ? (
-          <span
-            className={`shrink-0 font-mono text-[8px] uppercase ${CONFIDENCE_CLASS[field.confidence] ?? 'text-ink-faint'}`}
-          >
-            {field.confidence}
-          </span>
-        ) : null}
-      </div>
-      {field.value ? (
-        <p className="dossier-value mt-1 font-mono text-[11px] leading-snug">{field.value}</p>
-      ) : null}
+    <li className={`sources-rail__field sources-rail__field--${confidence || 'unknown'}`}>
+      <p className="sources-rail__field-key">{formatFieldKey(field.key)}</p>
+      {field.value ? <p className="sources-rail__field-value">{field.value}</p> : null}
     </li>
   )
 }
 
-function SourceColumn({ source, fields }) {
+function SourcePanel({ source, fields }) {
   const label = formatCopeSourceLabel(source)
-  const initial = String(label ?? source ?? '?').trim().charAt(0).toUpperCase() || '?'
 
   return (
-    <section className="sources-runway__column cope-runway__column flex min-h-0 min-w-0 flex-col border-panel-border/60">
-      <header className="cope-runway__header shrink-0 px-3 py-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="font-display text-sm font-semibold tracking-[0.04em]">
-            <span className="cope-runway__letter">{initial}</span>
-            <span className="cope-runway__label ml-1.5 text-[11px] font-medium">{label}</span>
-          </p>
-          <span className="cope-runway__count font-mono text-[9px] tabular-nums">
-            {fields.length}
-          </span>
-        </div>
+    <section className="sources-rail__panel">
+      <header className="sources-rail__panel-head">
+        <h3 className="sources-rail__panel-title">{label}</h3>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto sleek-scrollbar px-2.5 py-2.5">
+      <div className="sources-rail__panel-body sleek-scrollbar">
         {fields.length > 0 ? (
-          <ul className="space-y-1.5">
+          <ul className="sources-rail__fields">
             {fields.map((field, i) => (
-              <FieldCard key={`${field.key}-${i}`} field={field} />
+              <FieldRow key={`${field.key}-${i}`} field={field} />
             ))}
           </ul>
         ) : (
-          <p className="px-1 py-2 font-mono text-[9px] leading-relaxed text-ink-faint">
-            No field observations from this source.
-          </p>
+          <p className="sources-rail__empty">No field observations from this source.</p>
         )}
       </div>
     </section>
@@ -73,19 +44,13 @@ function SourceColumn({ source, fields }) {
 
 function CrawlExcerptBlock({ url, excerpt }) {
   return (
-    <details className="border-t border-panel-border/60 bg-panel-surface/20 px-4 py-3">
-      <summary className="cursor-pointer font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">
-        Crawl excerpt
-      </summary>
-      {url ? (
-        <p className="mt-2 break-all font-mono text-[9px] text-command-live">{url}</p>
-      ) : null}
+    <details className="sources-rail__crawl">
+      <summary>Crawl excerpt</summary>
+      {url ? <p className="sources-rail__crawl-url">{url}</p> : null}
       {excerpt ? (
-        <pre className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap rounded border border-panel-border bg-panel-surface/40 p-2 font-mono text-[9px] leading-relaxed text-ink-secondary sleek-scrollbar">
-          {excerpt}
-        </pre>
+        <pre className="sources-rail__crawl-pre sleek-scrollbar">{excerpt}</pre>
       ) : (
-        <p className="mt-2 font-mono text-[9px] text-ink-faint">No excerpt captured.</p>
+        <p className="sources-rail__empty">No excerpt captured.</p>
       )}
     </details>
   )
@@ -103,11 +68,6 @@ export default function ReportSourceFields({ fields, crawlExcerpt, crawlSourceUr
     return Object.entries(bySource).sort(([a], [b]) => a.localeCompare(b))
   }, [fields])
 
-  const fieldCount = useMemo(
-    () => grouped.reduce((sum, [, sourceFields]) => sum + sourceFields.length, 0),
-    [grouped],
-  )
-
   if (!grouped.length && !crawlExcerpt && !crawlSourceUrl) {
     return (
       <p className="p-4 font-mono text-[10px] text-ink-faint">
@@ -117,29 +77,15 @@ export default function ReportSourceFields({ fields, crawlExcerpt, crawlSourceUr
   }
 
   return (
-    <div className="flex min-h-0 flex-col border-b border-panel-border">
-      <div className="shrink-0 border-b border-panel-border/60 bg-panel-surface/20 px-4 py-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">
-            Sources runway
-          </p>
-          <span className="font-mono text-[10px] tabular-nums text-command-live">
-            {grouped.length} source{grouped.length === 1 ? '' : 's'}
-          </span>
-        </div>
-        <p className="mt-2 font-mono text-[9px] text-ink-faint">
-          {fieldCount} observed field{fieldCount === 1 ? '' : 's'} · grouped by contributing source
-        </p>
-      </div>
-
+    <div className="sources-rail">
       {grouped.length ? (
-        <div className="cope-runway min-h-0 flex-1 overflow-x-auto sleek-scrollbar">
+        <div className="sources-rail__scroll sleek-scrollbar">
           <div
-            className="sources-runway__track divide-x divide-[color:var(--dossier-border,#d6d6d2)]"
+            className="sources-rail__track"
             style={{ '--sources-cols': String(Math.max(grouped.length, 1)) }}
           >
             {grouped.map(([source, sourceFields]) => (
-              <SourceColumn key={source} source={source} fields={sourceFields} />
+              <SourcePanel key={source} source={source} fields={sourceFields} />
             ))}
           </div>
         </div>
