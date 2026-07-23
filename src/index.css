@@ -2878,19 +2878,19 @@ html::-webkit-scrollbar-thumb:hover,
 .cope-runway__header {
   background: #141414;
   border-bottom: 1px solid #2a2a2a;
-  color: #f0f0f0;
+  color: #e8a838;
 }
 
 .cope-runway__letter {
-  color: #f0f0f0;
+  color: #e8a838;
 }
 
 .cope-runway__label {
-  color: #c4c4c4;
+  color: #e8a838;
 }
 
 .cope-runway__count {
-  color: #9a9a9a;
+  color: rgba(232, 168, 56, 0.72);
 }
 
 /* Status amber on paper needs a darker tone for contrast */
