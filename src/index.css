@@ -904,6 +904,70 @@ html::-webkit-scrollbar-thumb:hover,
   left: 0.75rem !important;
 }
 
+/* Floating scanline toggle — bottom-right, amber, quiet until hover/on */
+.command-scan-toggle {
+  position: absolute;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(232, 168, 56, 0.28);
+  background: rgba(10, 10, 10, 0.72);
+  color: rgba(232, 168, 56, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  opacity: 0.78;
+}
+
+.command-scan-toggle:hover {
+  opacity: 1;
+  color: #e8a838;
+  border-color: rgba(232, 168, 56, 0.55);
+  background: rgba(18, 14, 8, 0.88);
+  transform: translateY(-1px);
+}
+
+.command-scan-toggle:active {
+  transform: translateY(0);
+}
+
+.command-scan-toggle.is-on {
+  opacity: 0.95;
+  color: #f0b24a;
+  border-color: rgba(232, 168, 56, 0.62);
+  background: rgba(232, 168, 56, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(232, 168, 56, 0.12),
+    0 0 18px rgba(232, 168, 56, 0.12);
+}
+
+.command-scan-toggle.is-on:hover {
+  background: rgba(232, 168, 56, 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .command-scan-toggle {
+    transition: none;
+  }
+
+  .command-scan-toggle:hover,
+  .command-scan-toggle:active {
+    transform: none;
+  }
+}
+
 /* Satellite toggle inside the scale bar box (earthquake analysis map) */
 .analysis-satellite-toggle {
   flex-shrink: 0;

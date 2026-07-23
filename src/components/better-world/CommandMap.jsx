@@ -1478,9 +1478,27 @@ export default function CommandMap({
         pins={pins}
         selectedPinId={selectedPinId}
         onAnalyzeAtPin={onAnalyzeAtPin}
-        scanlineOn={scanlineOn}
-        onToggleScanline={handleToggleScanline}
       />
+
+      <button
+        type="button"
+        className={`command-scan-toggle${scanlineOn ? ' is-on' : ''}`}
+        onClick={handleToggleScanline}
+        aria-pressed={scanlineOn}
+        title={scanlineOn ? 'Hide scan bar' : 'Show scan bar'}
+        aria-label={scanlineOn ? 'Hide scan bar' : 'Show scan bar'}
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden focusable="false">
+          <circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.45" />
+          <circle cx="12" cy="12" r="4.75" fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.7" />
+          <path
+            d="M12 12 L12 3.5 A8.5 8.5 0 0 1 19.4 16.2 Z"
+            fill="currentColor"
+            opacity="0.55"
+          />
+          <circle cx="12" cy="12" r="1.35" fill="currentColor" />
+        </svg>
+      </button>
 
       {liveFeedErrors.length > 0 && (
         <div className="absolute left-3 top-16 z-20 flex max-w-xs flex-col gap-1.5">

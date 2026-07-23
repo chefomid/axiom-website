@@ -27,8 +27,6 @@ export default function MapControlsDock({
   onAnalyzeAtPin,
   pins = [],
   selectedPinId = null,
-  scanlineOn = true,
-  onToggleScanline,
 }) {
   const [openPanel, setOpenPanel] = useState(null)
   const dockRef = useRef(null)
@@ -55,7 +53,7 @@ export default function MapControlsDock({
   const activeMagOption = EARTHQUAKE_MAGNITUDE_OPTIONS.find(o => o.value === minEarthquakeMag)
 
   return (
-    <div ref={dockRef} className="absolute bottom-4 left-1/2 z-20 w-[min(100%,38rem)] -translate-x-1/2 px-3">
+    <div ref={dockRef} className="absolute bottom-4 left-1/2 z-20 w-[min(100%,34rem)] -translate-x-1/2 px-3">
       <div className="cmd-dock-bar overflow-hidden rounded-2xl border border-[#2e2e2e] bg-[#0a0a0a] shadow-lg">
         {openPanel && (
           <div className="relative px-4 py-4 pr-10">
@@ -230,18 +228,6 @@ export default function MapControlsDock({
             {pinCount > 0 && (
               <span className="ml-1 tabular-nums text-ink-faint">({pinCount})</span>
             )}
-          </DockTab>
-
-          <span className="h-4 w-px bg-[#333]" aria-hidden />
-
-          <DockTab
-            active={scanlineOn}
-            accent="live"
-            title={scanlineOn ? 'Hide green scan bar' : 'Show green scan bar'}
-            aria-pressed={scanlineOn}
-            onClick={() => onToggleScanline?.()}
-          >
-            Scan
           </DockTab>
 
           {showEarthquakeControls && (
