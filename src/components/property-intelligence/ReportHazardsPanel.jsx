@@ -71,29 +71,50 @@ function primaryFields(key, data) {
   return fields.slice(0, 8)
 }
 
+function FieldCard({ label, value }) {
+  return (
+    <li className="rounded border border-panel-border bg-panel-surface/60 px-2.5 py-2">
+      <p className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">{label}</p>
+      <p className="dossier-value mt-1 font-mono text-[11px] leading-snug">{value}</p>
+    </li>
+  )
+}
+
 function EventList({ items, kind }) {
   if (!Array.isArray(items) || !items.length) return null
 
   return (
-    <ul className="hazards-rail__events">
+    <ul className="mt-2 space-y-1.5">
       {items.slice(0, 5).map((item, i) => {
         if (kind === 'alerts') {
           return (
-            <li key={i} className="hazards-rail__event">
-              <p className="hazards-rail__event-title">{item.event || 'Alert'}</p>
+            <li
+              key={i}
+              className="rounded border border-panel-border border-l-[3px] border-l-command-watch/70 bg-panel-surface/40 px-2.5 py-2"
+            >
+              <p className="font-mono text-[11px] leading-snug text-ink-primary">
+                {item.event || 'Alert'}
+              </p>
               {item.severity ? (
-                <p className="hazards-rail__event-meta">{item.severity}</p>
+                <p className="mt-0.5 font-mono text-[8px] uppercase tracking-wider text-ink-faint">
+                  {item.severity}
+                </p>
               ) : null}
               {item.headline ? (
-                <p className="hazards-rail__event-body">{item.headline}</p>
+                <p className="mt-1 font-mono text-[10px] leading-relaxed text-ink-secondary">
+                  {item.headline}
+                </p>
               ) : null}
             </li>
           )
         }
         if (item.magnitude != null) {
           return (
-            <li key={i} className="hazards-rail__event">
-              <p className="hazards-rail__event-title">
+            <li
+              key={i}
+              className="rounded border border-panel-border bg-panel-surface/60 px-2.5 py-2"
+            >
+              <p className="font-mono text-[11px] leading-snug text-ink-primary">
                 M{item.magnitude}
                 {item.place ? ` · ${item.place}` : ''}
               </p>
@@ -101,10 +122,17 @@ function EventList({ items, kind }) {
           )
         }
         return (
-          <li key={i} className="hazards-rail__event">
-            <p className="hazards-rail__event-title">{item.title || 'Event'}</p>
+          <li
+            key={i}
+            className="rounded border border-panel-border bg-panel-surface/60 px-2.5 py-2"
+          >
+            <p className="font-mono text-[11px] leading-snug text-ink-primary">
+              {item.title || 'Event'}
+            </p>
             {item.distance_km != null ? (
-              <p className="hazards-rail__event-meta">{item.distance_km} km away</p>
+              <p className="mt-0.5 font-mono text-[8px] uppercase tracking-wider text-ink-faint">
+                {item.distance_km} km away
+              </p>
             ) : null}
           </li>
         )
@@ -190,85 +218,85 @@ function SeismicAnalysisBlock({ lat, lng, label }) {
       : null
 
   return (
-    <div className="hazards-rail__analysis">
-      <p className="hazards-rail__analysis-label">Location seismic analysis · 5Y · M2.5+</p>
+    <div className="mt-3 border-t border-panel-border/60 pt-3">
+      <p className="font-mono text-[8px] uppercase tracking-[0.14em] text-command-watch">
+        Location seismic analysis · 5Y · M2.5+
+      </p>
 
       {analysis.status === 'loading' ? (
-        <div className="hazards-rail__analysis-status" role="status" aria-live="polite">
+        <div className="mt-2 flex items-center gap-2" role="status" aria-live="polite">
           <span className="street-view-spinner h-2.5 w-2.5 shrink-0" aria-hidden />
-          <span>Running analysis in background…</span>
+          <span className="font-mono text-[9px] text-ink-muted">Running analysis in background…</span>
         </div>
       ) : null}
 
       {analysis.status === 'error' ? (
-        <p className="hazards-rail__empty">{analysis.error}</p>
+        <p className="mt-2 font-mono text-[9px] text-ink-faint">{analysis.error}</p>
       ) : null}
 
       {analysis.status === 'ready' ? (
-        <ul className="hazards-rail__fields">
-          <li className="hazards-rail__field">
-            <p className="hazards-rail__field-key">Events within {ANALYSIS_RADIUS_MI} mi</p>
-            <p className="hazards-rail__field-value dossier-value">{totalEvents ?? 0}</p>
-          </li>
-          <li className="hazards-rail__field">
-            <p className="hazards-rail__field-key">Rate per year</p>
-            <p className="hazards-rail__field-value dossier-value">
-              {ratePerYear != null ? ratePerYear.toFixed(1) : '-'}
-            </p>
-          </li>
-          <li className="hazards-rail__field">
-            <p className="hazards-rail__field-key">Strongest event</p>
-            <p className="hazards-rail__field-value dossier-value">
-              {maxEvent
+        <ul className="mt-2 space-y-1.5">
+          <FieldCard label={`Events within ${ANALYSIS_RADIUS_MI} mi`} value={String(totalEvents ?? 0)} />
+          <FieldCard
+            label="Rate per year"
+            value={ratePerYear != null ? ratePerYear.toFixed(1) : '-'}
+          />
+          <FieldCard
+            label="Strongest event"
+            value={
+              maxEvent
                 ? `M${Number(maxEvent.mag).toFixed(1)} · ${Math.round(maxEvent.dist)} mi`
-                : 'None in range'}
-            </p>
-          </li>
+                : 'None in range'
+            }
+          />
           {analysis.cumulative.map(band => (
-            <li key={band.radius} className="hazards-rail__field">
-              <p className="hazards-rail__field-key">Within {band.radius} mi</p>
-              <p className="hazards-rail__field-value dossier-value">
-                {band.count}
-                {band.ratePerYear != null ? ` · ${band.ratePerYear.toFixed(1)}/yr` : ''}
-              </p>
-            </li>
+            <FieldCard
+              key={band.radius}
+              label={`Within ${band.radius} mi`}
+              value={`${band.count}${band.ratePerYear != null ? ` · ${band.ratePerYear.toFixed(1)}/yr` : ''}`}
+            />
           ))}
         </ul>
       ) : null}
 
       {analysisHref ? (
-        <Link to={analysisHref} className="hazards-rail__analysis-link dossier-link">
+        <Link to={analysisHref} className="dossier-link mt-3 inline-flex items-center gap-1 font-mono text-[10px]">
           Open full Seismic/EQ Analysis
-          <span aria-hidden> ↗</span>
+          <span aria-hidden>↗</span>
         </Link>
       ) : null}
     </div>
   )
 }
 
-function HazardPanel({ hazardKey, data, lat, lng, label }) {
+function HazardColumn({ hazardKey, data, lat, lng, label }) {
   const meta = HAZARD_META[hazardKey] ?? { label: formatKey(hazardKey), agency: 'Hazard' }
   const fields = primaryFields(hazardKey, data)
   const summary = data?.error || data?.summary || null
   const isUsgs = hazardKey === 'usgs'
 
   return (
-    <section className="hazards-rail__panel">
-      <header className="hazards-rail__panel-head">
-        <p className="hazards-rail__agency">{meta.agency}</p>
-        <h3 className="hazards-rail__panel-title">{meta.label}</h3>
+    <section className="cope-runway__column flex min-w-0 flex-col border-panel-border/60">
+      <header className="cope-runway__header shrink-0 px-3 py-3">
+        <p className="cope-runway__count font-mono text-[8px] uppercase tracking-[0.14em]">
+          {meta.agency}
+        </p>
+        <p className="mt-1 font-display text-sm font-semibold tracking-[0.04em]">
+          <span className="cope-runway__label text-[11px] font-medium uppercase tracking-[0.14em]">
+            {meta.label}
+          </span>
+        </p>
       </header>
 
-      <div className="hazards-rail__panel-body sleek-scrollbar">
-        {summary ? <p className="hazards-rail__summary">{summary}</p> : null}
+      <div className="cope-runway__column-body sleek-scrollbar px-2.5 py-2.5">
+        {summary ? (
+          <p className="mb-2 font-mono text-[10px] leading-relaxed text-ink-secondary">{summary}</p>
+        ) : null}
 
         {fields.length > 0 ? (
-          <ul className="hazards-rail__fields">
+          <ul className="space-y-1.5">
             {fields.map(field => (
-              <li key={`${field.label}-${field.value}`} className="hazards-rail__field">
-                <p className="hazards-rail__field-key">{field.label}</p>
-                <p className="hazards-rail__field-value dossier-value">{field.value}</p>
-              </li>
+              <FieldCard key={`${field.label}-${field.value}`} label={field.label} value={field.value} />
             ))}
           </ul>
         ) : null}
@@ -279,7 +307,9 @@ function HazardPanel({ hazardKey, data, lat, lng, label }) {
         {isUsgs ? <SeismicAnalysisBlock lat={lat} lng={lng} label={label} /> : null}
 
         {!summary && !fields.length && !data?.alerts?.length && !data?.events?.length && !isUsgs ? (
-          <p className="hazards-rail__empty">No observations from this source.</p>
+          <p className="px-1 py-2 font-mono text-[9px] leading-relaxed text-ink-faint">
+            No observations from this source.
+          </p>
         ) : null}
       </div>
     </section>
@@ -301,14 +331,17 @@ export default function ReportHazardsPanel({ hazards, lat = null, lng = null, la
   }
 
   return (
-    <div className="hazards-rail">
-      <div className="hazards-rail__scroll sleek-scrollbar">
+    <div className="cope-runway border-b border-panel-border">
+      <div className="cope-runway__scroll sleek-scrollbar">
         <div
-          className="hazards-rail__track"
-          style={{ '--hazards-cols': String(Math.max(entries.length, 1)) }}
+          className="cope-runway__track grid divide-x divide-[color:var(--dossier-border,#d6d6d2)]"
+          style={{
+            gridTemplateColumns: `repeat(${Math.max(entries.length, 1)}, minmax(16.5rem, 1fr))`,
+            minWidth: `max(100%, calc(${Math.max(entries.length, 1)} * 16.5rem))`,
+          }}
         >
           {entries.map(([key, data]) => (
-            <HazardPanel
+            <HazardColumn
               key={key}
               hazardKey={key}
               data={data}

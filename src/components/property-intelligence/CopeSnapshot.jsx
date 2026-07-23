@@ -18,17 +18,6 @@ const TRUST_METHOD_LABEL = {
   unknown: '',
 }
 
-function CompletenessBar({ pct }) {
-  return (
-    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-panel-border">
-      <div
-        className="h-full bg-command-live transition-all duration-500"
-        style={{ width: `${Math.min(100, pct ?? 0)}%` }}
-      />
-    </div>
-  )
-}
-
 function isFieldPopulated(field) {
   return field.status !== 'unknown' && Boolean(field.value)
 }
@@ -160,10 +149,10 @@ function SectionGaps({ gaps }) {
 
 function CopeColumn({ section }) {
   const { populated, gaps, total } = partitionSection(section)
-  const letter = String(section.cope_letter ?? '').toUpperCase() || '—'
+  const letter = String(section.cope_letter ?? '').toUpperCase() || '-'
 
   return (
-    <section className="cope-runway__column flex min-h-0 min-w-0 flex-col border-panel-border/60">
+    <section className="cope-runway__column flex min-w-0 flex-col border-panel-border/60">
       <header className="cope-runway__header shrink-0 px-3 py-3">
         <div className="flex items-baseline justify-between gap-2">
           <p className="font-display text-sm font-semibold tracking-[0.04em]">
@@ -178,7 +167,7 @@ function CopeColumn({ section }) {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto sleek-scrollbar px-2.5 py-2.5">
+      <div className="cope-runway__column-body sleek-scrollbar px-2.5 py-2.5">
         {populated.length > 0 ? (
           <ul className="space-y-1.5">
             {populated.map(field => (
@@ -209,38 +198,12 @@ export default function CopeSnapshot({ cope }) {
     )
   }
 
-  const score = cope.score ?? {}
-  const hasAttomData = cope.sections.some(section =>
-    section.fields?.some(
-      f => f.status === 'observed' && String(f.source ?? '').toLowerCase().includes('attom'),
-    ),
-  )
   const columns = orderCopeSections(cope.sections)
 
   return (
-    <div className="flex min-h-0 flex-col border-b border-panel-border">
-      <div className="shrink-0 border-b border-panel-border/60 bg-panel-surface/20 px-4 py-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">COPE runway</p>
-          <span className="font-mono text-[10px] tabular-nums text-command-live">
-            {score.completeness_pct ?? 0}% complete
-          </span>
-        </div>
-        <CompletenessBar pct={score.completeness_pct} />
-        <p className="mt-2 font-mono text-[9px] text-ink-faint">
-          {score.observed ?? 0} observed · {score.unknown ?? 0} unknown · {score.total ?? 0} fields
-        </p>
-        {score.unknown > 0 ? (
-          <p className="mt-2 font-mono text-[9px] leading-relaxed text-ink-secondary">
-            {hasAttomData
-              ? 'Remaining gaps are missing from vendor records, hazard/protection feeds, or sources that did not return for this address.'
-              : 'Add ATTOM (or assessor crawl) for detailed Construction & Occupancy from licensed sources.'}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="cope-runway min-h-0 flex-1 overflow-x-auto sleek-scrollbar">
-        <div className="cope-runway__track grid h-full min-h-[22rem] min-w-[52rem] grid-cols-4 divide-x divide-[color:var(--dossier-border,#d6d6d2)] lg:min-w-0">
+    <div className="cope-runway border-b border-panel-border">
+      <div className="cope-runway__scroll sleek-scrollbar">
+        <div className="cope-runway__track grid min-w-[52rem] grid-cols-4 divide-x divide-[color:var(--dossier-border,#d6d6d2)] lg:min-w-0">
           {columns.map(section => (
             <CopeColumn key={section.id} section={section} />
           ))}
