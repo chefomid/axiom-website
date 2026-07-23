@@ -227,7 +227,7 @@ export default function ReportResultsPanel({
             to={hazardLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
+            className="dossier-link ml-auto inline-flex items-center gap-1 font-sans text-xs"
           >
             Live hazards at this location
             <span className="font-mono text-[10px] text-ink-muted" aria-hidden>
@@ -238,7 +238,7 @@ export default function ReportResultsPanel({
           <button
             type="button"
             onClick={() => setActiveTab('hazards')}
-            className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
+            className="dossier-link ml-auto inline-flex items-center gap-1 font-sans text-xs"
           >
             View hazards for this location
           </button>
