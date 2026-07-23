@@ -1,17 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Nav from '../components/Nav'
 import SiteFooter from '../components/SiteFooter'
 import CoiTrackerModal from '../components/CoiTrackerModal'
 import InsuranceManagerModal from '../components/InsuranceManagerModal'
-import {
-  COI_TRACKER_DEMO_URL,
-  PROPERTY_INTELLIGENCE_LABEL,
-  PROPERTY_INTELLIGENCE_PATH,
-  PUBLIC_DATA_COMMAND_LABEL,
-  PUBLIC_DATA_COMMAND_PATH,
-} from '../constants/routes'
+import { COI_TRACKER_DEMO_URL } from '../constants/routes'
 import { isCoiTrackerDemoEnabled } from '../config/features'
 
 const fade = {
@@ -146,27 +139,6 @@ function Hero() {
         initial="hidden"
         animate="show"
         custom={3}
-        className="mt-10 flex flex-col gap-3 md:hidden"
-      >
-        <Link
-          to={PUBLIC_DATA_COMMAND_PATH}
-          className="flex min-h-[44px] items-center justify-center rounded border border-[#3a3a3a] bg-[#141414] px-5 font-display text-sm font-medium text-white transition-colors hover:border-[#5c5c5c] hover:bg-[#1a1a1a]"
-        >
-          {PUBLIC_DATA_COMMAND_LABEL}
-        </Link>
-        <Link
-          to={PROPERTY_INTELLIGENCE_PATH}
-          className="flex min-h-[44px] items-center justify-center rounded border border-[#2d2d2d] bg-transparent px-5 font-display text-sm font-medium text-ink-secondary transition-colors hover:border-[#444] hover:text-white"
-        >
-          {PROPERTY_INTELLIGENCE_LABEL}
-        </Link>
-      </motion.div>
-
-      <motion.div
-        variants={fade}
-        initial="hidden"
-        animate="show"
-        custom={4}
         className="mt-16 w-16 h-px bg-[#333]"
       />
     </section>
