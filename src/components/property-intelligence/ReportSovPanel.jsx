@@ -42,27 +42,31 @@ function confidenceTone(confidence) {
   return 'unknown'
 }
 
-function SovFieldCard({ fieldId, entry }) {
+function SovFieldRow({ fieldId, entry }) {
   const tone = confidenceTone(entry.confidence)
   const source = formatCopeSourceLabel(entry.primary_source) || entry.primary_source || '—'
   const lanes = Array.isArray(entry.supporting_lanes) ? entry.supporting_lanes : []
 
   return (
-    <li className={`sov-ledger__field sov-ledger__field--${tone}`}>
-      <div className="sov-ledger__field-top">
-        <p className="sov-ledger__field-label">{formatFieldLabel(fieldId)}</p>
+    <tr>
+      <th scope="row" className="sov-ledger__cell sov-ledger__cell--field">
+        {formatFieldLabel(fieldId)}
+      </th>
+      <td className="sov-ledger__cell sov-ledger__cell--value">{entry.value ?? '—'}</td>
+      <td className="sov-ledger__cell sov-ledger__cell--confidence">
         {entry.confidence ? (
           <span className={`sov-ledger__confidence sov-ledger__confidence--${tone}`}>
             {entry.confidence}
           </span>
-        ) : null}
-      </div>
-      <p className="sov-ledger__field-value">{entry.value}</p>
-      <p className="sov-ledger__field-source">{source}</p>
-      {lanes.length > 0 ? (
-        <p className="sov-ledger__field-lanes">{lanes.join(' · ')}</p>
-      ) : null}
-    </li>
+        ) : (
+          '—'
+        )}
+      </td>
+      <td className="sov-ledger__cell sov-ledger__cell--source">{source}</td>
+      <td className="sov-ledger__cell sov-ledger__cell--lanes">
+        {lanes.length > 0 ? lanes.join(' · ') : '—'}
+      </td>
+    </tr>
   )
 }
 
@@ -127,11 +131,24 @@ export default function ReportSovPanel({ statementOfValues, sovAnalysis, onExpor
       </div>
 
       <div className="sov-ledger__scroll sleek-scrollbar">
-        <ul className="sov-ledger__grid">
-          {entries.map(([fieldId, entry]) => (
-            <SovFieldCard key={fieldId} fieldId={fieldId} entry={entry} />
-          ))}
-        </ul>
+        <div className="sov-ledger__table-wrap">
+          <table className="sov-ledger__table">
+            <thead>
+              <tr>
+                <th scope="col">Field</th>
+                <th scope="col">Value</th>
+                <th scope="col">Confidence</th>
+                <th scope="col">Primary source</th>
+                <th scope="col">Supporting lanes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map(([fieldId, entry]) => (
+                <SovFieldRow key={fieldId} fieldId={fieldId} entry={entry} />
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {discrepancies.length > 0 ? (
           <section className="sov-ledger__section">
