@@ -5,7 +5,7 @@ const COPE_ORDER = ['C', 'O', 'P', 'E']
 
 const CONFIDENCE_CLASS = {
   high: 'text-command-stable',
-  medium: 'text-command-watch',
+  medium: 'text-ink-secondary',
   low: 'text-ink-faint',
   unknown: 'text-ink-faint',
 }
@@ -59,7 +59,7 @@ function FieldCard({ field, variant = 'populated' }) {
     <li
       className={`rounded border px-2.5 py-2 ${
         isGap
-          ? 'border-command-watch/25 bg-command-watch/[0.04]'
+          ? 'border-panel-border bg-panel-bg/40'
           : 'border-panel-border bg-panel-surface/60'
       }`}
     >
@@ -101,16 +101,16 @@ function SectionGaps({ gaps }) {
   if (!gaps.length) return null
 
   return (
-    <div className="mt-2 overflow-hidden rounded-md border border-command-watch/30 bg-command-watch/[0.06]">
+    <div className="mt-2 overflow-hidden rounded-md border border-panel-border bg-panel-bg/40">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left transition hover:bg-command-watch/[0.08]"
+        className="flex w-full items-center justify-between gap-2 border-l-[3px] border-l-command-watch/70 px-2.5 py-2 text-left transition hover:bg-black/[0.03]"
       >
-        <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-command-watch">
+        <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-ink-secondary">
           {gaps.length} gap{gaps.length === 1 ? '' : 's'}
         </span>
-        <span className="font-mono text-sm leading-none text-command-watch/60">{open ? '−' : '+'}</span>
+        <span className="font-mono text-sm leading-none text-ink-faint">{open ? '−' : '+'}</span>
       </button>
       {open ? (
         <ul className="space-y-1.5 border-t border-command-watch/20 px-2.5 py-2">
@@ -142,9 +142,7 @@ function CopeColumn({ section }) {
               {section.label}
             </span>
           </p>
-          <span
-            className={`font-mono text-[9px] tabular-nums ${hasGaps ? 'text-command-watch' : 'text-ink-muted'}`}
-          >
+          <span className="font-mono text-[9px] tabular-nums text-ink-muted">
             {populated.length}/{total}
           </span>
         </div>
