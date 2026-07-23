@@ -3,8 +3,12 @@ import { Link } from 'react-router-dom'
 import { isPublicDataCommandEnabled } from '../../config/features'
 import { publicDataCommandAtLocation } from '../../constants/routes'
 import { downloadReportPdf } from '../../services/reportApi'
-import { buildCopeReportDocument, validateCopeReportDocument } from '../../utils/copeReportDocument'
-import { downloadCopeExcel } from '../../utils/copeReportExcel'
+import {
+  buildCopeReportDocument,
+  buildSovReportDocument,
+  validateCopeReportDocument,
+} from '../../utils/copeReportDocument'
+import { downloadCopeExcel, downloadSovExcel } from '../../utils/copeReportExcel'
 import CopeSnapshot from './CopeSnapshot'
 import ReportHazardsPanel from './ReportHazardsPanel'
 import ReportSourceFields from './ReportSourceFields'
@@ -110,6 +114,7 @@ export default function ReportResultsPanel({
   const [activeTab, setActiveTab] = useState('cope')
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
+  const [exportingSovExcel, setExportingSovExcel] = useState(false)
   const [exportError, setExportError] = useState(null)
   const [summaryExpanded, setSummaryExpanded] = useState(true)
 
@@ -171,6 +176,19 @@ export default function ReportResultsPanel({
     }
   }
 
+  async function handleExportSovExcel() {
+    setExportError(null)
+    setExportingSovExcel(true)
+    try {
+      const doc = buildSovReportDocument(record)
+      await downloadSovExcel(doc, record.display_name || record.address_input, { prefix: 'sov-report' })
+    } catch (err) {
+      setExportError(err?.message ?? 'SOV Excel export failed')
+    } finally {
+      setExportingSovExcel(false)
+    }
+  }
+
   const reportSummary = (
     <>
       {hazardLink ? (
@@ -213,12 +231,22 @@ export default function ReportResultsPanel({
             <button
               type="button"
               onClick={handleExportExcel}
-              disabled={exportingPdf || exportingExcel}
+              disabled={exportingPdf || exportingExcel || exportingSovExcel}
               className="dossier-btn-secondary"
             >
               {exportingExcel ? 'Exporting…' : 'Export COPE Excel'}
             </button>
           </>
+        ) : null}
+        {record.statement_of_values ? (
+          <button
+            type="button"
+            onClick={handleExportSovExcel}
+            disabled={exportingPdf || exportingExcel || exportingSovExcel}
+            className="dossier-btn-secondary"
+          >
+            {exportingSovExcel ? 'Exporting…' : 'Export SOV Excel'}
+          </button>
         ) : null}
         {exportError ? (
           <span className="font-sans text-xs text-command-critical">{exportError}</span>
@@ -282,8 +310,9 @@ export default function ReportResultsPanel({
         {activeTab === 'sov' ? (
           <ReportSovPanel
             statementOfValues={record.statement_of_values}
-            sovDigestMd={record.sov_digest_md}
             sovAnalysis={record.sov_analysis}
+            onExportExcel={handleExportSovExcel}
+            exportingExcel={exportingSovExcel}
           />
         ) : null}
         {activeTab === 'image' ? (

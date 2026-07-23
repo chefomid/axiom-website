@@ -1,73 +1,103 @@
-import { useState } from 'react'
+import { formatCopeSourceLabel } from '../../utils/copeSourceLabels'
 
-const CONFIDENCE_CLASS = {
-  high: 'text-command-stable',
-  medium: 'text-command-watch',
-  low: 'text-ink-faint',
-  unknown: 'text-ink-faint',
+const SOV_FIELD_META = [
+  { id: 'year_built', label: 'Year built' },
+  { id: 'square_footage', label: 'Building sq ft' },
+  { id: 'stories', label: 'Number of stories' },
+  { id: 'construction_type', label: 'Construction type' },
+  { id: 'iso_construction_class', label: 'ISO construction class' },
+  { id: 'roof_type', label: 'Roof type' },
+  { id: 'property_type', label: 'Property type' },
+  { id: 'parcel_number', label: 'Parcel / APN' },
+  { id: 'owner_name', label: 'Owner of record' },
+  { id: 'zoning', label: 'Zoning / land use' },
+  { id: 'occupancy_use', label: 'Occupancy / use code' },
+  { id: 'assessed_value', label: 'Assessed value' },
+]
+
+function formatFieldLabel(fieldId) {
+  const known = SOV_FIELD_META.find(item => item.id === fieldId)
+  if (known) return known.label
+  return String(fieldId ?? '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
 }
 
-function parseDigestSections(md) {
-  if (!md || typeof md !== 'string') return []
-  let body = md
-  if (body.startsWith('---')) {
-    const end = body.indexOf('---', 3)
-    if (end !== -1) body = body.slice(end + 3).trim()
-  }
-  return body
-    .split(/^## /m)
-    .filter(Boolean)
-    .map(chunk => {
-      const nl = chunk.indexOf('\n')
-      const title = nl === -1 ? chunk.trim() : chunk.slice(0, nl).trim()
-      const content = nl === -1 ? '' : chunk.slice(nl + 1).trim()
-      return { title, content }
-    })
-}
-
-function SovFieldTable({ statementOfValues }) {
+function orderSovEntries(statementOfValues) {
   const entries = Object.entries(statementOfValues || {})
-  if (!entries.length) {
-    return <p className="font-mono text-[10px] text-ink-faint">No SOV fields populated.</p>
-  }
+  const order = new Map(SOV_FIELD_META.map((item, index) => [item.id, index]))
+  return entries.sort(([a], [b]) => {
+    const ai = order.has(a) ? order.get(a) : 999
+    const bi = order.has(b) ? order.get(b) : 999
+    if (ai !== bi) return ai - bi
+    return a.localeCompare(b)
+  })
+}
+
+function confidenceTone(confidence) {
+  const value = String(confidence ?? '').toLowerCase()
+  if (value === 'high') return 'high'
+  if (value === 'medium') return 'medium'
+  if (value === 'low') return 'low'
+  return 'unknown'
+}
+
+function SovFieldCard({ fieldId, entry }) {
+  const tone = confidenceTone(entry.confidence)
+  const source = formatCopeSourceLabel(entry.primary_source) || entry.primary_source || '—'
+  const lanes = Array.isArray(entry.supporting_lanes) ? entry.supporting_lanes : []
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse font-mono text-[9px]">
-        <thead>
-          <tr className="border-b border-panel-border text-left text-ink-muted">
-            <th className="py-1 pr-2">Field</th>
-            <th className="py-1 pr-2">Value</th>
-            <th className="py-1 pr-2">Source</th>
-            <th className="py-1">Confidence</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map(([fieldId, entry]) => (
-            <tr key={fieldId} className="border-b border-panel-border/40 text-ink-secondary">
-              <td className="py-1.5 pr-2 capitalize">{fieldId.replace(/_/g, ' ')}</td>
-              <td className="dossier-value py-1.5 pr-2">{entry.value}</td>
-              <td className="py-1.5 pr-2 text-ink-faint">{entry.primary_source || '-'}</td>
-              <td className={`py-1.5 ${CONFIDENCE_CLASS[entry.confidence] ?? 'text-ink-faint'}`}>
-                {entry.confidence || '-'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <li className={`sov-ledger__field sov-ledger__field--${tone}`}>
+      <div className="sov-ledger__field-top">
+        <p className="sov-ledger__field-label">{formatFieldLabel(fieldId)}</p>
+        {entry.confidence ? (
+          <span className={`sov-ledger__confidence sov-ledger__confidence--${tone}`}>
+            {entry.confidence}
+          </span>
+        ) : null}
+      </div>
+      <p className="sov-ledger__field-value">{entry.value}</p>
+      <p className="sov-ledger__field-source">{source}</p>
+      {lanes.length > 0 ? (
+        <p className="sov-ledger__field-lanes">{lanes.join(' · ')}</p>
+      ) : null}
+    </li>
   )
 }
 
-export default function ReportSovPanel({ statementOfValues, sovDigestMd, sovAnalysis }) {
-  const [digestOpen, setDigestOpen] = useState(true)
-  const digestSections = parseDigestSections(sovDigestMd).filter(
-    section => section.title.toLowerCase() !== 'executive summary',
+function DiscrepancyCard({ item }) {
+  const laneEntries = Object.entries(item.lane_values || {}).filter(([, value]) => value != null && value !== '')
+  return (
+    <li className={`sov-ledger__issue sov-ledger__issue--${item.status || 'unresolved'}`}>
+      <div className="sov-ledger__issue-top">
+        <p className="sov-ledger__issue-title">{formatFieldLabel(item.field_id)}</p>
+        <span className="sov-ledger__issue-status">{item.status || 'unresolved'}</span>
+      </div>
+      {item.resolved_value != null && item.resolved_value !== '' ? (
+        <p className="sov-ledger__issue-value">Resolved: {String(item.resolved_value)}</p>
+      ) : null}
+      {item.rationale ? <p className="sov-ledger__issue-note">{item.rationale}</p> : null}
+      {laneEntries.length > 0 ? (
+        <ul className="sov-ledger__lanes">
+          {laneEntries.map(([lane, value]) => (
+            <li key={lane}>
+              <span>{lane.replace(/_/g, ' ')}</span>
+              <strong>{String(value)}</strong>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
   )
+}
+
+export default function ReportSovPanel({ statementOfValues, sovAnalysis, onExportExcel, exportingExcel }) {
+  const entries = orderSovEntries(statementOfValues)
   const discrepancies = sovAnalysis?.discrepancies || []
   const enrichments = sovAnalysis?.enrichments || []
-  const notes = sovAnalysis?.underwriter_notes || []
 
-  if (!statementOfValues && !sovDigestMd) {
+  if (!entries.length) {
     return (
       <p className="p-4 font-mono text-[10px] text-ink-faint">
         Statement of Values was not generated for this report.
@@ -76,89 +106,61 @@ export default function ReportSovPanel({ statementOfValues, sovDigestMd, sovAnal
   }
 
   return (
-    <div className="space-y-4 p-4">
-      <section>
-        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Schedule of values</p>
-        <div className="mt-2">
-          <SovFieldTable statementOfValues={statementOfValues} />
+    <div className="sov-ledger">
+      <div className="sov-ledger__toolbar">
+        <div>
+          <p className="sov-ledger__eyebrow">Statement of values</p>
+          <p className="sov-ledger__count">
+            {entries.length} field{entries.length === 1 ? '' : 's'} reconciled across source lanes
+          </p>
         </div>
-      </section>
-
-      {discrepancies.length > 0 ? (
-        <section>
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Discrepancies</p>
-          <ul className="mt-2 space-y-2">
-            {discrepancies.map((d, i) => (
-              <li
-                key={`${d.field_id}-${i}`}
-                className="rounded border border-panel-border bg-panel-surface/40 px-3 py-2"
-              >
-                <p className="dossier-value font-mono text-[10px]">
-                  {d.field_id?.replace(/_/g, ' ')}{' '}
-                  <span className="text-ink-faint">({d.status})</span>
-                </p>
-                {d.rationale ? (
-                  <p className="mt-1 font-mono text-[9px] text-ink-secondary">{d.rationale}</p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {enrichments.length > 0 ? (
-        <section>
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Enrichments</p>
-          <ul className="mt-1 space-y-1 font-mono text-[9px] text-ink-secondary">
-            {enrichments.map((e, i) => (
-              <li key={i}>
-                {e.field_id}: {e.value} ({e.source})
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {notes.length > 0 ? (
-        <section>
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Underwriter notes</p>
-          <ul className="mt-1 list-inside list-disc space-y-0.5 font-mono text-[9px] text-ink-faint">
-            {notes.map((n, i) => (
-              <li key={i}>{n}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {digestSections.length > 0 ? (
-        <section>
+        {onExportExcel ? (
           <button
             type="button"
-            onClick={() => setDigestOpen(v => !v)}
-            className="flex w-full items-center justify-between font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted hover:text-ink-secondary"
+            onClick={onExportExcel}
+            disabled={exportingExcel}
+            className="dossier-btn-secondary"
           >
-            SOV digest
-            <span>{digestOpen ? '−' : '+'}</span>
+            {exportingExcel ? 'Exporting…' : 'Export SOV Excel'}
           </button>
-          {digestOpen ? (
-            <div className="mt-2 space-y-2">
-              {digestSections.map(section => (
-                <div
-                  key={section.title}
-                  className="rounded border border-panel-border bg-panel-surface/30 px-3 py-2"
-                >
-                  <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">
-                    {section.title}
-                  </p>
-                  <pre className="mt-1 whitespace-pre-wrap font-mono text-[9px] leading-relaxed text-ink-secondary">
-                    {section.content}
-                  </pre>
-                </div>
+        ) : null}
+      </div>
+
+      <div className="sov-ledger__scroll sleek-scrollbar">
+        <ul className="sov-ledger__grid">
+          {entries.map(([fieldId, entry]) => (
+            <SovFieldCard key={fieldId} fieldId={fieldId} entry={entry} />
+          ))}
+        </ul>
+
+        {discrepancies.length > 0 ? (
+          <section className="sov-ledger__section">
+            <h3 className="sov-ledger__section-title">Lane discrepancies</h3>
+            <ul className="sov-ledger__issues">
+              {discrepancies.map((item, i) => (
+                <DiscrepancyCard key={`${item.field_id}-${i}`} item={item} />
               ))}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+            </ul>
+          </section>
+        ) : null}
+
+        {enrichments.length > 0 ? (
+          <section className="sov-ledger__section">
+            <h3 className="sov-ledger__section-title">Gap fills</h3>
+            <ul className="sov-ledger__enrichments">
+              {enrichments.map((item, i) => (
+                <li key={`${item.field_id}-${i}`}>
+                  <span className="sov-ledger__enrich-label">{formatFieldLabel(item.field_id)}</span>
+                  <span className="sov-ledger__enrich-value">{item.value}</span>
+                  <span className="sov-ledger__enrich-source">
+                    {formatCopeSourceLabel(item.source) || item.source || '—'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
     </div>
   )
 }

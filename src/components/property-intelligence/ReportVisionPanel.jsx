@@ -140,7 +140,6 @@ export default function ReportVisionPanel({ visionAnalysis }) {
     stories_visible: storiesVisible,
     floor_levels: floorLevels = [],
     agent_trace: agentTrace,
-    subject_description: subjectDescription,
     imagery_captures: imageryCaptures = [],
   } = visionAnalysis
 
@@ -161,9 +160,6 @@ export default function ReportVisionPanel({ visionAnalysis }) {
             <p className="dossier-value font-display text-lg font-semibold leading-tight">{isoTitle}</p>
             {summary ? (
               <p className="mt-3 font-sans text-sm leading-relaxed text-ink-primary">{summary}</p>
-            ) : null}
-            {subjectDescription ? (
-              <p className="mt-2 font-sans text-sm leading-relaxed text-ink-secondary">{subjectDescription}</p>
             ) : null}
           </div>
         </section>
