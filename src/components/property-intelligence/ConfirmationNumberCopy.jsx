@@ -34,7 +34,7 @@ export default function ConfirmationNumberCopy({
       ? 'font-mono tabular-nums tracking-wide dossier-value'
       : 'font-mono tabular-nums tracking-wide text-command-watch'
   const labelClass = isDossierHeader
-    ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-[#e8a838]'
+    ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-white'
     : isDossier
       ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted'
       : 'font-mono text-[9px] uppercase tracking-[0.14em] text-command-watch'

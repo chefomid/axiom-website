@@ -2793,23 +2793,26 @@ html::-webkit-scrollbar-thumb:hover,
 }
 
 .report-dossier-header .dossier-btn-ghost {
-  border-color: rgba(232, 168, 56, 0.35);
-  color: rgba(255, 255, 255, 0.72);
+  border-color: #d6d6d2;
+  background: #ffffff;
+  color: #141414;
 }
 
 .report-dossier-header .dossier-btn-ghost:hover {
-  border-color: rgba(232, 168, 56, 0.7);
-  color: #ffffff;
+  border-color: #c2c2bc;
+  background: #f6f6f4;
+  color: #141414;
 }
 
-.report-dossier-header .dossier-value {
+.report-dossier-header .dossier-value,
+.report-dossier-header .text-white {
   color: #ffffff;
 }
 
 .report-dossier-header .text-ink-faint,
 .report-dossier-header .text-ink-muted,
 .report-dossier-header .text-ink-secondary {
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .report-dossier-header .dossier-btn-secondary {
