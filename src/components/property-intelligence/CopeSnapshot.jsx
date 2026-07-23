@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatCopeSourceLabel } from '../../utils/copeSourceLabels'
+import { formatDisplayValue } from '../../utils/formatDisplayValue'
 import CopeRunwayScroll from './CopeRunwayScroll'
 
 const COPE_ORDER = ['C', 'O', 'P', 'E']
@@ -73,7 +74,9 @@ function FieldCard({ field, variant = 'populated' }) {
       {field.value ? (
         <>
           <div className="mt-1 flex items-start justify-between gap-1.5">
-            <p className="dossier-value min-w-0 font-mono text-[11px] leading-snug">{field.value}</p>
+            <p className="dossier-value min-w-0 font-mono text-[11px] leading-snug tabular-nums">
+              {formatDisplayValue(field.value, field.id || field.key)}
+            </p>
             {hasSourceMeta ? (
               <button
                 type="button"

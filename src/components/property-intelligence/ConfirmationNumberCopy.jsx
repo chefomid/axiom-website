@@ -13,7 +13,7 @@ export default function ConfirmationNumberCopy({
   const isDossier = tone === 'dossier'
   const isDossierHeader = tone === 'dossierHeader'
   const copyBtnClass = isDossierHeader
-    ? 'rounded border border-[#e8a838]/55 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#e8a838] transition hover:bg-[#e8a838]/15'
+    ? 'rounded border border-[#e8a838]/50 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.1em] text-[#e8a838] transition hover:bg-[#e8a838]/15'
     : isDossier
       ? 'dossier-btn-ghost !px-2.5 !py-1'
       : 'rounded border border-panel-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-secondary transition-colors hover:border-command-watch/40 hover:text-command-watch'
@@ -29,7 +29,7 @@ export default function ConfirmationNumberCopy({
   }, [id])
 
   const idClass = isDossierHeader
-    ? 'font-mono tabular-nums tracking-wide text-[#e8a838]'
+    ? 'font-mono tabular-nums tracking-wide text-white'
     : isDossier
       ? 'font-mono tabular-nums tracking-wide text-[#e8a838]'
       : 'font-mono tabular-nums tracking-wide text-command-watch'

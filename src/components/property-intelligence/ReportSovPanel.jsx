@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatCopeSourceLabel } from '../../utils/copeSourceLabels'
+import { formatDisplayValue } from '../../utils/formatDisplayValue'
 
 const SOV_FIELD_META = [
   { id: 'year_built', label: 'Year built' },
@@ -78,33 +79,75 @@ function CollapsibleSection({ title, open, onToggle, children }) {
   )
 }
 
-function SovFieldRow({ fieldId, entry }) {
-  const tone = confidenceTone(entry.confidence)
-  const source = formatCopeSourceLabel(entry.primary_source) || entry.primary_source || '-'
-  const lanes = Array.isArray(entry.supporting_lanes) ? entry.supporting_lanes : []
-
+function SovFieldTable({ entries }) {
   return (
-    <li className="rounded border border-panel-border bg-panel-surface/60 px-3 py-2.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
-          {formatFieldLabel(fieldId)}
-        </p>
-        {entry.confidence ? (
-          <span className={`shrink-0 font-mono text-[8px] uppercase ${CONFIDENCE_CLASS[tone] ?? ''}`}>
-            {entry.confidence}
-          </span>
-        ) : null}
-      </div>
-      <p className="dossier-value mt-1 font-mono text-[11px] leading-snug">{entry.value ?? '-'}</p>
-      <div className="mt-1.5 space-y-0.5 border-t border-panel-border/50 pt-1.5">
-        <p className="font-mono text-[8px] text-ink-faint">From {source}</p>
-        {lanes.length > 0 ? (
-          <p className="font-mono text-[8px] uppercase tracking-wider text-ink-faint">
-            Lanes: {lanes.join(' · ')}
-          </p>
-        ) : null}
-      </div>
-    </li>
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[36rem] border-collapse text-left">
+        <thead>
+          <tr className="border-b border-panel-border/70 bg-panel-surface/50">
+            <th className="whitespace-nowrap px-3 py-2 font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+              Field
+            </th>
+            <th className="whitespace-nowrap px-3 py-2 font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+              Value
+            </th>
+            <th className="whitespace-nowrap px-3 py-2 font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+              Confidence
+            </th>
+            <th className="whitespace-nowrap px-3 py-2 font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+              Source
+            </th>
+            <th className="whitespace-nowrap px-3 py-2 font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+              Lanes
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(([fieldId, entry]) => {
+            const tone = confidenceTone(entry.confidence)
+            const source = formatCopeSourceLabel(entry.primary_source) || entry.primary_source || '-'
+            const lanes = Array.isArray(entry.supporting_lanes) ? entry.supporting_lanes : []
+
+            return (
+              <tr
+                key={fieldId}
+                className="border-b border-panel-border/50 last:border-b-0 odd:bg-panel-surface/35 even:bg-transparent"
+              >
+                <td className="px-3 py-2.5 align-top">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
+                    {formatFieldLabel(fieldId)}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 align-top">
+                  <span className="dossier-value font-mono text-[11px] leading-snug tabular-nums">
+                    {formatDisplayValue(entry.value, fieldId) || '-'}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 align-top">
+                  {entry.confidence ? (
+                    <span className={`font-mono text-[8px] uppercase ${CONFIDENCE_CLASS[tone] ?? ''}`}>
+                      {entry.confidence}
+                    </span>
+                  ) : (
+                    <span className="font-mono text-[8px] text-ink-faint">-</span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 align-top">
+                  <span className="font-mono text-[9px] leading-snug text-ink-secondary">
+                    {source}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 align-top">
+                  <span className="font-mono text-[8px] uppercase tracking-wider text-ink-faint">
+                    {lanes.length > 0 ? lanes.join(' · ') : '-'}
+                  </span>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -177,15 +220,11 @@ export default function ReportSovPanel({ statementOfValues, sovAnalysis, onExpor
               disabled={exportingExcel}
               className="dossier-btn-sovexcel"
             >
-              {exportingExcel ? 'Exporting…' : 'Export SovExcel'}
+              {exportingExcel ? 'Exporting…' : 'Export SOV Excel'}
             </button>
           ) : null}
         </div>
-        <ul className="space-y-1.5 p-3">
-          {entries.map(([fieldId, entry]) => (
-            <SovFieldRow key={fieldId} fieldId={fieldId} entry={entry} />
-          ))}
-        </ul>
+        <SovFieldTable entries={entries} />
       </section>
 
       {discrepancies.length > 0 ? (
@@ -208,22 +247,43 @@ export default function ReportSovPanel({ statementOfValues, sovAnalysis, onExpor
           open={fillsOpen}
           onToggle={() => setFillsOpen(v => !v)}
         >
-          <ul className="space-y-1.5">
-            {enrichments.map((item, i) => (
-              <li
-                key={`${item.field_id}-${i}`}
-                className="rounded border border-panel-border bg-panel-surface/60 px-3 py-2.5"
-              >
-                <p className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
-                  {formatFieldLabel(item.field_id)}
-                </p>
-                <p className="dossier-value mt-1 font-mono text-[11px] leading-snug">{item.value}</p>
-                <p className="mt-1 font-mono text-[8px] text-ink-faint">
-                  From {formatCopeSourceLabel(item.source) || item.source || '-'}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[28rem] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-panel-border/70">
+                  <th className="px-2 py-1.5 font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+                    Field
+                  </th>
+                  <th className="px-2 py-1.5 font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+                    Value
+                  </th>
+                  <th className="px-2 py-1.5 font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+                    Source
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {enrichments.map((item, i) => (
+                  <tr
+                    key={`${item.field_id}-${i}`}
+                    className="border-b border-panel-border/50 last:border-b-0"
+                  >
+                    <td className="px-2 py-2 align-top font-mono text-[9px] uppercase tracking-wider text-ink-muted">
+                      {formatFieldLabel(item.field_id)}
+                    </td>
+                    <td className="px-2 py-2 align-top">
+                      <span className="dossier-value font-mono text-[11px] leading-snug tabular-nums">
+                        {formatDisplayValue(item.value, item.field_id)}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 align-top font-mono text-[9px] text-ink-faint">
+                      {formatCopeSourceLabel(item.source) || item.source || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </CollapsibleSection>
       ) : null}
     </div>

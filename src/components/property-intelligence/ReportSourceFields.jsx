@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { formatCopeSourceLabel } from '../../utils/copeSourceLabels'
+import { formatDisplayValue } from '../../utils/formatDisplayValue'
 import CopeRunwayScroll from './CopeRunwayScroll'
 
 function formatFieldKey(key) {
@@ -15,7 +16,9 @@ function FieldCard({ field }) {
         {formatFieldKey(field.key)}
       </p>
       {field.value ? (
-        <p className="dossier-value mt-1 font-mono text-[11px] leading-snug">{field.value}</p>
+        <p className="dossier-value mt-1 font-mono text-[11px] leading-snug tabular-nums">
+          {formatDisplayValue(field.value, field.key)}
+        </p>
       ) : null}
     </li>
   )
