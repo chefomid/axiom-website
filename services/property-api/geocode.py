@@ -8,6 +8,8 @@ from typing import Any
 
 import httpx
 
+from address_std import apply_standardized_to_geo, standardize_address
+
 USER_AGENT = "AXIOM-PropertyIntelligence/0.1 (contact: dev@axiom.local)"
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
 CENSUS = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
@@ -188,15 +190,17 @@ def _photon_feature_to_result(feat: dict[str, Any], address: str) -> dict[str, A
     if len(coords) < 2:
         return None
     props = feat.get("properties") or {}
-    parts = [
-        props.get("housenumber"),
-        props.get("street"),
+    street_line = " ".join(
+        p for p in (props.get("housenumber"), props.get("street")) if p
+    ).strip()
+    locality_parts = [
         props.get("city"),
         props.get("state"),
         props.get("postcode"),
         props.get("country"),
     ]
-    display = ", ".join(p for p in parts if p) or props.get("name") or address
+    display_parts = [street_line, *[p for p in locality_parts if p]]
+    display = ", ".join(p for p in display_parts if p) or props.get("name") or address
     return normalize_result(
         display_name=display,
         lat=float(coords[1]),
@@ -408,8 +412,16 @@ async def search_addresses(address: str, *, limit: int = 5, country: str | None 
     return _dedupe_suggestions(items)[:limit]
 
 
+def _finalize_geocode(address: str, geo: dict[str, Any] | None, *, line_geo: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Attach standardized vendor-safe address fields before returning geocode results."""
+    if not geo:
+        return None
+    std = standardize_address(input_address=address, geo=geo, line_geo=line_geo)
+    return apply_standardized_to_geo(geo, std)
+
+
 async def geocode_address(address: str) -> dict[str, Any] | None:
-    """US: Census (typo-tolerant) refined to building coords; else Nominatim / Photon."""
+    """US: Photon/Census pin + Census lines when available; always standardize before return."""
     address = address.strip()
     if not address:
         return None
@@ -419,28 +431,61 @@ async def geocode_address(address: str) -> dict[str, Any] | None:
 
     async with httpx.AsyncClient(timeout=30.0, headers=headers, follow_redirects=True) as client:
         if us_query:
-            try:
-                result = await _photon_best(client, address)
-                if result and _house_number(address):
-                    return result
-            except httpx.HTTPError:
-                pass
+            photon: dict[str, Any] | None = None
+            census: dict[str, Any] | None = None
 
             try:
-                result = await _census(client, address)
-                if result:
-                    return await _refine_with_building_coords(client, address, result)
+                photon = await _photon_best(client, address)
             except httpx.HTTPError:
-                pass
+                photon = None
+
+            try:
+                census = await _census(client, address)
+                if census:
+                    census = await _refine_with_building_coords(client, address, census)
+            except httpx.HTTPError:
+                census = None
+
+            # Prefer Photon/Census-refined coords for the pin.
+            # Use Census text lines only when the house number still matches the input.
+            if photon and census:
+                want_hn = _house_number(address)
+                census_hn = _house_number(str(census.get("display_name") or "")) or str(
+                    (census.get("address") or {}).get("fromAddress")
+                    or (census.get("address") or {}).get("fromaddress")
+                    or (census.get("address") or {}).get("housenumber")
+                    or ""
+                )
+                census_hn_base = census_hn.split("-")[0] if census_hn else ""
+                want_base = want_hn.split("-")[0] if want_hn else ""
+                census_hn_ok = bool(want_base and census_hn_base and want_base == census_hn_base)
+                line_geo = census if census_hn_ok else photon
+                merged = {
+                    **(census if census_hn_ok else photon),
+                    "lat": photon["lat"],
+                    "lng": photon["lng"],
+                    "source": photon.get("source") or census.get("source"),
+                    "precision": photon.get("precision") or census.get("precision") or "building",
+                    "address": (line_geo.get("address") or {}),
+                    "display_name": line_geo.get("display_name") or photon.get("display_name"),
+                }
+                return _finalize_geocode(address, merged, line_geo=line_geo)
+
+            if census:
+                return _finalize_geocode(address, census, line_geo=census)
+
+            if photon and _house_number(address):
+                return _finalize_geocode(address, photon, line_geo=photon)
 
         try:
             result = await _nominatim(client, address, countrycodes="us" if us_query else None)
             if result:
-                return result
+                return _finalize_geocode(address, result)
         except httpx.HTTPError:
             pass
 
         try:
-            return await _photon_best(client, address)
+            result = await _photon_best(client, address)
+            return _finalize_geocode(address, result)
         except httpx.HTTPError:
             return None

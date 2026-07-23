@@ -151,7 +151,10 @@ async def run_sov_orchestrator(
     run_llm, skip_reason = _should_run_llm(lanes, trusted, conflicts)
     api_key = openai_api_key()
 
-    address = ctx.geo.get("display_name") or ctx.address
+    from address_std import vendor_address
+
+    std = vendor_address(ctx)
+    address = std.get("full") or ctx.geo.get("display_name") or ctx.address
     lat = float(ctx.geo.get("lat") or 0)
     lng = float(ctx.geo.get("lng") or 0)
 

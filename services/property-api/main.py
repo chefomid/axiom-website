@@ -323,6 +323,7 @@ class EnrichResponse(BaseModel):
     report_id: str
     address_input: str
     display_name: str | None = None
+    address_std: dict[str, Any] | None = None
     lat: float | None = None
     lng: float | None = None
     selected_sources: list[str]
@@ -983,6 +984,7 @@ async def quote(request: Request, body: QuoteRequest):
 
     country_hint = "US"
     display_name = None
+    address_std = None
     lat = None
     lng = None
 
@@ -990,6 +992,7 @@ async def quote(request: Request, body: QuoteRequest):
         geo = await geocode_address(address)
         if geo:
             display_name = geo.get("display_name")
+            address_std = geo.get("standardized") if isinstance(geo.get("standardized"), dict) else None
             lat = geo.get("lat")
             lng = geo.get("lng")
             hint = _country_hint_from_geo(geo)
@@ -1006,6 +1009,7 @@ async def quote(request: Request, body: QuoteRequest):
         lat=lat,
         lng=lng,
         country_hint=country_hint,
+        address_std=address_std,
     )
     quote_data["warnings"] = warnings_for_selection(resolved)
     return quote_data
@@ -1035,6 +1039,7 @@ async def _execute_enrich(
             detail="Address could not be geocoded. Use a full street address with city, state, and ZIP.",
         )
 
+    address_std = geo.get("standardized") if isinstance(geo.get("standardized"), dict) else None
     quote_data = build_quote(
         address_input=address.strip(),
         selected_sources=resolved,
@@ -1042,6 +1047,7 @@ async def _execute_enrich(
         lat=geo["lat"],
         lng=geo["lng"],
         country_hint=_country_hint_from_geo(geo),
+        address_std=address_std,
     )
 
     enrich_cost = enrich_credits_cost(quote_data)
@@ -1173,6 +1179,9 @@ async def _execute_enrich(
         report_id=rid,
         address_input=address.strip(),
         display_name=geo_result.get("display_name"),
+        address_std=geo_result.get("standardized")
+        if isinstance(geo_result.get("standardized"), dict)
+        else address_std,
         lat=geo_result["lat"],
         lng=geo_result["lng"],
         selected_sources=resolved,

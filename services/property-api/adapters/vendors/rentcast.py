@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 
 from adapters.base import api_key_configured, failed_result, skipped_result, success_result
+from address_std import vendor_address
 from engine.adapter import BaseAdapter
 from engine.models import SourceContext, SourceRunResult
 
@@ -58,10 +59,12 @@ class RentCastPropertyAdapter(BaseAdapter):
         if not api_key_configured(self.source_id):
             return skipped_result(self.source_id, "RENTCAST_API_KEY not configured")
         key = os.environ.get("RENTCAST_API_KEY", "").strip()
+        std = vendor_address(ctx)
+        lookup = str(std.get("full") or ctx.address).strip()
         try:
             r = await client.get(
                 "https://api.rentcast.io/v1/properties",
-                params={"address": ctx.address},
+                params={"address": lookup},
                 headers={"Accept": "application/json", "X-Api-Key": key},
                 timeout=25.0,
             )

@@ -32,6 +32,7 @@ async def _pricing_for_enrich(address: str, selected_sources: list[str]) -> tupl
     addr = geo.get("address") or {}
     country_hint = addr.get("country") or addr.get("country_code")
     resolved = resolve_selected_sources(selected_sources or None)
+    address_std = geo.get("standardized") if isinstance(geo.get("standardized"), dict) else None
     quote_data = build_quote(
         address_input=address.strip(),
         selected_sources=resolved,
@@ -39,6 +40,7 @@ async def _pricing_for_enrich(address: str, selected_sources: list[str]) -> tupl
         lat=geo["lat"],
         lng=geo["lng"],
         country_hint=country_hint,
+        address_std=address_std,
     )
     user_price_usd = float(quote_data["totals"]["user_price_usd"])
     needed_credits = enrich_credits_cost(quote_data)

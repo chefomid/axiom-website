@@ -128,7 +128,10 @@ async def run_property_inspector(ctx: SourceContext, client: httpx.AsyncClient) 
 
     property_lat = float(lat)
     property_lng = float(lng)
-    address = ctx.geo.get("display_name") or ctx.address
+    from address_std import vendor_address
+
+    std = vendor_address(ctx)
+    address = std.get("full") or ctx.geo.get("display_name") or ctx.address
     prior_note = _prior_construction_context(ctx)
 
     agent_trace: dict[str, Any] = {

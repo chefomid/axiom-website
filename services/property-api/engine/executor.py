@@ -9,6 +9,7 @@ from typing import Any
 
 import httpx
 
+from address_std import apply_standardized_to_geo, standardize_address
 from engine.adapter import SourceAdapter
 from engine.cache import get_cache
 from engine.models import SourceContext, SourceRunResult
@@ -17,6 +18,19 @@ from engine.planner import ExecutionPlan, build_execution_plan
 from engine.registry import get_adapter
 from geocode import geocode_address
 from registry_loader import get_source_by_id
+
+
+def _ensure_standardized_geo(address: str, geo: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(geo.get("standardized"), dict) and geo["standardized"].get("full"):
+        return geo
+    std = standardize_address(input_address=address, geo=geo)
+    return apply_standardized_to_geo(geo, std)
+
+
+def _cache_address_key(ctx: SourceContext) -> str:
+    std = ctx.address_std or (ctx.geo.get("standardized") if isinstance(ctx.geo, dict) else None) or {}
+    full = str(std.get("full") or "").strip()
+    return full or ctx.address
 
 
 async def run_geocode(address: str) -> tuple[dict[str, Any] | None, SourceRunResult]:
@@ -31,13 +45,15 @@ async def run_geocode(address: str) -> tuple[dict[str, Any] | None, SourceRunRes
             message="Address could not be geocoded",
             charged=False,
         )
-    addr = geo.get("address") or {}
+    geo = _ensure_standardized_geo(address.strip(), geo)
+    std = geo.get("standardized") or {}
+    source = geo.get("source")
     fields = [
-        {"key": "property_address", "value": geo.get("display_name"), "source": geo.get("source"), "confidence": "high"},
-        {"key": "city", "value": addr.get("city") or addr.get("town"), "source": geo.get("source"), "confidence": "high"},
-        {"key": "state", "value": addr.get("state"), "source": geo.get("source"), "confidence": "high"},
-        {"key": "postcode", "value": addr.get("postcode") or addr.get("zip"), "source": geo.get("source"), "confidence": "high"},
-        {"key": "country", "value": addr.get("country"), "source": geo.get("source"), "confidence": "high"},
+        {"key": "property_address", "value": std.get("full") or geo.get("display_name"), "source": source, "confidence": "high"},
+        {"key": "city", "value": std.get("city"), "source": source, "confidence": "high"},
+        {"key": "state", "value": std.get("state"), "source": source, "confidence": "high"},
+        {"key": "postcode", "value": std.get("postal_code"), "source": source, "confidence": "high"},
+        {"key": "country", "value": std.get("country"), "source": source, "confidence": "high"},
     ]
     fields = [f for f in fields if f.get("value")]
     result = SourceRunResult("geocode_census", status="success", fields=fields)
@@ -108,7 +124,8 @@ async def _run_one_source(
     lat = ctx.geo["lat"]
     lng = ctx.geo["lng"]
     cache = get_cache()
-    cached = cache.get(source_id, lat, lng, ctx.address, ttl)
+    cache_address = _cache_address_key(ctx)
+    cached = cache.get(source_id, lat, lng, cache_address, ttl)
     if cached:
         return cached
 
@@ -155,7 +172,7 @@ async def _run_one_source(
     result.latency_ms = int((time.monotonic() - start) * 1000)
     result = result_with_observations(result)
     if result.status == "success":
-        cache.set(source_id, lat, lng, ctx.address, ttl, result)
+        cache.set(source_id, lat, lng, cache_address, ttl, result)
     return result
 
 
@@ -231,9 +248,11 @@ async def run_report(
         return None, [geo_result]
 
     plan = build_execution_plan(selected_sources)
+    geo = _ensure_standardized_geo(address.strip(), geo)
     ctx = SourceContext(
         address=address.strip(),
         geo=geo,
+        address_std=dict(geo.get("standardized") or {}),
         source_url=source_url,
         source_urls=dict(source_urls or {}),
     )

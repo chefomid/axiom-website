@@ -115,6 +115,7 @@ def build_quote(
     lat: float | None = None,
     lng: float | None = None,
     country_hint: str | None = None,
+    address_std: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     resolved = resolve_selected_sources(selected_sources)
     line_items = build_line_items(resolved, country_hint=country_hint)
@@ -122,6 +123,7 @@ def build_quote(
     return {
         "address_input": address_input,
         "display_name": display_name,
+        "address_std": address_std,
         "lat": lat,
         "lng": lng,
         "selected_sources": resolved,

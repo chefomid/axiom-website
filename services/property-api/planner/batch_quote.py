@@ -137,6 +137,7 @@ async def build_batch_quote(
 
         addr = geo.get("address") or {}
         country_hint = addr.get("country") or addr.get("country_code")
+        address_std = geo.get("standardized") if isinstance(geo.get("standardized"), dict) else None
         quote_data = build_quote(
             address_input=address_input,
             selected_sources=resolved,
@@ -144,6 +145,7 @@ async def build_batch_quote(
             lat=geo["lat"],
             lng=geo["lng"],
             country_hint=country_hint,
+            address_std=address_std,
         )
         valid_quotes.append(quote_data)
         locations.append(
@@ -151,6 +153,7 @@ async def build_batch_quote(
                 "row_index": row_index,
                 "address_input": address_input,
                 "display_name": geo.get("display_name"),
+                "address_std": address_std,
                 "lat": geo["lat"],
                 "lng": geo["lng"],
                 "status": "valid",

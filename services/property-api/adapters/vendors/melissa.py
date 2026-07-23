@@ -5,6 +5,7 @@ import os
 import httpx
 
 from adapters.base import api_key_configured, failed_result, skipped_result, success_result
+from address_std import vendor_address
 from engine.adapter import BaseAdapter
 from engine.models import SourceContext, SourceRunResult
 
@@ -21,10 +22,12 @@ class MelissaPropertyAdapter(BaseAdapter):
 
     async def fetch(self, ctx: SourceContext, client: httpx.AsyncClient, **kwargs) -> SourceRunResult:
         key = os.environ.get(self.env_key, "").strip()
+        std = vendor_address(ctx)
+        lookup = str(std.get("full") or ctx.address).strip()
         try:
             r = await client.get(
                 self.api_url,
-                params={"id": key, "format": "json", "ff": ctx.address},
+                params={"id": key, "format": "json", "ff": lookup},
                 timeout=25.0,
             )
             r.raise_for_status()

@@ -8,8 +8,16 @@ from typing import Any
 import httpx
 
 from adapters.base import api_key_configured, failed_result, skipped_result, success_result
+from address_std import attom_address_params, vendor_address
 from engine.adapter import BaseAdapter
 from engine.models import SourceContext, SourceRunResult
+
+
+def _attom_validate_address(ctx: SourceContext) -> str | None:
+    std = vendor_address(ctx)
+    if std.get("quality") == "unusable" or not str(std.get("line1") or "").strip():
+        return "Address could not be standardized for ATTOM"
+    return None
 
 
 class AttomPropertyAdapter(BaseAdapter):
@@ -20,15 +28,11 @@ class AttomPropertyAdapter(BaseAdapter):
     async def validate(self, ctx: SourceContext) -> str | None:
         if not api_key_configured(self.source_id):
             return "Configure ATTOM_API_KEY — construction, stories, roof, and occupancy use code."
-        return None
+        return _attom_validate_address(ctx)
 
     async def fetch(self, ctx: SourceContext, client: httpx.AsyncClient, **kwargs) -> SourceRunResult:
         key = os.environ.get(self.env_key, "").strip()
-        addr = ctx.geo.get("address") or {}
-        params: dict[str, Any] = {
-            "address1": ctx.address.split(",")[0].strip(),
-            "address2": f"{addr.get('city', '')}, {addr.get('state', '')} {addr.get('postcode') or addr.get('zip', '')}".strip(", "),
-        }
+        params: dict[str, Any] = attom_address_params(vendor_address(ctx))
         try:
             r = await client.get(
                 self.api_url,
@@ -80,15 +84,11 @@ class AttomHazardAdapter(BaseAdapter):
         prior = ctx.prior_results.get("attom_property")
         if prior and prior.status != "success":
             return "ATTOM property must succeed before hazard layer"
-        return None
+        return _attom_validate_address(ctx)
 
     async def fetch(self, ctx: SourceContext, client: httpx.AsyncClient, **kwargs) -> SourceRunResult:
         key = os.environ.get(self.env_key, "").strip()
-        addr = ctx.geo.get("address") or {}
-        params = {
-            "address1": ctx.address.split(",")[0].strip(),
-            "address2": f"{addr.get('city', '')}, {addr.get('state', '')} {addr.get('postcode') or addr.get('zip', '')}".strip(", "),
-        }
+        params = attom_address_params(vendor_address(ctx))
         try:
             r = await client.get(
                 self.api_url,

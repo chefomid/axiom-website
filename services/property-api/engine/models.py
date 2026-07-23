@@ -36,6 +36,7 @@ class TrustedValue:
 class SourceContext:
     address: str
     geo: dict[str, Any]
+    address_std: dict[str, Any] = field(default_factory=dict)
     source_url: str | None = None
     source_urls: dict[str, str] = field(default_factory=dict)
     prior_results: dict[str, SourceRunResult] = field(default_factory=dict)

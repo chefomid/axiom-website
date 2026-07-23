@@ -53,15 +53,13 @@ class WebPropertyResearchAdapter(BaseAdapter):
         if not api_key:
             return skipped_result(self.source_id, "OPENAI_API_KEY not configured")
 
+        from address_std import vendor_address
+
+        std = vendor_address(ctx)
         addr = ctx.geo.get("address") or {}
-        location_bits = [
-            ctx.geo.get("display_name") or ctx.address,
-            addr.get("county"),
-            addr.get("city") or addr.get("town"),
-            addr.get("state"),
-            addr.get("postcode") or addr.get("zip"),
-        ]
-        location_line = ", ".join(x for x in location_bits if x)
+        location_line = str(std.get("full") or ctx.geo.get("display_name") or ctx.address or "")
+        if addr.get("county"):
+            location_line = f"{location_line}, {addr.get('county')}" if location_line else str(addr.get("county"))
 
         user_input = (
             f"Property address: {location_line}\n"
