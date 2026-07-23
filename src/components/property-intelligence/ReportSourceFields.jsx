@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { formatCopeSourceLabel } from '../../utils/copeSourceLabels'
+import CopeRunwayScroll from './CopeRunwayScroll'
 
 function formatFieldKey(key) {
   return String(key ?? '')
@@ -110,7 +111,7 @@ export default function ReportSourceFields({ fields, crawlExcerpt, crawlSourceUr
     <div className="border-b border-panel-border">
       {grouped.length ? (
         <div className="cope-runway">
-          <div className="cope-runway__scroll">
+          <CopeRunwayScroll>
             <div
               className="cope-runway__track grid divide-x divide-[color:var(--dossier-border,#d6d6d2)]"
               style={{
@@ -122,7 +123,7 @@ export default function ReportSourceFields({ fields, crawlExcerpt, crawlSourceUr
                 <SourceColumn key={source} source={source} fields={sourceFields} />
               ))}
             </div>
-          </div>
+          </CopeRunwayScroll>
         </div>
       ) : null}
 

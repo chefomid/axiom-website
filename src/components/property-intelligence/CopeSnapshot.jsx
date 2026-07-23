@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatCopeSourceLabel } from '../../utils/copeSourceLabels'
+import CopeRunwayScroll from './CopeRunwayScroll'
 
 const COPE_ORDER = ['C', 'O', 'P', 'E']
 
@@ -202,13 +203,13 @@ export default function CopeSnapshot({ cope }) {
 
   return (
     <div className="cope-runway border-b border-panel-border">
-      <div className="cope-runway__scroll">
+      <CopeRunwayScroll>
         <div className="cope-runway__track grid min-w-[52rem] grid-cols-4 divide-x divide-[color:var(--dossier-border,#d6d6d2)] lg:min-w-0">
           {columns.map(section => (
             <CopeColumn key={section.id} section={section} />
           ))}
         </div>
-      </div>
+      </CopeRunwayScroll>
     </div>
   )
 }

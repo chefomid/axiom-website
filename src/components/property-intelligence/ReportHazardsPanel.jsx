@@ -8,6 +8,7 @@ import {
   dateRangeForYears,
 } from '../../utils/earthquakeAnalytics'
 import { USGS_CATALOG_MIN_MAGNITUDE } from '../../utils/earthquakeMagnitude'
+import CopeRunwayScroll from './CopeRunwayScroll'
 
 const HAZARD_META = {
   fema: { label: 'FEMA flood', agency: 'NFHL' },
@@ -332,7 +333,7 @@ export default function ReportHazardsPanel({ hazards, lat = null, lng = null, la
 
   return (
     <div className="cope-runway border-b border-panel-border">
-      <div className="cope-runway__scroll">
+      <CopeRunwayScroll>
         <div
           className="cope-runway__track grid divide-x divide-[color:var(--dossier-border,#d6d6d2)]"
           style={{
@@ -351,7 +352,7 @@ export default function ReportHazardsPanel({ hazards, lat = null, lng = null, la
             />
           ))}
         </div>
-      </div>
+      </CopeRunwayScroll>
     </div>
   )
 }

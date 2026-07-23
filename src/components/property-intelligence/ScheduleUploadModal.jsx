@@ -183,7 +183,7 @@ export default function ScheduleUploadModal({ open, onClose, rows, onRowsChange 
                   {fileLoading ? 'Reading file…' : isDragging ? 'Drop file to upload' : 'Drag & drop schedule file'}
                 </p>
                 <p className="mt-2 font-mono text-[10px] text-ink-secondary">.xlsx, .xls, or .csv</p>
-                <p className="mt-4 rounded border border-command-live/30 bg-command-live/10 px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider text-command-live">
+                <p className="mt-4 rounded border border-panel-border bg-panel-surface/60 px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-secondary">
                   or click to browse
                 </p>
                 <input
@@ -216,7 +216,7 @@ export default function ScheduleUploadModal({ open, onClose, rows, onRowsChange 
                 <button
                   type="button"
                   onClick={handlePasteApply}
-                  className="mt-2 font-mono text-[10px] uppercase tracking-wider text-command-live hover:underline"
+                  className="mt-2 rounded border border-panel-border bg-panel-surface/60 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-secondary hover:border-command-live/40 hover:text-white"
                 >
                   Apply pasted addresses
                 </button>
