@@ -488,13 +488,17 @@ export default function PropertyWorkflowHud({
 
           enrichStatus={enrichStatus}
 
-          fullWidth
-
           variant="intelligence"
 
           scheduleMode={scheduleMode}
 
           hidePriceInLabel
+
+          reportTitle={
+            scheduleMode
+              ? 'Schedule analysis'
+              : (presets ?? []).find(preset => preset.id === activePresetId)?.label ?? null
+          }
 
         />
 
