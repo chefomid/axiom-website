@@ -36,6 +36,52 @@ export function googleMapsApiKey() {
   return import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim() || ''
 }
 
+/** Map embed FOV (55–100) onto Street View JS zoom (higher = tighter). */
+export function fovToStreetZoom(fov) {
+  const f = clampFov(fov)
+  return Math.max(0, Math.min(4, (100 - f) / 18))
+}
+
+let googleMapsJsPromise = null
+
+/** Load Maps JavaScript API once (needed for flicker-free Street View POV updates). */
+export function loadGoogleMapsJs(apiKey) {
+  const key = (apiKey || '').trim()
+  if (!key) return Promise.reject(new Error('Missing Google Maps API key'))
+  if (typeof window !== 'undefined' && window.google?.maps?.StreetViewPanorama) {
+    return Promise.resolve(window.google.maps)
+  }
+  if (googleMapsJsPromise) return googleMapsJsPromise
+
+  googleMapsJsPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-axiom-google-maps="1"]')
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.google.maps), { once: true })
+      existing.addEventListener('error', () => reject(new Error('Google Maps JS failed to load')), {
+        once: true,
+      })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly`
+    script.async = true
+    script.defer = true
+    script.dataset.axiomGoogleMaps = '1'
+    script.onload = () => {
+      if (window.google?.maps?.StreetViewPanorama) resolve(window.google.maps)
+      else reject(new Error('Google Maps JS loaded without Street View'))
+    }
+    script.onerror = () => {
+      googleMapsJsPromise = null
+      reject(new Error('Google Maps JS failed to load'))
+    }
+    document.head.appendChild(script)
+  })
+
+  return googleMapsJsPromise
+}
+
 /** Esri World Imagery static export centered on a pin. */
 export function esriSatelliteImageUrl(lat, lng, width = 720, height = 540) {
   const la = Number(lat)
