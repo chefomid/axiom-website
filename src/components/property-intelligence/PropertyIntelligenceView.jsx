@@ -363,6 +363,9 @@ export default function PropertyIntelligenceView() {
     setGeolocateCommitting(false)
     clearGeoError()
     setReportPanelOpen(false)
+    setReportExpanded(false)
+    setBillingNotice(null)
+    setCheckoutPreview(null)
     clearAddressComposing()
 
     clear()
@@ -1213,6 +1216,7 @@ export default function PropertyIntelligenceView() {
           sourceUrls={sourceUrls}
           onSourceUrlsChange={setSourceUrls}
           onGenerate={handleGenerate}
+          onNewReport={handleClear}
           billingEnabled={billingEnabled}
           checkoutPreview={activeCheckoutPreview}
           generateDisabled={Boolean(generateBlockReason)}

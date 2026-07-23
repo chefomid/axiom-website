@@ -56,6 +56,7 @@ export default function WorkflowGenerateButton({
   quote,
   loading,
   onGenerate,
+  onNewReport,
   generateDisabled,
   loadingReport,
   address,
@@ -95,17 +96,25 @@ export default function WorkflowGenerateButton({
     if (isIntelligence) {
       return (
         <div className={wrapClass}>
-          <span role="status" className="workflow-footer-cta workflow-footer-cta--ready workflow-footer-cta--tab">
-            Report ready
-          </span>
+          <button
+            type="button"
+            onClick={onNewReport}
+            className={intelligenceBtnClass}
+          >
+            New report
+          </button>
           <ReportMeta title={metaTitle} dateLabel={dateLabel} />
         </div>
       )
     }
     return (
-      <span className={`${WORKFLOW_CTL} border-command-stable/40 bg-command-stable/10 text-command-stable`}>
-        Ready
-      </span>
+      <button
+        type="button"
+        onClick={onNewReport}
+        className={`${WORKFLOW_CTL} border-command-stable/40 bg-command-stable/10 text-command-stable`}
+      >
+        New report
+      </button>
     )
   }
 

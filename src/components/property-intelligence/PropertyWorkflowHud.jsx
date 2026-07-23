@@ -101,6 +101,8 @@ export default function PropertyWorkflowHud({
 
   onGenerate,
 
+  onNewReport,
+
   generateDisabled,
 
   generateBlockReason,
@@ -463,6 +465,8 @@ export default function PropertyWorkflowHud({
           loading={loadingQuote}
 
           onGenerate={onGenerate}
+
+          onNewReport={onNewReport}
 
           billingEnabled={billingEnabled}
 
