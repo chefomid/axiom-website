@@ -240,14 +240,14 @@ export default function MapControlsDock({
                     minEarthquakeMag}
                 </span>
               </DockTab>
-              <span className="h-4 w-px bg-[#333]" aria-hidden />
               <DockTab active={analysisOpen} accent="watch" onClick={() => onOpenAnalysis?.()}>
                 Seismic/EQ
               </DockTab>
+              <span className="h-4 w-px bg-[#333]" aria-hidden />
             </>
           )}
 
-          <span className="h-4 w-px bg-[#333]" aria-hidden />
+          {!showEarthquakeControls ? <span className="h-4 w-px bg-[#333]" aria-hidden /> : null}
 
           <span className="px-2 py-1 font-mono text-[10px] tabular-nums text-ink-faint">
             {visibleCount} pts
