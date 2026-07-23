@@ -3051,8 +3051,8 @@ html::-webkit-scrollbar-thumb:hover,
 }
 
 .dossier-tabrow {
-  background: #e4e4e0;
-  border-bottom-color: #cfcfc9;
+  background: #c8c8c2;
+  border-bottom-color: #b0b0aa;
 }
 
 .dossier-tabrow .dossier-tab {
@@ -3061,7 +3061,7 @@ html::-webkit-scrollbar-thumb:hover,
 
 .dossier-tabrow .dossier-tab:hover {
   background: #ffffff;
-  border-color: #c8c8c2;
+  border-color: #9a9a94;
 }
 
 .dossier-tabrow .dossier-tab--active,
