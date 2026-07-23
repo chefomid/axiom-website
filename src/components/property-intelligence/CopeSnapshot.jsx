@@ -192,7 +192,7 @@ function CopeColumn({ section }) {
 export default function CopeSnapshot({ cope }) {
   if (!cope?.sections?.length) {
     return (
-      <div className="border-b border-panel-border p-4">
+      <div className="p-4">
         <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">COPE snapshot</p>
         <p className="mt-2 font-mono text-[10px] leading-relaxed text-ink-faint">
           Select <span className="text-ink-secondary">COPE snapshot mapper</span> and generate a report to
@@ -205,7 +205,7 @@ export default function CopeSnapshot({ cope }) {
   const columns = orderCopeSections(cope.sections)
 
   return (
-    <div className="cope-runway border-b border-panel-border">
+    <div className="cope-runway">
       <CopeRunwayScroll>
         <div className="cope-runway__track grid min-w-[52rem] grid-cols-4 divide-x divide-[color:var(--dossier-border,#d6d6d2)] lg:min-w-0">
           {columns.map(section => (

@@ -1,5 +1,20 @@
 export const RADIUS_OPTIONS = [25, 50, 75, 100, 150, 200, 250]
 
+/** Step local search radius along RADIUS_OPTIONS (−1 / +1). */
+export function stepRadiusMiles(current, delta = 1) {
+  const opts = RADIUS_OPTIONS
+  if (!opts.length) return current
+  let idx = opts.indexOf(current)
+  if (idx < 0) {
+    idx = opts.reduce(
+      (best, miles, i) => (Math.abs(miles - current) < Math.abs(opts[best] - current) ? i : best),
+      0,
+    )
+  }
+  const next = Math.max(0, Math.min(opts.length - 1, idx + delta))
+  return opts[next]
+}
+
 export const ANALYTICS_RADIUS_BREAKPOINTS = [25, 50, 75, 100, 150, 200, 250]
 
 /** Continental US national analysis, wider bands from geographic center. */

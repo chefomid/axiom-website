@@ -10,6 +10,7 @@ export default function ScopeSetupModal({
   initialScope = 'national',
   initialRadiusMiles = 50,
   initialCountryId = 'US',
+  initialUserLocation = null,
 }) {
   const [scope, setScope] = useState(initialScope)
   const [radiusMiles, setRadiusMiles] = useState(initialRadiusMiles)
@@ -17,6 +18,7 @@ export default function ScopeSetupModal({
   const [countryQuery, setCountryQuery] = useState('')
   const [locating, setLocating] = useState(false)
   const [locationError, setLocationError] = useState('')
+  const [useDeviceLocation, setUseDeviceLocation] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -25,6 +27,7 @@ export default function ScopeSetupModal({
     setCountryId(initialCountryId)
     setCountryQuery('')
     setLocationError('')
+    setUseDeviceLocation(false)
   }, [open, initialScope, initialRadiusMiles, initialCountryId])
 
   const filteredCountries = useMemo(() => {
@@ -32,6 +35,9 @@ export default function ScopeSetupModal({
     if (!q) return COUNTRIES
     return COUNTRIES.filter(c => c.label.toLowerCase().includes(q))
   }, [countryQuery])
+
+  const hasPinnedLocation = Boolean(initialUserLocation)
+  const keepPinnedLocation = scope === 'local' && hasPinnedLocation && !useDeviceLocation
 
   const requestLocation = () =>
     new Promise((resolve, reject) => {
@@ -55,19 +61,31 @@ export default function ScopeSetupModal({
     let userLocation = null
 
     if (scope === 'local') {
-      setLocating(true)
-      try {
-        userLocation = await requestLocation()
-      } catch {
-        setLocationError('Unable to access your location. Choose National or Global, or allow location access and retry.')
+      if (keepPinnedLocation) {
+        userLocation = initialUserLocation
+      } else {
+        setLocating(true)
+        try {
+          userLocation = await requestLocation()
+        } catch {
+          setLocationError(
+            'Unable to access your location. Choose National or Global, or allow location access and retry.',
+          )
+          setLocating(false)
+          return
+        }
         setLocating(false)
-        return
       }
-      setLocating(false)
     }
 
     onApply({ scope, radiusMiles, countryId, userLocation })
     onClose()
+  }
+
+  const applyLabel = () => {
+    if (locating) return 'Locating...'
+    if (scope === 'local' && !keepPinnedLocation) return 'Use my location'
+    return 'Apply scope'
   }
 
   return (
@@ -89,7 +107,7 @@ export default function ScopeSetupModal({
             <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-muted">Operational Scope</p>
             <h2 className="font-display mt-1 text-lg font-semibold text-white">Set your command view</h2>
             <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
-              Choose a local radius from your position, filter to a country, or view global events.
+              Choose a local radius from the map pin, filter to a country, or view global events.
             </p>
 
             <div className="mt-5 flex gap-2">
@@ -106,7 +124,9 @@ export default function ScopeSetupModal({
 
             {scope === 'local' && (
               <div className="mt-5 space-y-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Radius from current location</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
+                  Radius from map pin
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {RADIUS_OPTIONS.map(r => (
                     <SegmentButton
@@ -119,9 +139,27 @@ export default function ScopeSetupModal({
                     </SegmentButton>
                   ))}
                 </div>
-                <p className="font-mono text-[10px] text-ink-faint">
-                  Your browser will request location permission when you apply this scope.
-                </p>
+
+                {hasPinnedLocation ? (
+                  <div className="space-y-2 rounded border border-[#2a2a2a] bg-[#111] px-3 py-2.5">
+                    <p className="font-mono text-[10px] leading-relaxed text-ink-secondary">
+                      {keepPinnedLocation
+                        ? 'Keeping the current pin (property or map location). Radius changes will not move it.'
+                        : 'Apply will request your device location and replace the current pin.'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setUseDeviceLocation(v => !v)}
+                      className="font-mono text-[10px] uppercase tracking-[0.12em] text-command-cyber transition hover:text-white"
+                    >
+                      {keepPinnedLocation ? 'Use my device location instead' : 'Keep current map pin'}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="font-mono text-[10px] text-ink-faint">
+                    Your browser will request location permission when you apply this scope.
+                  </p>
+                )}
               </div>
             )}
 
@@ -162,7 +200,7 @@ export default function ScopeSetupModal({
             <div className="mt-6 flex items-center justify-end gap-2">
               <GhostButton onClick={onClose}>Cancel</GhostButton>
               <PrimaryButton onClick={handleApply} disabled={locating}>
-                {locating ? 'Locating…' : scope === 'local' ? 'Use my location' : 'Apply scope'}
+                {applyLabel()}
               </PrimaryButton>
             </div>
           </motion.div>

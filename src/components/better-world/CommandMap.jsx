@@ -1419,8 +1419,9 @@ export default function CommandMap({
         radiusMiles={radiusMiles}
         countryId={countryId}
         userLocation={userLocation}
-        eventCount={markers.length}
+        eventCount={markers.length + (zoneCount ?? 0)}
         onOpenModal={onOpenScopeModal}
+        onRadiusChange={miles => onScopeChange?.({ radiusMiles: miles })}
       />
 
       <MapControlsDock
@@ -1471,6 +1472,7 @@ export default function CommandMap({
         initialScope={scope}
         initialRadiusMiles={radiusMiles}
         initialCountryId={countryId}
+        initialUserLocation={userLocation}
         onApply={onScopeApply}
         onClose={onCloseScopeModal}
       />

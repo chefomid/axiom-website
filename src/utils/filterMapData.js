@@ -21,8 +21,11 @@ export function filterSignals(signals, visibleMarkerIds, activeDataSources) {
   })
 }
 
-export function filterZones(zones, { activeLayers, activeDataSources, scope, countryId }) {
-  const scopeConfig = { scope, countryId }
+export function filterZones(
+  zones,
+  { activeLayers, activeDataSources, scope, countryId, userLocation, radiusMiles },
+) {
+  const scopeConfig = { scope, countryId, userLocation, radiusMiles }
   return zones.filter(zone => {
     if (!activeLayers.has(zone.layer)) return false
     if (!zone.dataSources.some(source => activeDataSources.has(source))) return false
@@ -35,6 +38,8 @@ export function filterZones(zones, { activeLayers, activeDataSources, scope, cou
     }
 
     if (scope === 'national' && zone.country) return zone.country === countryId
-    return scope !== 'national'
+    // Local scope without a point centroid cannot be distance-checked.
+    if (scope === 'local') return false
+    return true
   })
 }

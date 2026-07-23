@@ -187,8 +187,10 @@ function PublicDataCommandViewInner() {
         activeDataSources,
         scope,
         countryId,
+        userLocation,
+        radiusMiles,
       }),
-    [allZones, activeLayers, activeDataSources, scope, countryId],
+    [allZones, activeLayers, activeDataSources, scope, countryId, userLocation, radiusMiles],
   )
 
   const layerCounts = useMemo(() => {

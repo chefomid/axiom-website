@@ -332,7 +332,7 @@ export default function ReportHazardsPanel({ hazards, lat = null, lng = null, la
   }
 
   return (
-    <div className="cope-runway border-b border-panel-border">
+    <div className="cope-runway">
       <CopeRunwayScroll>
         <div
           className="cope-runway__track grid divide-x divide-[color:var(--dossier-border,#d6d6d2)]"

@@ -241,6 +241,16 @@ export default function PublicDataCommandMobileView({
       return
     }
 
+    if (userLocation) {
+      onScopeApply({
+        scope: 'local',
+        radiusMiles: draftRadius,
+        countryId: draftCountryId,
+        userLocation,
+      })
+      return
+    }
+
     setLocating(true)
     try {
       const location = await requestLocation()
