@@ -487,10 +487,19 @@ export default function PropertyIntelligenceView() {
     handleAddressSelect,
   ])
 
+  const checkoutBootstrapErrorMessage = useCallback(err => {
+    const raw = err?.message ?? ''
+    if (/billing database not ready/i.test(raw) || err?.status === 503) {
+      return 'Checkout is temporarily unavailable. Billing database is reconnecting. Try again in a minute.'
+    }
+    return raw || 'Checkout could not be started. Please try again.'
+  }, [])
+
   const startEnrichCheckout = useCallback(
     (previewHint = null) => {
       if (!activeAddress || !quote?.totals) return false
       const preview = previewHint ?? checkoutPreview
+      setBillingNotice(null)
       presentCheckout({
         title: 'Generate intelligence report',
         charge_usd: preview?.charge_usd ?? quote.totals.user_price_usd,
@@ -518,16 +527,26 @@ export default function PropertyIntelligenceView() {
             embedded,
           }),
         onComplete: entry => handlePostPaymentCompleteRef.current?.(entry),
+        onError: err => setBillingNotice(checkoutBootstrapErrorMessage(err)),
       })
       return true
     },
-    [activeAddress, quote, selectedSources, sourceUrls, checkoutPreview, presentCheckout],
+    [
+      activeAddress,
+      quote,
+      selectedSources,
+      sourceUrls,
+      checkoutPreview,
+      presentCheckout,
+      checkoutBootstrapErrorMessage,
+    ],
   )
 
   const startBatchCheckout = useCallback(
     (previewHint = null) => {
       if (!batchQuote?.totals || !batchAddresses.length) return false
       const preview = previewHint ?? batchCheckoutPreview
+      setBillingNotice(null)
       presentCheckout({
         title: 'Analyze schedule',
         charge_usd: preview?.charge_usd ?? batchQuote.totals.user_price_usd,
@@ -557,10 +576,18 @@ export default function PropertyIntelligenceView() {
             embedded,
           }),
         onComplete: entry => handlePostPaymentCompleteRef.current?.(entry),
+        onError: err => setBillingNotice(checkoutBootstrapErrorMessage(err)),
       })
       return true
     },
-    [batchQuote, batchAddresses, selectedSources, batchCheckoutPreview, presentCheckout],
+    [
+      batchQuote,
+      batchAddresses,
+      selectedSources,
+      batchCheckoutPreview,
+      presentCheckout,
+      checkoutBootstrapErrorMessage,
+    ],
   )
 
   const resolveCheckoutPreview = useCallback(async () => {

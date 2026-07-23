@@ -6,6 +6,7 @@ Run: uvicorn main:app --reload --port 8000
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import uuid
@@ -95,12 +96,30 @@ def _new_confirmation_id(purpose: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
 
 
+async def _require_billing_db() -> None:
+    if not await billing_db.ensure_ready():
+        raise HTTPException(status_code=503, detail="Billing database not ready")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         await billing_db.init_db()
     except Exception as exc:
         print(f"Billing database init failed: {exc}")
+
+    reconnect_task: asyncio.Task | None = None
+
+    async def _reconnect_billing_db() -> None:
+        while not billing_db.is_ready():
+            await asyncio.sleep(30)
+            if await billing_db.ensure_ready():
+                print("Billing database reconnected")
+                return
+
+    if billing_enabled() and not billing_db.is_ready():
+        reconnect_task = asyncio.create_task(_reconnect_billing_db())
+
     from billing.config import stripe_webhook_secret
 
     if billing_enabled() and not stripe_webhook_secret():
@@ -109,8 +128,16 @@ async def lifespan(app: FastAPI):
             "Desktop QR checkout relies on GET /billing/checkout-status polling; "
             "configure checkout.session.completed webhooks in production."
         )
-    yield
-    await billing_db.close_db()
+    try:
+        yield
+    finally:
+        if reconnect_task is not None:
+            reconnect_task.cancel()
+            try:
+                await reconnect_task
+            except asyncio.CancelledError:
+                pass
+        await billing_db.close_db()
 
 
 app = FastAPI(title="AXIOM Property Intelligence API", version="0.4.0", lifespan=lifespan)
@@ -551,8 +578,7 @@ async def billing_checkout_status(
         raise HTTPException(status_code=400, detail="anon_id query parameter required")
     if not billing_enabled():
         raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
-    if not billing_db.is_ready():
-        raise HTTPException(status_code=503, detail="Billing database not ready")
+    await _require_billing_db()
     try:
         result = await get_checkout_status(sid, aid)
     except ValueError as exc:
@@ -582,8 +608,7 @@ async def billing_checkout_payment_summary(
         raise HTTPException(status_code=400, detail="anon_id query parameter required")
     if not billing_enabled():
         raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
-    if not billing_db.is_ready():
-        raise HTTPException(status_code=503, detail="Billing database not ready")
+    await _require_billing_db()
     try:
         result = await get_checkout_payment_summary(sid, aid)
     except ValueError as exc:
@@ -601,8 +626,7 @@ async def billing_checkout_payment_summary(
 async def billing_refund_checkout(request: Request, body: CheckoutRefundRequest):
     if not billing_enabled():
         raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
-    if not billing_db.is_ready():
-        raise HTTPException(status_code=503, detail="Billing database not ready")
+    await _require_billing_db()
     try:
         result = await refund_checkout_session(body.session_id.strip(), body.anon_id.strip())
     except ValueError as exc:
@@ -632,8 +656,7 @@ async def billing_checkout_resume(
         raise HTTPException(status_code=400, detail="anon_id query parameter required")
     if not billing_enabled():
         raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
-    if not billing_db.is_ready():
-        raise HTTPException(status_code=503, detail="Billing database not ready")
+    await _require_billing_db()
     try:
         status = await get_checkout_status(sid, aid)
     except ValueError as exc:
@@ -683,8 +706,7 @@ async def billing_checkout_embed(
 async def billing_checkout(request: Request, body: CheckoutRequest):
     if not billing_enabled():
         raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
-    if not billing_db.is_ready():
-        raise HTTPException(status_code=503, detail="Billing database not ready")
+    await _require_billing_db()
     try:
         session = create_checkout_session(
             anon_id=body.anon_id,
@@ -758,8 +780,7 @@ async def billing_batch_checkout_preview(request: Request, body: BatchCheckoutPr
 async def billing_checkout_quote(request: Request, body: CheckoutQuoteRequest):
     if not billing_enabled():
         raise HTTPException(status_code=503, detail="Billing is not configured (STRIPE_SECRET_KEY)")
-    if not billing_db.is_ready():
-        raise HTTPException(status_code=503, detail="Billing database not ready")
+    await _require_billing_db()
 
     addr = body.address.strip()
     addrs = [a.strip() for a in body.addresses if a and a.strip()]
@@ -1337,8 +1358,7 @@ async def get_report_by_confirmation(request: Request, confirmation_id: str):
     cid = confirmation_id.strip().upper()
     if not _CONFIRMATION_ID_RE.match(cid):
         raise HTTPException(status_code=404, detail="Confirmation number not found")
-    if not billing_db.is_ready():
-        raise HTTPException(status_code=503, detail="Billing database not ready")
+    await _require_billing_db()
     row = await billing_db.get_report_confirmation(cid)
     if not row:
         raise HTTPException(status_code=404, detail="Confirmation number not found")
@@ -1370,8 +1390,7 @@ async def email_report_confirmation(request: Request, body: EmailConfirmationReq
     cid = body.confirmation_id.strip().upper()
     if not _CONFIRMATION_ID_RE.match(cid):
         raise HTTPException(status_code=404, detail="Confirmation number not found")
-    if not billing_db.is_ready():
-        raise HTTPException(status_code=503, detail="Billing database not ready")
+    await _require_billing_db()
     if not is_email_configured():
         raise HTTPException(status_code=503, detail="Email delivery is not available right now.")
 

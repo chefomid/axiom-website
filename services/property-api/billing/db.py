@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sqlite3
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,10 +16,33 @@ _pool: Any = None
 _sqlite_path: Path | None = None
 _ready = False
 _use_postgres = False
+_init_lock = asyncio.Lock()
+_last_init_attempt_mono = 0.0
+_INIT_RETRY_COOLDOWN_SEC = 5.0
 
 
 def is_ready() -> bool:
     return _ready
+
+
+async def ensure_ready() -> bool:
+    """Return True if billing DB is usable, retrying init after outages (e.g. Render restore)."""
+    if _ready:
+        return True
+    async with _init_lock:
+        if _ready:
+            return True
+        global _last_init_attempt_mono
+        now = time.monotonic()
+        if now - _last_init_attempt_mono < _INIT_RETRY_COOLDOWN_SEC:
+            return False
+        _last_init_attempt_mono = now
+        try:
+            await init_db()
+        except Exception as exc:
+            print(f"Billing database reconnect failed: {exc}")
+            return False
+        return _ready
 
 
 def _sqlite_default_path() -> Path:
@@ -133,9 +157,24 @@ async def init_db() -> None:
     if url and url.startswith(("postgres://", "postgresql://")):
         import asyncpg
 
-        _pool = await asyncpg.create_pool(url, min_size=1, max_size=5)
-        async with _pool.acquire() as conn:
-            await conn.execute(SCHEMA_POSTGRES)
+        # Drop a half-open pool from a previous failed attempt before reconnecting.
+        if _pool is not None:
+            try:
+                await _pool.close()
+            except Exception:
+                pass
+            _pool = None
+        _ready = False
+        _use_postgres = False
+
+        pool = await asyncpg.create_pool(url, min_size=1, max_size=5)
+        try:
+            async with pool.acquire() as conn:
+                await conn.execute(SCHEMA_POSTGRES)
+        except Exception:
+            await pool.close()
+            raise
+        _pool = pool
         _use_postgres = True
         _ready = True
         return

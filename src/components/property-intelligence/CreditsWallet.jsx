@@ -17,6 +17,7 @@ export default function CreditsWallet({ apiOnline, onBalanceChange, align = 'rig
   const [packs, setPacks] = useState([])
   const [billingEnabled, setBillingEnabled] = useState(false)
   const [open, setOpen] = useState(false)
+  const [checkoutError, setCheckoutError] = useState('')
 
   const anonId = getOrCreateAnonId()
 
@@ -76,6 +77,7 @@ export default function CreditsWallet({ apiOnline, onBalanceChange, align = 'rig
 
   const handleCheckout = packId => {
     const pack = packs.find(item => item.id === packId)
+    setCheckoutError('')
     setOpen(false)
     presentCheckout({
       title: pack?.label ?? 'Add credits',
@@ -83,6 +85,14 @@ export default function CreditsWallet({ apiOnline, onBalanceChange, align = 'rig
       credits_to_add: pack?.credits,
       fetchSession: embedded => startBillingCheckout(packId, anonId, { embedded }),
       onComplete: () => refresh(),
+      onError: err => {
+        const raw = err?.message ?? ''
+        const message = /billing database not ready/i.test(raw)
+          ? 'Checkout is temporarily unavailable. Billing database is reconnecting. Try again in a minute.'
+          : raw || 'Checkout could not be started. Please try again.'
+        setCheckoutError(message)
+        setOpen(true)
+      },
     })
   }
 
@@ -150,6 +160,11 @@ export default function CreditsWallet({ apiOnline, onBalanceChange, align = 'rig
                 <p className="mt-1 font-mono text-[9px] leading-relaxed text-ink-faint">
                   Scan the QR code on your phone or pay with card on this device.
                 </p>
+                {checkoutError ? (
+                  <p className="mt-2 font-mono text-[9px] leading-relaxed text-command-watch" role="alert">
+                    {checkoutError}
+                  </p>
+                ) : null}
               </div>
 
               <ul className="sleek-scrollbar max-h-[min(16rem,40vh)] divide-y divide-white/6 overflow-y-auto border-t border-white/8">

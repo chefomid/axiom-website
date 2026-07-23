@@ -447,6 +447,7 @@ export function CheckoutPayProvider({ children }) {
         credits_to_add: creditsToAdd,
         onComplete,
         onCancel,
+        onError,
         fetchSession,
         fetchPreview,
       } = options
@@ -455,9 +456,14 @@ export function CheckoutPayProvider({ children }) {
 
       if (!isDesktop) {
         return (async () => {
-          const session = await fetchSession(false)
-          if (!session?.url) throw new Error('Checkout URL missing')
-          window.location.href = session.url
+          try {
+            const session = await fetchSession(false)
+            if (!session?.url) throw new Error('Checkout URL missing')
+            window.location.href = session.url
+          } catch (err) {
+            onError?.(err)
+            throw err
+          }
         })()
       }
 
@@ -481,14 +487,15 @@ export function CheckoutPayProvider({ children }) {
         preparing: true,
       })
 
-      void bootstrapCheckout(bootstrapId, {
+      return bootstrapCheckout(bootstrapId, {
         title,
         charge_usd: chargeUsdHint,
         credits_to_add: creditsToAdd,
         fetchSession,
         fetchPreview,
-      }).catch(() => {
+      }).catch(err => {
         /* closeModal already invoked in bootstrapCheckout */
+        onError?.(err)
       })
     },
     [isDesktop, stripePublishableKey, bootstrapCheckout],
