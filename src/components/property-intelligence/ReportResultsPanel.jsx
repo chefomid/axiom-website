@@ -186,7 +186,30 @@ export default function ReportResultsPanel({
 
   const reportSummary = (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-panel-border/60 px-5 py-3">
-      <div className="flex flex-wrap items-center gap-2">
+      {hazardLink ? (
+        publicDataCommandEnabled ? (
+          <Link
+            to={hazardLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
+          >
+            Live hazards at this location
+            <span className="font-mono text-[10px] text-ink-muted" aria-hidden>
+              ↗
+            </span>
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setActiveTab('hazards')}
+            className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
+          >
+            View hazards for this location
+          </button>
+        )
+      ) : null}
+      <div className="ml-auto flex flex-wrap items-center gap-2">
         {record.cope?.sections?.length ? (
           <button
             type="button"
@@ -204,36 +227,13 @@ export default function ReportResultsPanel({
             disabled={exportingPdf || exportingSovExcel}
             className="dossier-btn-sovexcel"
           >
-            {exportingSovExcel ? 'Exporting…' : 'Export SovExcel'}
+            {exportingSovExcel ? 'Exporting…' : 'Export SOV Excel'}
           </button>
         ) : null}
         {exportError ? (
           <span className="font-sans text-xs text-command-critical">{exportError}</span>
         ) : null}
       </div>
-      {hazardLink ? (
-        publicDataCommandEnabled ? (
-          <Link
-            to={hazardLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="dossier-link ml-auto inline-flex items-center gap-1 font-sans text-xs"
-          >
-            Live hazards at this location
-            <span className="font-mono text-[10px] text-ink-muted" aria-hidden>
-              ↗
-            </span>
-          </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setActiveTab('hazards')}
-            className="dossier-link ml-auto inline-flex items-center gap-1 font-sans text-xs"
-          >
-            View hazards for this location
-          </button>
-        )
-      ) : null}
     </div>
   )
 
@@ -243,7 +243,7 @@ export default function ReportResultsPanel({
 
       <div className="dossier-tabrow flex items-center gap-2 border-b border-panel-border/60 px-5 py-2">
         {!summaryExpanded && record.report_id ? (
-          <span className="dossier-value min-w-0 truncate font-mono text-[10px] tabular-nums">
+          <span className="min-w-0 truncate font-mono text-[10px] tabular-nums text-[#e8a838]">
             Analysis ID# {record.report_id}
           </span>
         ) : null}

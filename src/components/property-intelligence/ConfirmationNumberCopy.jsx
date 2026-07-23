@@ -29,14 +29,14 @@ export default function ConfirmationNumberCopy({
   }, [id])
 
   const idClass = isDossierHeader
-    ? 'font-mono tabular-nums tracking-wide text-white'
+    ? 'font-mono tabular-nums tracking-wide text-[#e8a838]'
     : isDossier
-      ? 'font-mono tabular-nums tracking-wide dossier-value'
+      ? 'font-mono tabular-nums tracking-wide text-[#e8a838]'
       : 'font-mono tabular-nums tracking-wide text-command-watch'
   const labelClass = isDossierHeader
-    ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-white'
+    ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-[#e8a838]'
     : isDossier
-      ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted'
+      ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-[#e8a838]'
       : 'font-mono text-[9px] uppercase tracking-[0.14em] text-command-watch'
 
   if (compact) {

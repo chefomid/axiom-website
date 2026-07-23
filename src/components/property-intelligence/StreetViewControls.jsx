@@ -84,6 +84,10 @@ function IconExitFullscreen() {
   )
 }
 
+function ToolbarDivider() {
+  return <span className="mx-0.5 h-7 w-px shrink-0 bg-white/10" aria-hidden />
+}
+
 export default function StreetViewControls({
   heading,
   pitch,
@@ -95,6 +99,7 @@ export default function StreetViewControls({
   mapsUrl,
 }) {
   const headingLabel = STREET_HEADING_LABELS[normalizeHeading(heading)] ?? `${normalizeHeading(heading)}°`
+  const bearing = normalizeHeading(heading)
 
   return (
     <div className="street-view-chrome pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-3">
@@ -102,94 +107,87 @@ export default function StreetViewControls({
         Drag in the view to look around · Compass snaps bearing
       </p>
 
-      <div className="pointer-events-auto mx-auto flex w-full max-w-lg flex-wrap items-end justify-center gap-2 sm:gap-3">
-        <div className="street-view-toolbar flex flex-col gap-1 rounded-md border border-panel-border bg-black/90 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.75)] backdrop-blur-sm">
-          <div className="flex items-center justify-between gap-2 border-b border-panel-border/80 px-1 pb-1">
+      <div className="pointer-events-auto mx-auto w-full max-w-3xl">
+        <div className="street-view-toolbar flex items-center gap-1.5 overflow-x-auto rounded-md border border-panel-border bg-black/90 px-2 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.75)] backdrop-blur-sm">
+          <div className="flex shrink-0 items-center gap-1.5 pr-0.5">
             <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-ink-muted">Look</span>
             <span className="font-mono text-[8px] tabular-nums text-command-live">{headingLabel}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <ControlButton
-              title="Tilt up"
-              onClick={() => onPitchChange(p => clampPitch(p + STREET_PITCH_STEP))}
-            >
-              <IconChevronUp />
-            </ControlButton>
-            <ControlButton
-              title="Tilt down"
-              onClick={() => onPitchChange(p => clampPitch(p - STREET_PITCH_STEP))}
-            >
-              <IconChevronDown />
-            </ControlButton>
-            <span className="px-1 font-mono text-[8px] tabular-nums text-ink-faint">{pitch}°</span>
-            <ControlButton
-              title="Zoom in"
-              onClick={() => onFovChange(v => clampFov(v - STREET_FOV_STEP))}
-            >
-              <span className="font-mono text-[10px] leading-none">+</span>
-            </ControlButton>
-            <ControlButton
-              title="Zoom out"
-              onClick={() => onFovChange(v => clampFov(v + STREET_FOV_STEP))}
-            >
-              <span className="font-mono text-[10px] leading-none">−</span>
-            </ControlButton>
-          </div>
-        </div>
 
-        <div className="street-view-toolbar rounded-md border border-panel-border bg-black/90 p-2 shadow-[0_8px_32px_rgba(0,0,0,0.75)] backdrop-blur-sm">
-          <div className="grid grid-cols-3 grid-rows-3 gap-0.5">
-            <span className="col-start-2" />
-            <ControlButton
-              className="col-start-2"
-              active={normalizeHeading(heading) === 0}
-              title="Face north"
-              onClick={() => onHeadingChange(0)}
-            >
-              N
-            </ControlButton>
-            <span className="col-start-3" />
+          <ControlButton
+            title="Tilt up"
+            onClick={() => onPitchChange(p => clampPitch(p + STREET_PITCH_STEP))}
+          >
+            <IconChevronUp />
+          </ControlButton>
+          <ControlButton
+            title="Tilt down"
+            onClick={() => onPitchChange(p => clampPitch(p - STREET_PITCH_STEP))}
+          >
+            <IconChevronDown />
+          </ControlButton>
+          <span className="min-w-[1.75rem] px-0.5 text-center font-mono text-[8px] tabular-nums text-ink-faint">
+            {pitch}°
+          </span>
+          <ControlButton
+            title="Zoom in"
+            onClick={() => onFovChange(v => clampFov(v - STREET_FOV_STEP))}
+          >
+            <span className="font-mono text-[10px] leading-none">+</span>
+          </ControlButton>
+          <ControlButton
+            title="Zoom out"
+            onClick={() => onFovChange(v => clampFov(v + STREET_FOV_STEP))}
+          >
+            <span className="font-mono text-[10px] leading-none">−</span>
+          </ControlButton>
 
-            <ControlButton
-              active={normalizeHeading(heading) === 270}
-              title="Face west"
-              onClick={() => onHeadingChange(270)}
-            >
-              W
-            </ControlButton>
-            <ControlButton
-              className="street-view-ctrl-btn--center"
-              title={`Rotate left ${STREET_HEADING_STEP}°`}
-              onClick={() => onHeadingChange(stepHeading(heading, -STREET_HEADING_STEP))}
-            >
-              <IconChevronLeft />
-            </ControlButton>
-            <ControlButton
-              active={normalizeHeading(heading) === 90}
-              title="Face east"
-              onClick={() => onHeadingChange(90)}
-            >
-              E
-            </ControlButton>
+          <ToolbarDivider />
 
-            <span />
-            <ControlButton
-              active={normalizeHeading(heading) === 180}
-              title="Face south"
-              onClick={() => onHeadingChange(180)}
-            >
-              S
-            </ControlButton>
-            <ControlButton
-              title={`Rotate right ${STREET_HEADING_STEP}°`}
-              onClick={() => onHeadingChange(stepHeading(heading, STREET_HEADING_STEP))}
-            >
-              <IconChevronRight />
-            </ControlButton>
-          </div>
-        </div>
+          <ControlButton
+            active={bearing === 0}
+            title="Face north"
+            onClick={() => onHeadingChange(0)}
+          >
+            N
+          </ControlButton>
+          <ControlButton
+            active={bearing === 270}
+            title="Face west"
+            onClick={() => onHeadingChange(270)}
+          >
+            W
+          </ControlButton>
+          <ControlButton
+            className="street-view-ctrl-btn--center"
+            title={`Rotate left ${STREET_HEADING_STEP}°`}
+            onClick={() => onHeadingChange(stepHeading(heading, -STREET_HEADING_STEP))}
+          >
+            <IconChevronLeft />
+          </ControlButton>
+          <ControlButton
+            active={bearing === 90}
+            title="Face east"
+            onClick={() => onHeadingChange(90)}
+          >
+            E
+          </ControlButton>
+          <ControlButton
+            active={bearing === 180}
+            title="Face south"
+            onClick={() => onHeadingChange(180)}
+          >
+            S
+          </ControlButton>
+          <ControlButton
+            title={`Rotate right ${STREET_HEADING_STEP}°`}
+            onClick={() => onHeadingChange(stepHeading(heading, STREET_HEADING_STEP))}
+          >
+            <IconChevronRight />
+          </ControlButton>
 
-        <div className="street-view-toolbar flex flex-col gap-1 rounded-md border border-panel-border bg-black/90 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.75)] backdrop-blur-sm">
+          <ToolbarDivider />
+
           <ControlButton
             title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
             onClick={onFullscreen}
