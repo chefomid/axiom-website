@@ -23,6 +23,7 @@ import {
   STREET_PITCH_STEP,
 } from '../../services/propertyImagery'
 import StreetViewControls from './StreetViewControls'
+import StreetViewEmbedFrame from './StreetViewEmbedFrame'
 import ScheduleMapLayer from './ScheduleMapLayer'
 
 const MAP_STYLE_FALLBACK = 'https://demotiles.maplibre.org/style.json'
@@ -600,14 +601,13 @@ export default function PropertyMap({
               </div>
             ) : streetEmbed ? (
               <>
-                <iframe
-                  key={`${pin.lat}-${pin.lng}-${heading}-${pitch}-${fov}`}
-                  title="Street view"
-                  src={streetEmbed}
-                  className="h-full w-full border-0"
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
+                <StreetViewEmbedFrame
+                  lat={pin.lat}
+                  lng={pin.lng}
+                  apiKey={googleKey}
+                  heading={heading}
+                  pitch={pitch}
+                  fov={fov}
                 />
                 <StreetViewControls
                   heading={heading}
