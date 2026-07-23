@@ -11,7 +11,6 @@ from adapters.base import failed_result, success_result
 from adapters.hazard_fetch import fetch_osm_building
 from adapters.services.vision_iso import construction_display_value, infer_iso
 from adapters.services.vision_schema import (
-    VISION_DISCLAIMER,
     build_mapped_payload,
     has_actionable_cues,
     normalize_vision_response,
@@ -85,7 +84,6 @@ def _build_limited_analysis(
         "iso_label": None,
         "confidence": "low",
         "imagery_used": imagery_used,
-        "disclaimer": VISION_DISCLAIMER,
         "facade_material": None,
         "roof_material": None,
         "roof_shape": None,
@@ -483,7 +481,6 @@ async def run_property_inspector(ctx: SourceContext, client: httpx.AsyncClient) 
             "iso_label": iso_result.get("iso_label"),
             "confidence": iso_result.get("confidence_cap") or vision.get("confidence"),
             "imagery_used": imagery_used,
-            "disclaimer": VISION_DISCLAIMER,
             "facade_material": vision.get("facadeMaterial"),
             "roof_material": vision.get("roofMaterial"),
             "roof_shape": vision.get("roofShape"),

@@ -129,19 +129,26 @@ function SectionGaps({ gaps }) {
   if (!gaps.length) return null
 
   return (
-    <div className="mt-2 overflow-hidden rounded-md border border-panel-border bg-panel-bg/40">
+    <div className="mt-2 overflow-hidden rounded-md border border-panel-border">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="flex w-full items-center justify-between gap-2 border-l-[3px] border-l-command-watch/70 px-2.5 py-2 text-left transition hover:bg-black/[0.03]"
+        title="These fields were not returned by available sources for this address"
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 border-l-[3px] border-l-command-watch/70 bg-command-watch/[0.12] px-2.5 py-2 text-left transition hover:bg-command-watch/[0.18]"
       >
-        <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-ink-secondary">
-          {gaps.length} gap{gaps.length === 1 ? '' : 's'}
+        <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-ink-secondary">
+            {gaps.length} gap{gaps.length === 1 ? '' : 's'}
+          </span>
+          <span className="font-mono text-[8px] uppercase tracking-[0.08em] text-ink-faint">
+            · data unavailable
+          </span>
         </span>
-        <span className="font-mono text-sm leading-none text-ink-faint">{open ? '−' : '+'}</span>
+        <span className="shrink-0 font-mono text-sm leading-none text-ink-faint">{open ? '−' : '+'}</span>
       </button>
       {open ? (
-        <ul className="space-y-1.5 border-t border-command-watch/20 px-2.5 py-2">
+        <ul className="space-y-1.5 border-t border-command-watch/20 bg-panel-surface/60 px-2.5 py-2">
           {gaps.map(field => (
             <FieldCard key={field.id} field={field} variant="gap" />
           ))}

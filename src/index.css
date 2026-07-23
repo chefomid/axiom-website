@@ -2667,6 +2667,34 @@ html::-webkit-scrollbar-thumb:hover,
   box-shadow: none;
 }
 
+/* Draggable map | report splitter (desktop) */
+.pi-split-handle {
+  pointer-events: auto;
+}
+
+.pi-split-handle__grip {
+  width: 3px;
+  height: 2.75rem;
+  background: #e8a838;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  transition:
+    height 0.15s ease,
+    width 0.15s ease,
+    background 0.15s ease;
+}
+
+.pi-split-handle:hover .pi-split-handle__grip,
+.pi-split-handle:focus-visible .pi-split-handle__grip,
+.pi-split-handle--active .pi-split-handle__grip {
+  width: 4px;
+  height: 4.25rem;
+}
+
+.pi-split-handle:focus-visible {
+  outline: 1px solid #e8a838;
+  outline-offset: -1px;
+}
+
 /* Light report dossier (post-generate results panel only) */
 .report-dossier {
   --dossier-bg: #f6f6f4;
@@ -2928,8 +2956,16 @@ html::-webkit-scrollbar-thumb:hover,
   background-color: rgba(138, 100, 18, 0.05);
 }
 
+.report-dossier .bg-command-watch\/\[0\.12\] {
+  background-color: rgba(138, 100, 18, 0.14);
+}
+
 .report-dossier .hover\:bg-command-watch\/\[0\.08\]:hover {
   background-color: rgba(138, 100, 18, 0.08);
+}
+
+.report-dossier .hover\:bg-command-watch\/\[0\.18\]:hover {
+  background-color: rgba(138, 100, 18, 0.2);
 }
 
 .cope-runway {
@@ -2944,9 +2980,27 @@ html::-webkit-scrollbar-thumb:hover,
   background: var(--dossier-surface, #ffffff);
 }
 
+.sources-runway__track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(15rem, 1fr);
+  height: 100%;
+  min-height: 22rem;
+  min-width: max(100%, calc(var(--sources-cols, 1) * 15rem));
+  background: var(--dossier-surface, #ffffff);
+}
+
+.sources-runway__column {
+  min-width: 15rem;
+}
+
 @media (max-width: 1023px) {
   .cope-runway__track {
     min-width: 48rem;
+  }
+
+  .sources-runway__track {
+    min-width: max(48rem, calc(var(--sources-cols, 1) * 15rem));
   }
 }
 

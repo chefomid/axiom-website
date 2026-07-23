@@ -60,11 +60,12 @@ function SovFieldTable({ statementOfValues }) {
 
 export default function ReportSovPanel({ statementOfValues, sovDigestMd, sovAnalysis }) {
   const [digestOpen, setDigestOpen] = useState(true)
-  const digestSections = parseDigestSections(sovDigestMd)
+  const digestSections = parseDigestSections(sovDigestMd).filter(
+    section => section.title.toLowerCase() !== 'executive summary',
+  )
   const discrepancies = sovAnalysis?.discrepancies || []
   const enrichments = sovAnalysis?.enrichments || []
   const notes = sovAnalysis?.underwriter_notes || []
-  const summary = sovAnalysis?.summary
 
   if (!statementOfValues && !sovDigestMd) {
     return (
@@ -76,13 +77,6 @@ export default function ReportSovPanel({ statementOfValues, sovDigestMd, sovAnal
 
   return (
     <div className="space-y-4 p-4">
-      {summary ? (
-        <section>
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Summary</p>
-          <p className="mt-1 font-mono text-[10px] leading-relaxed text-ink-secondary">{summary}</p>
-        </section>
-      ) : null}
-
       <section>
         <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Schedule of values</p>
         <div className="mt-2">

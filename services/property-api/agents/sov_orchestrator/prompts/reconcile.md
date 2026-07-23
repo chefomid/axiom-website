@@ -34,7 +34,7 @@ Reply with JSON only, no markdown fences:
     { "field_id": "roof_type", "value": "membrane — flat", "source": "vision_construction", "note": "Filled gap not in vendor API" }
   ],
   "underwriter_notes": ["Verify stories against assessor if binding coverage."],
-  "summary": "2-3 sentence SOV readiness summary"
+  "summary": "One factual sentence on coverage gaps or unresolved fields only. No marketing or readiness claims."
 }
 
 status must be resolved, unresolved, or flagged. Only include SOV fields present in input lanes or baseline.

@@ -1,24 +1,5 @@
 import { useState } from 'react'
 
-const CONFIDENCE_STYLES = {
-  high: {
-    badge: 'border-command-stable/40 bg-command-stable/10 text-command-stable',
-    label: 'High confidence',
-  },
-  medium: {
-    badge: 'border-command-watch/40 bg-command-watch/10 text-command-watch',
-    label: 'Medium confidence',
-  },
-  low: {
-    badge: 'border-panel-border bg-panel-surface/60 text-ink-muted',
-    label: 'Low confidence',
-  },
-  unknown: {
-    badge: 'border-panel-border bg-panel-surface/60 text-ink-muted',
-    label: 'Unknown confidence',
-  },
-}
-
 function formatImageryUsed(used) {
   if (!Array.isArray(used) || !used.length) return '-'
   return used
@@ -30,28 +11,15 @@ function formatImageryUsed(used) {
     .join(', ')
 }
 
-/** Split markdown body (after frontmatter) into ## sections for simple rendering. */
-function parseDigestSections(md) {
-  if (!md || typeof md !== 'string') return []
-  let body = md
-  if (body.startsWith('---')) {
-    const end = body.indexOf('---', 3)
-    if (end !== -1) body = body.slice(end + 3).trim()
-  }
-  const parts = body.split(/^## /m).filter(Boolean)
-  return parts.map(chunk => {
-    const nl = chunk.indexOf('\n')
-    const title = nl === -1 ? chunk.trim() : chunk.slice(0, nl).trim()
-    const content = nl === -1 ? '' : chunk.slice(nl + 1).trim()
-    return { title, content }
-  })
-}
-
-function SectionLabel({ children }) {
+function SectionHeader({ children }) {
   return (
-    <h3 className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-ink-muted">
-      {children}
-    </h3>
+    <header className="cope-runway__header shrink-0 px-4 py-3">
+      <p className="font-display text-sm font-semibold tracking-[0.04em]">
+        <span className="cope-runway__label text-[11px] font-medium uppercase tracking-[0.14em]">
+          {children}
+        </span>
+      </p>
+    </header>
   )
 }
 
@@ -61,29 +29,15 @@ function CollapsibleSection({ title, open, onToggle, children }) {
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-panel-surface/50"
+        className="cope-runway__header flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:brightness-110"
       >
-        <SectionLabel>{title}</SectionLabel>
-        <span className="font-mono text-sm leading-none text-ink-faint">{open ? '−' : '+'}</span>
+        <span className="cope-runway__label font-display text-[11px] font-medium uppercase tracking-[0.14em]">
+          {title}
+        </span>
+        <span className="cope-runway__count font-mono text-sm leading-none">{open ? '−' : '+'}</span>
       </button>
       {open ? <div className="border-t border-panel-border/60 px-4 py-3">{children}</div> : null}
     </section>
-  )
-}
-
-function DigestSection({ section }) {
-  const lines = section.content.split('\n').filter(Boolean)
-  return (
-    <div className="rounded-md border border-panel-border/70 bg-panel-bg/60 px-3 py-2.5">
-      <p className="dossier-value font-display text-xs">{section.title}</p>
-      <div className="mt-2 space-y-1.5 font-sans text-sm leading-relaxed text-ink-secondary">
-        {lines.map((line, i) => (
-          <p key={i} className={line.startsWith('|') ? 'text-ink-faint' : undefined}>
-            {line.replace(/^[-*]\s*/, '')}
-          </p>
-        ))}
-      </div>
-    </div>
   )
 }
 
@@ -102,9 +56,9 @@ function ImageryCapturesGallery({ captures }) {
 
   return (
     <section className="overflow-hidden rounded-lg border border-panel-border/80 bg-panel-surface/30">
+      <SectionHeader>Location screenshots</SectionHeader>
       <div className="border-b border-panel-border/60 px-4 py-3">
-        <SectionLabel>Location screenshots</SectionLabel>
-        <p className="mt-1 font-sans text-xs leading-relaxed text-ink-muted">
+        <p className="font-sans text-xs leading-relaxed text-ink-muted">
           Captures used by Property Inspector for this analysis. Highlighted view was selected for
           facade review. Upward pitch scans reveal upper floors when the level view cuts off the roofline.
         </p>
@@ -163,7 +117,6 @@ function ImageryCapturesGallery({ captures }) {
 
 export default function ReportVisionPanel({ visionAnalysis }) {
   const [traceOpen, setTraceOpen] = useState(false)
-  const [digestOpen, setDigestOpen] = useState(false)
 
   if (!visionAnalysis) {
     return (
@@ -174,11 +127,9 @@ export default function ReportVisionPanel({ visionAnalysis }) {
   }
 
   const {
-    disclaimer,
     summary,
     iso_class: isoClass,
     iso_label: isoLabel,
-    confidence,
     evidence = [],
     limitations = [],
     rationale = [],
@@ -189,46 +140,25 @@ export default function ReportVisionPanel({ visionAnalysis }) {
     stories_visible: storiesVisible,
     floor_levels: floorLevels = [],
     agent_trace: agentTrace,
-    inspection_digest_md: inspectionDigestMd,
     subject_description: subjectDescription,
     imagery_captures: imageryCaptures = [],
   } = visionAnalysis
 
-  const digestSections = parseDigestSections(inspectionDigestMd)
   const phases = agentTrace?.phases || []
   const captures = agentTrace?.captures || []
   const selectedView = agentTrace?.selected_view
-  const confidenceStyle = CONFIDENCE_STYLES[confidence] ?? CONFIDENCE_STYLES.unknown
   const isoTitle = [isoClass, isoLabel].filter(Boolean).join(', ')
   const hasMaterials = facadeMaterial || roofMaterial || roofShape
 
   return (
     <div className="space-y-5 p-5">
-      <div className="rounded-lg border border-command-watch/30 bg-command-watch/8 px-4 py-3">
-        <p className="font-sans text-sm leading-relaxed text-command-watch">
-          {disclaimer ||
-            'AI-assisted visual estimate, verify against vendor records, assessor data, or inspection before underwriting.'}
-        </p>
-      </div>
-
       <ImageryCapturesGallery captures={imageryCaptures} />
 
       {isoTitle ? (
         <section className="overflow-hidden rounded-lg border border-panel-border bg-panel-surface/50">
-          <div className="border-b border-panel-border/60 bg-panel-surface/80 px-4 py-3">
-            <SectionLabel>ISO construction estimate</SectionLabel>
-          </div>
+          <SectionHeader>ISO construction estimate</SectionHeader>
           <div className="px-4 py-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <p className="dossier-value font-display text-lg font-semibold leading-tight">{isoTitle}</p>
-              {confidence ? (
-                <span
-                  className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide ${confidenceStyle.badge}`}
-                >
-                  {confidenceStyle.label}
-                </span>
-              ) : null}
-            </div>
+            <p className="dossier-value font-display text-lg font-semibold leading-tight">{isoTitle}</p>
             {summary ? (
               <p className="mt-3 font-sans text-sm leading-relaxed text-ink-primary">{summary}</p>
             ) : null}
@@ -238,17 +168,17 @@ export default function ReportVisionPanel({ visionAnalysis }) {
           </div>
         </section>
       ) : summary ? (
-        <section className="rounded-lg border border-panel-border/80 bg-panel-surface/30 px-4 py-4">
-          <SectionLabel>Summary</SectionLabel>
-          <p className="mt-2 font-sans text-sm leading-relaxed text-ink-primary">{summary}</p>
+        <section className="overflow-hidden rounded-lg border border-panel-border/80 bg-panel-surface/30">
+          <SectionHeader>Summary</SectionHeader>
+          <div className="px-4 py-4">
+            <p className="font-sans text-sm leading-relaxed text-ink-primary">{summary}</p>
+          </div>
         </section>
       ) : null}
 
       {(hasMaterials || storiesVisible != null || floorLevels.length > 0) && (
         <section className="overflow-hidden rounded-lg border border-panel-border/80 bg-panel-surface/30">
-          <div className="border-b border-panel-border/60 px-4 py-3">
-            <SectionLabel>Building details</SectionLabel>
-          </div>
+          <SectionHeader>Building details</SectionHeader>
           <dl className="px-4 py-1">
             <MaterialRow label="Facade" value={facadeMaterial} />
             <MaterialRow label="Roof material" value={roofMaterial} />
@@ -284,23 +214,25 @@ export default function ReportVisionPanel({ visionAnalysis }) {
         </section>
       )}
 
-      <section className="rounded-lg border border-panel-border/80 bg-panel-surface/30 px-4 py-4">
-        <SectionLabel>Imagery used</SectionLabel>
-        <p className="mt-2 font-sans text-sm text-ink-primary">{formatImageryUsed(imageryUsed)}</p>
-        {selectedView?.heading != null ? (
-          <p className="mt-1.5 font-mono text-[10px] text-ink-muted">
-            Selected view: {selectedView.id} @ {selectedView.heading}°
-            {selectedView.pitch != null && selectedView.pitch !== 0
-              ? `, pitch ${selectedView.pitch}°`
-              : ''}
-          </p>
-        ) : null}
+      <section className="overflow-hidden rounded-lg border border-panel-border/80 bg-panel-surface/30">
+        <SectionHeader>Imagery used</SectionHeader>
+        <div className="px-4 py-4">
+          <p className="font-sans text-sm text-ink-primary">{formatImageryUsed(imageryUsed)}</p>
+          {selectedView?.heading != null ? (
+            <p className="mt-1.5 font-mono text-[10px] text-ink-muted">
+              Selected view: {selectedView.id} @ {selectedView.heading}°
+              {selectedView.pitch != null && selectedView.pitch !== 0
+                ? `, pitch ${selectedView.pitch}°`
+                : ''}
+            </p>
+          ) : null}
+        </div>
       </section>
 
       {evidence.length > 0 ? (
-        <section>
-          <SectionLabel>Evidence</SectionLabel>
-          <ul className="mt-3 space-y-2.5">
+        <section className="overflow-hidden rounded-lg border border-panel-border/80 bg-panel-surface/30">
+          <SectionHeader>Evidence</SectionHeader>
+          <ul className="space-y-2.5 px-4 py-3">
             {evidence.map((item, i) => (
               <li
                 key={`${item.feature}-${i}`}
@@ -318,9 +250,9 @@ export default function ReportVisionPanel({ visionAnalysis }) {
       ) : null}
 
       {rationale.length > 0 ? (
-        <section className="rounded-lg border border-panel-border/80 bg-panel-surface/20 px-4 py-4">
-          <SectionLabel>ISO rationale</SectionLabel>
-          <ul className="mt-3 space-y-2 font-sans text-sm leading-relaxed text-ink-secondary">
+        <section className="overflow-hidden rounded-lg border border-panel-border/80 bg-panel-surface/20">
+          <SectionHeader>ISO rationale</SectionHeader>
+          <ul className="space-y-2 px-4 py-4 font-sans text-sm leading-relaxed text-ink-secondary">
             {rationale.map((line, i) => (
               <li key={i} className="flex gap-2.5">
                 <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-command-live/70" aria-hidden />
@@ -332,9 +264,9 @@ export default function ReportVisionPanel({ visionAnalysis }) {
       ) : null}
 
       {limitations.length > 0 ? (
-        <section className="rounded-lg border border-panel-border/60 bg-panel-bg/40 px-4 py-4">
-          <SectionLabel>Limitations</SectionLabel>
-          <ul className="mt-3 space-y-2 font-sans text-sm leading-relaxed text-ink-muted">
+        <section className="overflow-hidden rounded-lg border border-panel-border/60 bg-panel-bg/40">
+          <SectionHeader>Limitations</SectionHeader>
+          <ul className="space-y-2 px-4 py-4 font-sans text-sm leading-relaxed text-ink-muted">
             {limitations.map((line, i) => (
               <li key={i} className="flex gap-2.5">
                 <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-ink-faint" aria-hidden />
@@ -368,20 +300,6 @@ export default function ReportVisionPanel({ visionAnalysis }) {
             ) : null}
             {agentTrace.bearing_deg != null ? <li>Bearing to subject: {agentTrace.bearing_deg}°</li> : null}
           </ul>
-        </CollapsibleSection>
-      ) : null}
-
-      {digestSections.length > 0 ? (
-        <CollapsibleSection
-          title="Inspection digest"
-          open={digestOpen}
-          onToggle={() => setDigestOpen(v => !v)}
-        >
-          <div className="space-y-2.5">
-            {digestSections.map(section => (
-              <DigestSection key={section.title} section={section} />
-            ))}
-          </div>
         </CollapsibleSection>
       ) : null}
     </div>

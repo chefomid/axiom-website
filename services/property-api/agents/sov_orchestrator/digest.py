@@ -108,7 +108,6 @@ def render_sov_digest(
         "{{ lng }}": str(round(lng, 6)),
         "{{ completeness_pct }}": str(completeness_pct),
         "{{ unresolved_count }}": str(unresolved_count),
-        "{{ summary }}": result.get("summary") or "_No summary available._",
         "{{ sov_table }}": _sov_table(result.get("statement_of_values") or {}),
         "{{ discrepancies_section }}": _discrepancies_section(discrepancies),
         "{{ enrichments_section }}": _enrichments_section(result.get("enrichments") or []),

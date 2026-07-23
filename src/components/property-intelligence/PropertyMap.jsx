@@ -28,6 +28,7 @@ import ScheduleMapLayer from './ScheduleMapLayer'
 const MAP_STYLE_FALLBACK = 'https://demotiles.maplibre.org/style.json'
 
 const TARGET_ZOOM = 15
+const DOSSIER_ZOOM = 17
 const MIN_MOVE_DEG = 0.00008
 
 const MAP_MODES = [
@@ -110,6 +111,8 @@ export default function PropertyMap({
   onScheduleLocationSelect,
   onScheduleFitAll,
   preferredMode = null,
+  /** When this value changes, force recenter + zoom on the pin (e.g. dossier open). */
+  focusSignal = 0,
 }) {
   const pin = useMemo(() => {
     const la = parseCoord(lat)
@@ -422,6 +425,40 @@ export default function PropertyMap({
       }
     }
   }, [mapReady, pin?.lat, pin?.lng])
+
+  useEffect(() => {
+    if (!focusSignal || !mapReady || !pin) return undefined
+    const liveMap = mapRef.current
+    if (!liveMap) return undefined
+
+    const run = () => {
+      const map = mapRef.current
+      if (!map) return
+      try {
+        map.resize()
+      } catch {
+        /* */
+      }
+      if (typeof map.stop === 'function') map.stop()
+      // Jump first so a continent-scale view never lingers after report open.
+      map.jumpTo({
+        center: [pin.lng, pin.lat],
+        zoom: DOSSIER_ZOOM,
+      })
+      lastTargetRef.current = coordKey(pin.lat, pin.lng)
+      markerRef.current?.setLngLat([pin.lng, pin.lat])
+    }
+
+    if (typeof liveMap.isStyleLoaded === 'function' && !liveMap.isStyleLoaded()) {
+      liveMap.once('idle', run)
+      return () => {
+        liveMap.off('idle', run)
+      }
+    }
+
+    const t = window.setTimeout(run, 40)
+    return () => window.clearTimeout(t)
+  }, [focusSignal, mapReady, pin?.lat, pin?.lng])
 
   useEffect(() => {
     const el = markerElement(markerRef.current)

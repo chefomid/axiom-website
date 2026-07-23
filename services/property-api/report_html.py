@@ -305,11 +305,9 @@ def render_cope_report_html(document: dict[str, Any]) -> str:
     inspection_html = ""
     digest_md = vision.get("inspection_digest_md")
     if digest_md:
-        disclaimer = vision.get("disclaimer") or meta.get("visionDisclaimer") or ""
         inspection_html = f"""
         <section class="report-section">
           {_section_title('Image analysis', 'Property Inspector agent — Street View and satellite visual inspection.')}
-          <p class="report-warn">{_esc(disclaimer)}</p>
           {_inspection_imagery_gallery(vision)}
           {_inspection_summary_table(vision)}
           {render_inspection_digest_html(digest_md)}

@@ -70,6 +70,13 @@ export default function PropertyIntelligenceView() {
   const pendingConfirmationRef = useRef(null)
   const [confirmationModalOpen, setConfirmationModalOpen] = useState(false)
   const [newReportExitOpen, setNewReportExitOpen] = useState(false)
+  const [splitReportPct, setSplitReportPct] = useState(50)
+  const [splitDragging, setSplitDragging] = useState(false)
+  const [splitDesktop, setSplitDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
+  )
+  const mainSplitRef = useRef(null)
+  const splitDraggingRef = useRef(false)
 
   const [inputMode, setInputMode] = useState('single')
   const [scheduleRows, setScheduleRows] = useState([])
@@ -912,12 +919,50 @@ export default function PropertyIntelligenceView() {
           value => value.trim().toLowerCase() === activeAddress.trim().toLowerCase(),
         ),
   )
-  const mapCoords = mapViewCoords ?? (recordMatchesAddress ? recordCoords : null)
+  // Prefer live map lock; otherwise always use report coords when a record is present
+  // (address string match is too brittle after checkout / retrieve).
+  const mapCoords = mapViewCoords ?? recordCoords
   const hasCoords = Boolean(mapCoords)
 
   const locationLocked = Boolean(
-    activeAddress && mapViewCoords && mapView?.locked && !addressComposing,
+    (activeAddress && mapViewCoords && mapView?.locked && !addressComposing) ||
+      (recordCoords && Boolean(record) && !addressComposing),
   )
+
+  // Keep map pinned to the report address when results land (or are retrieved).
+  useEffect(() => {
+    if (!recordCoords || !record) return
+    setMapView(prev => {
+      const prevCoords = normalizeLatLng(prev)
+      const same =
+        prevCoords &&
+        Math.abs(prevCoords.lat - recordCoords.lat) < 1e-5 &&
+        Math.abs(prevCoords.lng - recordCoords.lng) < 1e-5
+      if (same && prev?.locked) {
+        return prev.label
+          ? prev
+          : {
+              ...prev,
+              label: record.display_name || record.address_input || prev.label,
+            }
+      }
+      return {
+        lat: recordCoords.lat,
+        lng: recordCoords.lng,
+        label: record.display_name || record.address_input || prev?.label || '',
+        locked: true,
+        immediate: true,
+      }
+    })
+  }, [record?.report_id, recordCoords?.lat, recordCoords?.lng, record?.display_name, record?.address_input])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const sync = () => setSplitDesktop(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
 
   useEffect(() => {
     if (scheduleMode || !activePresetId || !locationLocked) return
@@ -1101,8 +1146,59 @@ export default function PropertyIntelligenceView() {
   useEffect(() => {
     if (!dossierFocus) return undefined
     setReportExpanded(false)
+    setSplitReportPct(50)
     return undefined
   }, [dossierFocus, record?.report_id, batchRun?.batch_id])
+
+  const updateSplitFromClientX = useCallback(clientX => {
+    const root = mainSplitRef.current
+    if (!root) return
+    const rect = root.getBoundingClientRect()
+    if (rect.width < 1) return
+    const reportWidth = rect.right - clientX
+    const pct = (reportWidth / rect.width) * 100
+    setSplitReportPct(Math.min(72, Math.max(28, pct)))
+  }, [])
+
+  const handleSplitPointerDown = useCallback(
+    event => {
+      if (event.button != null && event.button !== 0) return
+      event.preventDefault()
+      event.stopPropagation()
+      splitDraggingRef.current = true
+      setSplitDragging(true)
+      updateSplitFromClientX(event.clientX)
+    },
+    [updateSplitFromClientX],
+  )
+
+  useEffect(() => {
+    if (!splitDragging) return undefined
+    const prevCursor = document.body.style.cursor
+    const prevUserSelect = document.body.style.userSelect
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const onMove = event => {
+      if (!splitDraggingRef.current) return
+      updateSplitFromClientX(event.clientX)
+    }
+    const onUp = () => {
+      splitDraggingRef.current = false
+      setSplitDragging(false)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      document.body.style.cursor = prevCursor
+      document.body.style.userSelect = prevUserSelect
+    }
+  }, [splitDragging, updateSplitFromClientX])
 
   const displayQuote = record?.receipt
 
@@ -1130,6 +1226,10 @@ export default function PropertyIntelligenceView() {
 
   const mapLat = mapCoords?.lat ?? null
   const mapLng = mapCoords?.lng ?? null
+  const mapFocusSignal =
+    dossierFocus && !scheduleMode && mapLat != null && mapLng != null
+      ? `${record?.report_id || 'dossier'}:${mapLat}:${mapLng}`
+      : 0
 
   const displayLabel =
     mapView?.label ??
@@ -1192,7 +1292,12 @@ export default function PropertyIntelligenceView() {
 
 
 
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+      <main
+        ref={mainSplitRef}
+        className={`flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row ${
+          splitDragging ? 'select-none' : ''
+        } ${dossierFocus && !reportExpanded ? 'pi-split-layout' : ''}`}
+      >
         {!postPaymentOverlayActive && !dossierFocus ? (
         <PropertyWorkflowHud
           inputMode={inputMode}
@@ -1253,18 +1358,28 @@ export default function PropertyIntelligenceView() {
 
         <div
           className={`relative min-w-0 ${
-            postPaymentOverlayActive ? 'pointer-events-none opacity-0' : ''
-          } ${
+            postPaymentOverlayActive || splitDragging ? 'pointer-events-none' : ''
+          } ${postPaymentOverlayActive ? 'opacity-0' : ''} ${
             dossierFocus
               ? reportExpanded
                 ? 'hidden'
-                : 'h-[34vh] shrink-0 lg:h-auto lg:min-h-0 lg:flex-1'
+                : 'pi-split-map h-[34vh] shrink-0 lg:h-auto lg:min-h-0'
               : showReportPanel
                 ? reportExpanded
                   ? 'hidden'
                   : 'h-[30vh] shrink-0 lg:h-auto lg:min-h-0 lg:flex-[1]'
                 : 'min-h-[42vh] flex-1 lg:min-h-0'
           }`}
+          style={
+            splitDesktop && dossierFocus && !reportExpanded
+              ? {
+                  flex: `0 0 ${100 - splitReportPct}%`,
+                  width: `${100 - splitReportPct}%`,
+                  maxWidth: `${100 - splitReportPct}%`,
+                  minWidth: '12rem',
+                }
+              : undefined
+          }
         >
           <PropertyMap
             lat={mapLat}
@@ -1282,7 +1397,8 @@ export default function PropertyIntelligenceView() {
             scheduleInvalidCount={scheduleMapStats.invalid}
             onScheduleLocationSelect={handleScheduleMapLocationSelect}
             onScheduleFitAll={handleScheduleFitAll}
-            preferredMode={dossierFocus && !scheduleMode ? 'street' : null}
+            preferredMode={dossierFocus && !scheduleMode ? 'map' : null}
+            focusSignal={mapFocusSignal}
           />
 
           {scheduleMode && scheduleRows.length > 0 && !scheduleMapLocations?.length ? (
@@ -1301,15 +1417,63 @@ export default function PropertyIntelligenceView() {
           ) : null}
         </div>
 
+        {dossierFocus && !reportExpanded ? (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize map and report"
+            aria-valuemin={28}
+            aria-valuemax={72}
+            aria-valuenow={Math.round(splitReportPct)}
+            tabIndex={0}
+            className={`pi-split-handle relative z-40 hidden w-3 shrink-0 cursor-col-resize touch-none items-stretch justify-center bg-[#2a2a2a] hover:bg-[#3a3a3a] lg:flex ${
+              splitDragging ? 'pi-split-handle--active bg-[#e8a838]' : ''
+            }`}
+            onPointerDown={handleSplitPointerDown}
+            onKeyDown={event => {
+              if (event.key === 'ArrowLeft') {
+                event.preventDefault()
+                setSplitReportPct(pct => Math.min(72, pct + 2))
+              } else if (event.key === 'ArrowRight') {
+                event.preventDefault()
+                setSplitReportPct(pct => Math.max(28, pct - 2))
+              }
+            }}
+          >
+            <span
+              className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 ${
+                splitDragging ? 'bg-[#141414]' : 'bg-[#e8a838]'
+              }`}
+              aria-hidden
+            />
+            <span
+              className={`pi-split-handle__grip relative z-10 self-center rounded-full ${
+                splitDragging ? 'bg-[#141414]' : ''
+              }`}
+              aria-hidden
+            />
+          </div>
+        ) : null}
+
         {showReportPanel ? (
           <aside
-            className={`flex min-h-0 w-full flex-col border-t border-panel-border bg-[#f6f6f4] lg:border-l lg:border-t-0 ${
+            className={`flex min-h-0 w-full flex-col border-t border-panel-border bg-[#f6f6f4] lg:border-t-0 ${
               reportExpanded
                 ? 'min-h-0 flex-1'
                 : dossierFocus
-                  ? 'min-h-0 flex-1 lg:w-[min(44rem,50vw)] lg:min-w-[26rem] lg:flex-none'
-                  : 'min-h-0 flex-1 lg:w-[min(40rem,46vw)] lg:min-w-[30rem] lg:max-w-[680px] lg:flex-none'
+                  ? 'pi-split-report min-h-0 flex-1 lg:flex-none'
+                  : 'min-h-0 flex-1 lg:w-[min(40rem,46vw)] lg:min-w-[30rem] lg:max-w-[680px] lg:flex-none lg:border-l'
             }`}
+            style={
+              splitDesktop && dossierFocus && !reportExpanded
+                ? {
+                    flex: `0 0 ${splitReportPct}%`,
+                    width: `${splitReportPct}%`,
+                    maxWidth: `${splitReportPct}%`,
+                    minWidth: '18rem',
+                  }
+                : undefined
+            }
           >
             {scheduleMode && (batchRun || loadingBatchRun || batchRunError) ? (
               <BatchResultsPanel

@@ -9,10 +9,6 @@ unresolved_count: {{ unresolved_count }}
 
 # Statement of Values
 
-## Executive summary
-
-{{ summary }}
-
 ## Schedule of values
 
 {{ sov_table }}

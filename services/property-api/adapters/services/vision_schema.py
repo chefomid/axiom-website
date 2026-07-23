@@ -8,11 +8,6 @@ from typing import Any
 
 CONFIDENCE_LEVELS = frozenset({"high", "medium", "low"})
 
-VISION_DISCLAIMER = (
-    "AI-assisted visual estimate from satellite and/or Street View imagery. "
-    "Verify against vendor records, assessor data, or inspection before underwriting."
-)
-
 
 def parse_vision_json(text: str) -> dict[str, Any]:
     """Extract JSON object from model response."""
