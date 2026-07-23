@@ -1,3 +1,14 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { earthquakeAnalysisAtLocation } from '../../constants/routes'
+import { ANALYTICS_RADIUS_BREAKPOINTS } from '../../data/commandMapData'
+import { fetchUsgsEarthquakeHistory } from '../../services/usgsEarthquakes'
+import {
+  computeEarthquakeAnalytics,
+  dateRangeForYears,
+} from '../../utils/earthquakeAnalytics'
+import { USGS_CATALOG_MIN_MAGNITUDE } from '../../utils/earthquakeMagnitude'
+
 const HAZARD_META = {
   fema: { label: 'FEMA flood', agency: 'NFHL' },
   nws: { label: 'NWS alerts', agency: 'Weather' },
@@ -7,7 +18,23 @@ const HAZARD_META = {
   epa: { label: 'EPA ECHO', agency: 'Facilities' },
 }
 
-const SKIP_KEYS = new Set(['summary', 'error', 'alerts', 'events', 'zone', 'sfha', 'subtype', 'count', 'us_aqi', 'pm2_5'])
+const SKIP_KEYS = new Set([
+  'summary',
+  'error',
+  'alerts',
+  'events',
+  'zone',
+  'sfha',
+  'subtype',
+  'count',
+  'us_aqi',
+  'pm2_5',
+])
+
+const ANALYSIS_YEARS = 5
+const ANALYSIS_RADIUS_MI = 100
+const ANALYSIS_BREAKPOINTS = ANALYTICS_RADIUS_BREAKPOINTS.filter(mi => mi <= ANALYSIS_RADIUS_MI)
+const SNAPSHOT_RADII = [25, 50, 100]
 
 function formatKey(key) {
   return String(key ?? '')
@@ -22,89 +49,51 @@ function formatScalar(value) {
   return String(value)
 }
 
-function toneForHazard(key, data) {
-  if (data?.error) return 'error'
+function primaryFields(key, data) {
+  const fields = []
   if (key === 'fema') {
-    if (data?.sfha) return 'elevated'
-    if (data?.zone && String(data.zone).toUpperCase() !== 'X') return 'watch'
-    return 'clear'
-  }
-  if (key === 'nws') {
-    const count = Number(data?.count ?? data?.alerts?.length ?? 0)
-    if (count <= 0) return 'clear'
-    const severities = (data?.alerts ?? []).map(a => String(a.severity ?? '').toLowerCase())
-    if (severities.some(s => s.includes('extreme') || s.includes('severe'))) return 'elevated'
-    return 'watch'
-  }
-  if (key === 'usgs' || key === 'wildfire') {
-    return Number(data?.count ?? data?.events?.length ?? 0) > 0 ? 'watch' : 'clear'
-  }
-  if (key === 'aqi') {
-    const aqi = Number(data?.us_aqi)
-    if (!Number.isFinite(aqi)) return 'neutral'
-    if (aqi >= 151) return 'elevated'
-    if (aqi >= 101) return 'watch'
-    return 'clear'
-  }
-  if (key === 'epa') {
-    return data?.summary && !/no |none|0 /i.test(data.summary) ? 'watch' : 'clear'
-  }
-  return 'neutral'
-}
-
-function toneLabel(tone) {
-  if (tone === 'clear') return 'Clear'
-  if (tone === 'watch') return 'Watch'
-  if (tone === 'elevated') return 'Elevated'
-  if (tone === 'error') return 'Unavailable'
-  return 'Reported'
-}
-
-function primaryMetrics(key, data) {
-  const metrics = []
-  if (key === 'fema') {
-    if (data.zone != null) metrics.push({ label: 'Zone', value: String(data.zone) })
-    if (data.sfha != null) metrics.push({ label: 'SFHA', value: data.sfha ? 'Yes' : 'No' })
-    if (data.subtype) metrics.push({ label: 'Subtype', value: String(data.subtype) })
+    if (data.zone != null) fields.push({ label: 'Zone', value: String(data.zone) })
+    if (data.sfha != null) fields.push({ label: 'SFHA', value: data.sfha ? 'Yes' : 'No' })
+    if (data.subtype) fields.push({ label: 'Subtype', value: String(data.subtype) })
   } else if (key === 'aqi') {
-    if (data.us_aqi != null) metrics.push({ label: 'US AQI', value: String(data.us_aqi) })
-    if (data.pm2_5 != null) metrics.push({ label: 'PM2.5', value: String(data.pm2_5) })
+    if (data.us_aqi != null) fields.push({ label: 'US AQI', value: String(data.us_aqi) })
+    if (data.pm2_5 != null) fields.push({ label: 'PM2.5', value: String(data.pm2_5) })
   } else if (data.count != null) {
-    metrics.push({ label: 'Count', value: String(data.count) })
+    fields.push({ label: 'Count', value: String(data.count) })
   }
 
   for (const [k, v] of Object.entries(data ?? {})) {
     if (SKIP_KEYS.has(k)) continue
     const formatted = formatScalar(v)
     if (!formatted) continue
-    metrics.push({ label: formatKey(k), value: formatted })
+    fields.push({ label: formatKey(k), value: formatted })
   }
-  return metrics.slice(0, 6)
+  return fields.slice(0, 8)
 }
 
 function EventList({ items, kind }) {
   if (!Array.isArray(items) || !items.length) return null
 
   return (
-    <ul className="hazards-board__events">
-      {items.slice(0, 6).map((item, i) => {
+    <ul className="hazards-rail__events">
+      {items.slice(0, 5).map((item, i) => {
         if (kind === 'alerts') {
           return (
-            <li key={i} className="hazards-board__event">
-              <p className="hazards-board__event-title">{item.event || 'Alert'}</p>
+            <li key={i} className="hazards-rail__event">
+              <p className="hazards-rail__event-title">{item.event || 'Alert'}</p>
               {item.severity ? (
-                <p className="hazards-board__event-meta">{item.severity}</p>
+                <p className="hazards-rail__event-meta">{item.severity}</p>
               ) : null}
               {item.headline ? (
-                <p className="hazards-board__event-body">{item.headline}</p>
+                <p className="hazards-rail__event-body">{item.headline}</p>
               ) : null}
             </li>
           )
         }
         if (item.magnitude != null) {
           return (
-            <li key={i} className="hazards-board__event">
-              <p className="hazards-board__event-title">
+            <li key={i} className="hazards-rail__event">
+              <p className="hazards-rail__event-title">
                 M{item.magnitude}
                 {item.place ? ` · ${item.place}` : ''}
               </p>
@@ -112,10 +101,10 @@ function EventList({ items, kind }) {
           )
         }
         return (
-          <li key={i} className="hazards-board__event">
-            <p className="hazards-board__event-title">{item.title || 'Event'}</p>
+          <li key={i} className="hazards-rail__event">
+            <p className="hazards-rail__event-title">{item.title || 'Event'}</p>
             {item.distance_km != null ? (
-              <p className="hazards-board__event-meta">{item.distance_km} km away</p>
+              <p className="hazards-rail__event-meta">{item.distance_km} km away</p>
             ) : null}
           </li>
         )
@@ -124,43 +113,184 @@ function EventList({ items, kind }) {
   )
 }
 
-function HazardCard({ hazardKey, data }) {
-  const meta = HAZARD_META[hazardKey] ?? { label: formatKey(hazardKey), agency: 'Hazard' }
-  const tone = toneForHazard(hazardKey, data)
-  const metrics = primaryMetrics(hazardKey, data)
-  const summary = data?.summary || data?.error || 'No summary available.'
+function useLocationSeismicAnalysis(lat, lng, enabled) {
+  const [state, setState] = useState({
+    status: 'idle',
+    summary: null,
+    cumulative: [],
+    error: null,
+  })
+
+  useEffect(() => {
+    if (!enabled || lat == null || lng == null) {
+      setState({ status: 'idle', summary: null, cumulative: [], error: null })
+      return undefined
+    }
+
+    const controller = new AbortController()
+    const center = { lat: Number(lat), lng: Number(lng) }
+    const { startDate, endDate, yearsInRange } = dateRangeForYears(ANALYSIS_YEARS)
+
+    setState(prev => ({ ...prev, status: 'loading', error: null }))
+
+    ;(async () => {
+      try {
+        const result = await fetchUsgsEarthquakeHistory(
+          {
+            center,
+            maxRadiusMiles: ANALYSIS_RADIUS_MI,
+            minMagnitude: USGS_CATALOG_MIN_MAGNITUDE,
+            startDate,
+            endDate,
+          },
+          { signal: controller.signal },
+        )
+        if (controller.signal.aborted) return
+
+        const analytics = computeEarthquakeAnalytics(
+          result.events,
+          center,
+          ANALYSIS_BREAKPOINTS,
+          yearsInRange,
+        )
+
+        setState({
+          status: 'ready',
+          summary: analytics.summary,
+          cumulative: analytics.cumulative.filter(band => SNAPSHOT_RADII.includes(band.radius)),
+          error: null,
+        })
+      } catch (err) {
+        if (err?.name === 'AbortError') return
+        setState({
+          status: 'error',
+          summary: null,
+          cumulative: [],
+          error: err?.message || 'Seismic analysis unavailable',
+        })
+      }
+    })()
+
+    return () => controller.abort()
+  }, [lat, lng, enabled])
+
+  return state
+}
+
+function SeismicAnalysisBlock({ lat, lng, label }) {
+  const analysis = useLocationSeismicAnalysis(lat, lng, lat != null && lng != null)
+  const analysisHref =
+    lat != null && lng != null ? earthquakeAnalysisAtLocation(lat, lng, label) : null
+
+  const maxEvent = analysis.summary?.maxEvent
+  const totalEvents = analysis.summary?.totalEvents
+  const ratePerYear =
+    analysis.summary?.yearsInRange > 0 && totalEvents != null
+      ? totalEvents / analysis.summary.yearsInRange
+      : null
 
   return (
-    <article className={`hazards-board__card hazards-board__card--${tone}`}>
-      <header className="hazards-board__card-head">
-        <div className="hazards-board__card-titles">
-          <p className="hazards-board__agency">{meta.agency}</p>
-          <h3 className="hazards-board__title">{meta.label}</h3>
+    <div className="hazards-rail__analysis">
+      <p className="hazards-rail__analysis-label">Location seismic analysis · 5Y · M2.5+</p>
+
+      {analysis.status === 'loading' ? (
+        <div className="hazards-rail__analysis-status" role="status" aria-live="polite">
+          <span className="street-view-spinner h-2.5 w-2.5 shrink-0" aria-hidden />
+          <span>Running analysis in background…</span>
         </div>
-        <span className={`hazards-board__tone hazards-board__tone--${tone}`}>{toneLabel(tone)}</span>
-      </header>
-
-      <p className="hazards-board__summary">{summary}</p>
-
-      {metrics.length > 0 ? (
-        <dl className="hazards-board__metrics">
-          {metrics.map(metric => (
-            <div key={`${metric.label}-${metric.value}`} className="hazards-board__metric">
-              <dt>{metric.label}</dt>
-              <dd>{metric.value}</dd>
-            </div>
-          ))}
-        </dl>
       ) : null}
 
-      <EventList items={data?.alerts} kind="alerts" />
-      <EventList items={data?.events} kind="events" />
-    </article>
+      {analysis.status === 'error' ? (
+        <p className="hazards-rail__empty">{analysis.error}</p>
+      ) : null}
+
+      {analysis.status === 'ready' ? (
+        <ul className="hazards-rail__fields">
+          <li className="hazards-rail__field">
+            <p className="hazards-rail__field-key">Events within {ANALYSIS_RADIUS_MI} mi</p>
+            <p className="hazards-rail__field-value dossier-value">{totalEvents ?? 0}</p>
+          </li>
+          <li className="hazards-rail__field">
+            <p className="hazards-rail__field-key">Rate per year</p>
+            <p className="hazards-rail__field-value dossier-value">
+              {ratePerYear != null ? ratePerYear.toFixed(1) : '-'}
+            </p>
+          </li>
+          <li className="hazards-rail__field">
+            <p className="hazards-rail__field-key">Strongest event</p>
+            <p className="hazards-rail__field-value dossier-value">
+              {maxEvent
+                ? `M${Number(maxEvent.mag).toFixed(1)} · ${Math.round(maxEvent.dist)} mi`
+                : 'None in range'}
+            </p>
+          </li>
+          {analysis.cumulative.map(band => (
+            <li key={band.radius} className="hazards-rail__field">
+              <p className="hazards-rail__field-key">Within {band.radius} mi</p>
+              <p className="hazards-rail__field-value dossier-value">
+                {band.count}
+                {band.ratePerYear != null ? ` · ${band.ratePerYear.toFixed(1)}/yr` : ''}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {analysisHref ? (
+        <Link to={analysisHref} className="hazards-rail__analysis-link dossier-link">
+          Open full Seismic/EQ Analysis
+          <span aria-hidden> ↗</span>
+        </Link>
+      ) : null}
+    </div>
   )
 }
 
-export default function ReportHazardsPanel({ hazards }) {
-  const entries = Object.entries(hazards ?? {}).filter(([, data]) => data && typeof data === 'object')
+function HazardPanel({ hazardKey, data, lat, lng, label }) {
+  const meta = HAZARD_META[hazardKey] ?? { label: formatKey(hazardKey), agency: 'Hazard' }
+  const fields = primaryFields(hazardKey, data)
+  const summary = data?.error || data?.summary || null
+  const isUsgs = hazardKey === 'usgs'
+
+  return (
+    <section className="hazards-rail__panel">
+      <header className="hazards-rail__panel-head">
+        <p className="hazards-rail__agency">{meta.agency}</p>
+        <h3 className="hazards-rail__panel-title">{meta.label}</h3>
+      </header>
+
+      <div className="hazards-rail__panel-body sleek-scrollbar">
+        {summary ? <p className="hazards-rail__summary">{summary}</p> : null}
+
+        {fields.length > 0 ? (
+          <ul className="hazards-rail__fields">
+            {fields.map(field => (
+              <li key={`${field.label}-${field.value}`} className="hazards-rail__field">
+                <p className="hazards-rail__field-key">{field.label}</p>
+                <p className="hazards-rail__field-value dossier-value">{field.value}</p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <EventList items={data?.alerts} kind="alerts" />
+        <EventList items={data?.events} kind="events" />
+
+        {isUsgs ? <SeismicAnalysisBlock lat={lat} lng={lng} label={label} /> : null}
+
+        {!summary && !fields.length && !data?.alerts?.length && !data?.events?.length && !isUsgs ? (
+          <p className="hazards-rail__empty">No observations from this source.</p>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
+export default function ReportHazardsPanel({ hazards, lat = null, lng = null, label = null }) {
+  const entries = useMemo(
+    () => Object.entries(hazards ?? {}).filter(([, data]) => data && typeof data === 'object'),
+    [hazards],
+  )
 
   if (!entries.length) {
     return (
@@ -171,14 +301,21 @@ export default function ReportHazardsPanel({ hazards }) {
   }
 
   return (
-    <div className="hazards-board">
-      <div className="hazards-board__scroll sleek-scrollbar">
+    <div className="hazards-rail">
+      <div className="hazards-rail__scroll sleek-scrollbar">
         <div
-          className="hazards-board__track"
+          className="hazards-rail__track"
           style={{ '--hazards-cols': String(Math.max(entries.length, 1)) }}
         >
           {entries.map(([key, data]) => (
-            <HazardCard key={key} hazardKey={key} data={data} />
+            <HazardPanel
+              key={key}
+              hazardKey={key}
+              data={data}
+              lat={lat}
+              lng={lng}
+              label={label}
+            />
           ))}
         </div>
       </div>

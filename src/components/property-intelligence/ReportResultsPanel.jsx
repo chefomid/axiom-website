@@ -259,7 +259,7 @@ export default function ReportResultsPanel({
     <>
       {summaryExpanded ? reportSummary : null}
 
-      <div className="flex items-center gap-2 border-b border-panel-border/60 px-5 py-2">
+      <div className="dossier-tabrow flex items-center gap-2 border-b border-panel-border/60 px-5 py-2">
         {!summaryExpanded && record.report_id ? (
           <span className="dossier-value min-w-0 truncate font-mono text-[10px] tabular-nums">
             Analysis ID# {record.report_id}
@@ -306,7 +306,15 @@ export default function ReportResultsPanel({
             crawlSourceUrl={record.crawl_source_url}
           />
         ) : null}
-        {activeTab === 'hazards' ? <ReportHazardsPanel hazards={record.hazards} /> : null}
+        {/* Keep mounted so USGS location analysis can warm in the background. */}
+        <div className={activeTab === 'hazards' ? undefined : 'hidden'} aria-hidden={activeTab !== 'hazards'}>
+          <ReportHazardsPanel
+            hazards={record.hazards}
+            lat={record.lat}
+            lng={record.lng}
+            label={record.display_name || record.address_input}
+          />
+        </div>
         {activeTab === 'sov' ? (
           <ReportSovPanel
             statementOfValues={record.statement_of_values}

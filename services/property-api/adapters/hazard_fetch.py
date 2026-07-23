@@ -110,9 +110,9 @@ async def fetch_usgs_seismic(client: httpx.AsyncClient, lat: float, lng: float) 
             )
         return {
             "count": len(features),
-            "summary": f"{len(features)} event(s) M2.5+ within 100 km (30 days)"
+            "summary": f"{len(features)} M2.5+ event(s) within 100 km (last 30 days)"
             if features
-            else "No significant recent seismic activity within 100 km",
+            else "No M2.5+ events within 100 km in the last 30 days",
             "events": events,
         }
     except Exception as e:
