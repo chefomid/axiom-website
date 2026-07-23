@@ -26,11 +26,11 @@ const SECTION_ACCENTS = {
 
 const COPE_COLUMNS = [
   { key: 'field', header: 'Field', width: 28 },
-  { key: 'value', header: 'Value', width: 36 },
-  { key: 'source', header: 'Source', width: 22 },
-  { key: 'confidence', header: 'Confidence', width: 14 },
-  { key: 'status', header: 'Status', width: 12 },
+  { key: 'value', header: 'Value', width: 42 },
+  { key: 'source', header: 'Source', width: 24 },
 ]
+
+const DATA_NOT_AVAILABLE = 'Data not available'
 
 function slugifyLocation(label) {
   return String(label ?? 'location')
@@ -92,10 +92,20 @@ function sectionAccent(section) {
   return SECTION_ACCENTS[letter] ?? THEME.orangeWash
 }
 
+function isFieldPopulated(field) {
+  const status = String(field?.status ?? '').toLowerCase()
+  if (status === 'unknown') return false
+  return field?.value != null && String(field.value).trim() !== ''
+}
+
 function fieldDisplayValue(field) {
-  if (field?.value != null && field.value !== '') return String(field.value)
-  if (field?.note) return String(field.note)
-  return 'Unknown'
+  if (!isFieldPopulated(field)) return DATA_NOT_AVAILABLE
+  return String(field.value)
+}
+
+function fieldSourceValue(field) {
+  if (!isFieldPopulated(field)) return DATA_NOT_AVAILABLE
+  return formatCopeSourceLabel(field.source) || field.source || DATA_NOT_AVAILABLE
 }
 
 function buildSummarySheet(workbook, doc, sheetName = 'Cover') {
@@ -375,7 +385,7 @@ function buildCopeSheet(workbook, doc, sheetName = 'COPE Runway') {
       ? `${section.cope_letter}  ${section.label ?? section.id ?? 'Section'}`
       : section.label ?? section.id ?? 'Section'
 
-    const sectionRow = sheet.addRow([sectionLabel, '', '', '', ''])
+    const sectionRow = sheet.addRow([sectionLabel, '', ''])
     sheet.mergeCells(sectionRow.number, 1, sectionRow.number, COPE_COLUMNS.length)
     applySectionHeader(sectionRow, sectionAccent(section))
 
@@ -392,17 +402,13 @@ function buildCopeSheet(workbook, doc, sheetName = 'COPE Runway') {
       const dataRow = sheet.addRow([
         field.label ?? field.id ?? '',
         fieldDisplayValue(field),
-        formatCopeSourceLabel(field.source) || '-',
-        field.confidence ?? 'unknown',
-        field.status ?? 'unknown',
+        fieldSourceValue(field),
       ])
       dataRow.height = 18
       const stripe = rowIndex % 2 === 1
       applyBodyCell(dataRow.getCell(1), { stripe })
       applyBodyCell(dataRow.getCell(2), { stripe, mono: true })
       applyBodyCell(dataRow.getCell(3), { stripe })
-      applyBodyCell(dataRow.getCell(4), { stripe, center: true })
-      applyBodyCell(dataRow.getCell(5), { stripe, center: true })
       rowIndex += 1
     }
 
