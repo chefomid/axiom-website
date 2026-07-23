@@ -76,7 +76,7 @@ export default function NewReportExitModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
             transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
-            className="w-full max-w-md overflow-hidden rounded-t-xl border border-[#2a2a2a] bg-[#0d0d0d] shadow-2xl md:rounded-xl"
+            className="w-full max-w-xl overflow-hidden rounded-t-xl border border-[#2a2a2a] bg-[#0d0d0d] shadow-2xl md:rounded-xl"
             onClick={event => event.stopPropagation()}
             layout={false}
           >
@@ -126,14 +126,14 @@ export default function NewReportExitModal({
                 ) : null}
               </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+              <div className="flex flex-nowrap items-stretch gap-2 pt-1">
                 {canExportExcel ? (
                   <button
                     type="button"
                     onClick={() => void handleDownloadExcel()}
                     disabled={exporting}
                     aria-busy={exporting}
-                    className="inline-flex min-w-[11.5rem] items-center justify-center rounded border border-[#e8a838] bg-[#e8a838] px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[#141414] transition hover:bg-[#f0b54a] disabled:cursor-wait disabled:opacity-80"
+                    className="inline-flex min-w-0 flex-1 items-center justify-center rounded border border-[#e8a838] bg-[#e8a838] px-2 py-2 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-[#141414] transition hover:bg-[#f0b54a] disabled:cursor-wait disabled:opacity-80 sm:text-[10px] sm:tracking-[0.12em]"
                   >
                     {exporting ? 'Downloading…' : 'Download Excel report'}
                   </button>
@@ -141,14 +141,14 @@ export default function NewReportExitModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded border border-[#333] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-secondary transition hover:border-[#555] hover:text-white"
+                  className="min-w-0 flex-1 rounded border border-[#333] px-2 py-2 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-secondary transition hover:border-[#555] hover:text-white sm:text-[10px] sm:tracking-[0.12em]"
                 >
                   Stay on report
                 </button>
                 <button
                   type="button"
                   onClick={handleOk}
-                  className="rounded border border-white/20 bg-white px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-black transition hover:bg-[#e8e8e8]"
+                  className="min-w-0 flex-1 rounded border border-white/20 bg-white px-2 py-2 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-black transition hover:bg-[#e8e8e8] sm:text-[10px] sm:tracking-[0.12em]"
                 >
                   OK, new report
                 </button>

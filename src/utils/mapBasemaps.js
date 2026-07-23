@@ -174,6 +174,73 @@ export function repositionAnalysisSatelliteLayer(map, { beforeLayerId } = {}) {
 
 const SATELLITE_FADE_MS = 180
 
+/** Remember basemap layer visibility while satellite covers the style. */
+const basemapVisibilityByMap = new WeakMap()
+
+function isSatelliteProtectedLayer(layerId) {
+  if (!layerId) return false
+  if (layerId === ANALYSIS_SATELLITE_LAYER_ID) return true
+  // Keep analysis / earthquake overlays above imagery when present.
+  return (
+    layerId.startsWith('analysis-') ||
+    layerId.startsWith('eq-') ||
+    layerId.startsWith('fault-')
+  )
+}
+
+/** Hide Carto/OSM fills (buildings, landuse, roads) so satellite is true imagery. */
+function setBasemapLayersForSatellite(map, satelliteOn) {
+  const layers = map.getStyle()?.layers ?? []
+  if (satelliteOn) {
+    if (!basemapVisibilityByMap.has(map)) {
+      const previous = {}
+      for (const layer of layers) {
+        const id = layer.id
+        if (isSatelliteProtectedLayer(id)) continue
+        try {
+          previous[id] = map.getLayoutProperty(id, 'visibility') ?? 'visible'
+        } catch {
+          previous[id] = 'visible'
+        }
+      }
+      basemapVisibilityByMap.set(map, previous)
+    }
+
+    for (const layer of layers) {
+      const id = layer.id
+      if (isSatelliteProtectedLayer(id)) continue
+      try {
+        if ((map.getLayoutProperty(id, 'visibility') ?? 'visible') !== 'none') {
+          map.setLayoutProperty(id, 'visibility', 'none')
+        }
+      } catch {
+        /* layer may not support layout visibility */
+      }
+    }
+
+    // Ensure imagery sits above any remaining basemap layers.
+    try {
+      map.moveLayer(ANALYSIS_SATELLITE_LAYER_ID)
+    } catch {
+      /* already topmost or missing */
+    }
+    return
+  }
+
+  const previous = basemapVisibilityByMap.get(map)
+  for (const layer of layers) {
+    const id = layer.id
+    if (isSatelliteProtectedLayer(id)) continue
+    const visibility = previous?.[id] ?? 'visible'
+    try {
+      map.setLayoutProperty(id, 'visibility', visibility === 'none' ? 'none' : 'visible')
+    } catch {
+      /* ignore */
+    }
+  }
+  basemapVisibilityByMap.delete(map)
+}
+
 function fadeRasterOpacity(map, layerId, from, to, durationMs, shouldContinue) {
   const start = performance.now()
 
@@ -243,11 +310,13 @@ export async function setAnalysisSatelliteImagery(
     if (!enabled) {
       map.setLayoutProperty(ANALYSIS_SATELLITE_LAYER_ID, 'visibility', 'none')
       map.setPaintProperty(ANALYSIS_SATELLITE_LAYER_ID, 'raster-opacity', 0)
+      setBasemapLayersForSatellite(map, false)
       map.triggerRepaint()
       return shouldContinue()
     }
 
     map.setLayoutProperty(ANALYSIS_SATELLITE_LAYER_ID, 'visibility', 'visible')
+    setBasemapLayersForSatellite(map, true)
 
     if (animate) {
       map.setPaintProperty(ANALYSIS_SATELLITE_LAYER_ID, 'raster-opacity', 0)
