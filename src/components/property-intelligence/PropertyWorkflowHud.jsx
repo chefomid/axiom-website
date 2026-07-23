@@ -434,7 +434,7 @@ export default function PropertyWorkflowHud({
 
         <WorkflowPricingPanel
 
-          visible={showPricing}
+          visible={showPricing && !(hasReport || hasBatchReport)}
 
           loading={loadingQuote}
 
@@ -452,7 +452,7 @@ export default function PropertyWorkflowHud({
 
           scheduleMode={scheduleMode}
 
-          isFinal={hasReport || hasBatchReport}
+          isFinal={false}
 
         />
 

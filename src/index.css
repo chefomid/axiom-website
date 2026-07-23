@@ -2624,6 +2624,14 @@ html::-webkit-scrollbar-thumb:hover,
   animation: workflow-cta-pulse 1.6s ease-in-out infinite;
 }
 
+.workflow-footer-cta--ready {
+  cursor: default;
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.12);
+  color: rgba(110, 231, 183, 0.95);
+  box-shadow: none;
+}
+
 @keyframes workflow-cta-pulse {
   0%,
   100% {

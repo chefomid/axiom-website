@@ -56,9 +56,12 @@ export default function WorkflowGenerateButton({
   if (!showGenerate) {
     if (isIntelligence) {
       return (
-        <button type="button" disabled className={`workflow-footer-cta ${widthClass} opacity-50`}>
-          Report Ready
-        </button>
+        <span
+          role="status"
+          className={`workflow-footer-cta workflow-footer-cta--ready ${widthClass}`}
+        >
+          Report ready
+        </span>
       )
     }
     return (
