@@ -119,12 +119,58 @@ function sectionAccent(section) {
   return SECTION_ACCENTS[letter] ?? THEME.sectionFill
 }
 
-function confidenceFontColor(confidence) {
-  const value = String(confidence ?? '').toLowerCase()
-  if (value === 'high') return THEME.confidenceHigh
-  if (value === 'medium') return THEME.confidenceMedium
-  if (value === 'low') return THEME.confidenceLow
-  return THEME.inkMuted
+function cellDisplayText(cell) {
+  const value = cell?.value
+  if (value == null) return ''
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  if (typeof value === 'object') {
+    if (Array.isArray(value.richText)) return value.richText.map(part => part.text ?? '').join('')
+    if (value.text != null) return String(value.text)
+    if (value.result != null) return String(value.result)
+  }
+  return String(value)
+}
+
+/** Approximate Excel column widths and wrapped row heights so cell text stays visible. */
+function autoFitSheet(
+  sheet,
+  { minWidth = 12, maxWidth = 56, minRowHeight = 18, maxRowHeight = 140 } = {},
+) {
+  const colWidths = {}
+
+  sheet.eachRow(row => {
+    row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      const text = cellDisplayText(cell)
+      const longestLine = text.split(/\r?\n/).reduce((max, line) => Math.max(max, line.length), 0)
+      const estimate = Math.min(maxWidth, Math.max(minWidth, Math.ceil(longestLine * 1.05) + 2))
+      colWidths[colNumber] = Math.max(colWidths[colNumber] ?? minWidth, estimate)
+    })
+  })
+
+  Object.entries(colWidths).forEach(([col, width]) => {
+    sheet.getColumn(Number(col)).width = width
+  })
+
+  sheet.eachRow(row => {
+    let maxLines = 1
+    row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      const text = cellDisplayText(cell)
+      const width = sheet.getColumn(colNumber).width || minWidth
+      const charsPerLine = Math.max(8, width - 1)
+      const lines = text.split(/\r?\n/).reduce((sum, line) => {
+        return sum + Math.max(1, Math.ceil(line.length / charsPerLine))
+      }, 0)
+      maxLines = Math.max(maxLines, lines)
+      cell.alignment = {
+        ...(cell.alignment || {}),
+        wrapText: true,
+        vertical: 'middle',
+      }
+    })
+    row.height = Math.min(maxRowHeight, Math.max(minRowHeight, 14 + maxLines * 13))
+  })
 }
 
 function isFieldPopulated(field) {
@@ -285,8 +331,6 @@ const SOV_COLUMNS = [
   { key: 'field', header: 'Field', width: 28 },
   { key: 'value', header: 'Value', width: 34 },
   { key: 'source', header: 'Primary source', width: 24 },
-  { key: 'confidence', header: 'Confidence', width: 14 },
-  { key: 'lanes', header: 'Supporting lanes', width: 28 },
 ]
 
 function sovFieldLabel(fieldId) {
@@ -316,75 +360,56 @@ function buildSovSheet(workbook, doc, sheetName = 'Statement of Values') {
 
   const entries = orderedSovEntries(doc.statementOfValues)
   if (!entries.length) {
-    const empty = sheet.addRow(['No SOV fields populated', '', '', '', ''])
+    const empty = sheet.addRow(['No SOV fields populated', '', ''])
     sheet.mergeCells(empty.number, 1, empty.number, SOV_COLUMNS.length)
     applyBodyCell(empty.getCell(1))
+    autoFitSheet(sheet)
     return
   }
 
   entries.forEach(([fieldId, entry], index) => {
-    const lanes = Array.isArray(entry?.supporting_lanes) ? entry.supporting_lanes.join(', ') : '-'
-    const confidence = entry?.confidence || '-'
     const row = sheet.addRow([
       sovFieldLabel(fieldId),
       entry?.value != null && entry.value !== '' ? String(entry.value) : '-',
       formatCopeSourceLabel(entry?.primary_source) || entry?.primary_source || '-',
-      confidence,
-      lanes || '-',
     ])
-    row.height = 19
     const stripe = index % 2 === 1
     applyBodyCell(row.getCell(1), { stripe, muted: true })
     applyBodyCell(row.getCell(2), { stripe, mono: true })
     applyBodyCell(row.getCell(3), { stripe })
-    applyBodyCell(row.getCell(4), { stripe, center: true })
-    row.getCell(4).font = {
-      name: 'Calibri',
-      size: 9,
-      bold: true,
-      color: { argb: confidenceFontColor(confidence) },
-    }
-    applyBodyCell(row.getCell(5), { stripe, muted: true })
   })
 
   const discrepancies = doc.sovAnalysis?.discrepancies || []
   if (discrepancies.length) {
     sheet.addRow([])
-    const section = sheet.addRow(['Lane discrepancies', '', '', '', ''])
+    const section = sheet.addRow(['Lane discrepancies', '', ''])
     sheet.mergeCells(section.number, 1, section.number, SOV_COLUMNS.length)
     applySectionHeader(section, THEME.brandGreenWash)
 
-    const discHeader = sheet.addRow(['Field', 'Status', 'Resolved value', 'Rationale', 'Lane values'])
+    const discHeader = sheet.addRow(['Field', 'Status', 'Resolved value'])
     applyHeaderRow(discHeader)
 
     discrepancies.forEach((item, index) => {
-      const laneText = Object.entries(item.lane_values || {})
-        .filter(([, value]) => value != null && value !== '')
-        .map(([lane, value]) => `${lane}: ${value}`)
-        .join(' | ')
       const row = sheet.addRow([
         sovFieldLabel(item.field_id),
         item.status || '-',
         item.resolved_value != null ? String(item.resolved_value) : '-',
-        item.rationale || '-',
-        laneText || '-',
       ])
       const stripe = index % 2 === 1
       row.eachCell((cell, colNumber) => {
         applyBodyCell(cell, { stripe, center: colNumber === 2 })
       })
-      row.height = 28
     })
   }
 
   const enrichments = doc.sovAnalysis?.enrichments || []
   if (enrichments.length) {
     sheet.addRow([])
-    const section = sheet.addRow(['Gap fills', '', '', '', ''])
+    const section = sheet.addRow(['Gap fills', '', ''])
     sheet.mergeCells(section.number, 1, section.number, SOV_COLUMNS.length)
     applySectionHeader(section, THEME.brandGreenWash)
 
-    const enrichHeader = sheet.addRow(['Field', 'Value', 'Source', 'Note', ''])
+    const enrichHeader = sheet.addRow(['Field', 'Value', 'Source'])
     applyHeaderRow(enrichHeader)
 
     enrichments.forEach((item, index) => {
@@ -392,15 +417,15 @@ function buildSovSheet(workbook, doc, sheetName = 'Statement of Values') {
         sovFieldLabel(item.field_id),
         item.value != null ? String(item.value) : '-',
         formatCopeSourceLabel(item.source) || item.source || '-',
-        item.note || '-',
-        '',
       ])
       const stripe = index % 2 === 1
       row.eachCell((cell, colNumber) => {
-        if (colNumber <= 4) applyBodyCell(cell, { stripe, mono: colNumber === 2 })
+        applyBodyCell(cell, { stripe, mono: colNumber === 2 })
       })
     })
   }
+
+  autoFitSheet(sheet)
 }
 
 function buildCopeSheet(workbook, doc, sheetName = 'COPE') {
@@ -442,6 +467,8 @@ function buildCopeSheet(workbook, doc, sheetName = 'COPE') {
 
     sheet.addRow([])
   }
+
+  autoFitSheet(sheet)
 }
 
 /** Master SovExcel workbook: Cover + COPE (when present) + Statement of Values (when present). */
