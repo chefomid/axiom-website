@@ -190,69 +190,64 @@ export default function ReportResultsPanel({
   }
 
   const reportSummary = (
-    <>
-      {hazardLink ? (
-        <div className="border-b border-panel-border/60 px-5 py-3">
-          {publicDataCommandEnabled ? (
-            <Link
-              to={hazardLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
-            >
-              Live hazards at this location
-              <span className="font-mono text-[10px] text-ink-muted" aria-hidden>
-                ↗
-              </span>
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setActiveTab('hazards')}
-              className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
-            >
-              View hazards for this location
-            </button>
-          )}
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-2 border-b border-panel-border/60 px-5 py-3">
-        {record.cope?.sections?.length ? (
-          <>
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={exportingPdf || exportingExcel}
-              className="dossier-btn-primary"
-            >
-              {exportingPdf ? 'Exporting…' : 'Export COPE PDF'}
-            </button>
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              disabled={exportingPdf || exportingExcel || exportingSovExcel}
-              className="dossier-btn-secondary"
-            >
-              {exportingExcel ? 'Exporting…' : 'Export COPE Excel'}
-            </button>
-          </>
-        ) : null}
-        {record.statement_of_values ? (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-panel-border/60 px-5 py-3">
+      {record.cope?.sections?.length ? (
+        <>
           <button
             type="button"
-            onClick={handleExportSovExcel}
+            onClick={handleExportPdf}
+            disabled={exportingPdf || exportingExcel}
+            className="dossier-btn-primary"
+          >
+            {exportingPdf ? 'Exporting…' : 'Export COPE PDF'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
             disabled={exportingPdf || exportingExcel || exportingSovExcel}
             className="dossier-btn-secondary"
           >
-            {exportingSovExcel ? 'Exporting…' : 'Export SOV Excel'}
+            {exportingExcel ? 'Exporting…' : 'Export COPE Excel'}
           </button>
-        ) : null}
-        {exportError ? (
-          <span className="font-sans text-xs text-command-critical">{exportError}</span>
-        ) : null}
-      </div>
-    </>
+        </>
+      ) : null}
+      {record.statement_of_values ? (
+        <button
+          type="button"
+          onClick={handleExportSovExcel}
+          disabled={exportingPdf || exportingExcel || exportingSovExcel}
+          className="dossier-btn-secondary"
+        >
+          {exportingSovExcel ? 'Exporting…' : 'Export SOV Excel'}
+        </button>
+      ) : null}
+      {hazardLink ? (
+        publicDataCommandEnabled ? (
+          <Link
+            to={hazardLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
+          >
+            Live hazards at this location
+            <span className="font-mono text-[10px] text-ink-muted" aria-hidden>
+              ↗
+            </span>
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setActiveTab('hazards')}
+            className="dossier-link inline-flex items-center gap-1 font-sans text-xs"
+          >
+            View hazards for this location
+          </button>
+        )
+      ) : null}
+      {exportError ? (
+        <span className="font-sans text-xs text-command-critical">{exportError}</span>
+      ) : null}
+    </div>
   )
 
   const reportBody = (
