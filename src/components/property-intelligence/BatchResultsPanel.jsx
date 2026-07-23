@@ -85,7 +85,7 @@ export default function BatchResultsPanel({
                 New report
               </button>
             ) : null}
-            {onToggleExpand && !dossierFocus ? (
+            {onToggleExpand ? (
               <button type="button" onClick={onToggleExpand} className="dossier-btn-ghost">
                 {expanded ? 'Split view' : 'Expand'}
               </button>

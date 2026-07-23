@@ -338,7 +338,7 @@ export default function ReportResultsPanel({
                     onToggle={() => setSummaryExpanded(expanded => !expanded)}
                     label="report summary"
                   />
-                  {onToggleExpand && !dossierFocus ? (
+                  {onToggleExpand ? (
                     <button
                       type="button"
                       onClick={onToggleExpand}

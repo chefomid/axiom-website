@@ -1097,9 +1097,12 @@ export default function PropertyIntelligenceView() {
     !error &&
     !batchRunError
 
+  // Start post-generate as map | dossier split (not fullscreen dossier).
   useEffect(() => {
-    if (dossierFocus) setReportExpanded(true)
-  }, [dossierFocus])
+    if (!dossierFocus) return undefined
+    setReportExpanded(false)
+    return undefined
+  }, [dossierFocus, record?.report_id, batchRun?.batch_id])
 
   const displayQuote = record?.receipt
 
@@ -1250,10 +1253,12 @@ export default function PropertyIntelligenceView() {
 
         <div
           className={`relative min-w-0 ${
-            postPaymentOverlayActive || dossierFocus ? 'pointer-events-none opacity-0' : ''
+            postPaymentOverlayActive ? 'pointer-events-none opacity-0' : ''
           } ${
             dossierFocus
-              ? 'hidden'
+              ? reportExpanded
+                ? 'hidden'
+                : 'h-[34vh] shrink-0 lg:h-auto lg:min-h-0 lg:flex-1'
               : showReportPanel
                 ? reportExpanded
                   ? 'hidden'
@@ -1277,6 +1282,7 @@ export default function PropertyIntelligenceView() {
             scheduleInvalidCount={scheduleMapStats.invalid}
             onScheduleLocationSelect={handleScheduleMapLocationSelect}
             onScheduleFitAll={handleScheduleFitAll}
+            preferredMode={dossierFocus && !scheduleMode ? 'street' : null}
           />
 
           {scheduleMode && scheduleRows.length > 0 && !scheduleMapLocations?.length ? (
@@ -1298,9 +1304,11 @@ export default function PropertyIntelligenceView() {
         {showReportPanel ? (
           <aside
             className={`flex min-h-0 w-full flex-col border-t border-panel-border bg-[#f6f6f4] lg:border-l lg:border-t-0 ${
-              dossierFocus || reportExpanded
+              reportExpanded
                 ? 'min-h-0 flex-1'
-                : 'min-h-0 flex-1 lg:w-[min(40rem,46vw)] lg:min-w-[30rem] lg:max-w-[680px] lg:flex-none'
+                : dossierFocus
+                  ? 'min-h-0 flex-1 lg:w-[min(44rem,50vw)] lg:min-w-[26rem] lg:flex-none'
+                  : 'min-h-0 flex-1 lg:w-[min(40rem,46vw)] lg:min-w-[30rem] lg:max-w-[680px] lg:flex-none'
             }`}
           >
             {scheduleMode && (batchRun || loadingBatchRun || batchRunError) ? (
@@ -1310,7 +1318,7 @@ export default function PropertyIntelligenceView() {
                 error={batchRunError}
                 apiOnline={apiOnline}
                 expanded={reportExpanded}
-                onToggleExpand={dossierFocus ? undefined : () => setReportExpanded(expanded => !expanded)}
+                onToggleExpand={() => setReportExpanded(expanded => !expanded)}
                 onPreviewLocation={handlePreviewScheduleLocation}
                 onRequestNewReport={() => setNewReportExitOpen(true)}
                 dossierFocus={dossierFocus}
@@ -1323,7 +1331,7 @@ export default function PropertyIntelligenceView() {
                 loading={loadingReport}
                 apiOnline={apiOnline}
                 expanded={reportExpanded}
-                onToggleExpand={dossierFocus ? undefined : () => setReportExpanded(expanded => !expanded)}
+                onToggleExpand={() => setReportExpanded(expanded => !expanded)}
                 onRequestNewReport={() => setNewReportExitOpen(true)}
                 dossierFocus={dossierFocus}
               />

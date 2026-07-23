@@ -109,6 +109,7 @@ export default function PropertyMap({
   scheduleInvalidCount = 0,
   onScheduleLocationSelect,
   onScheduleFitAll,
+  preferredMode = null,
 }) {
   const pin = useMemo(() => {
     const la = parseCoord(lat)
@@ -188,6 +189,16 @@ export default function PropertyMap({
       cancelled = true
     }
   }, [hasPin, pin?.lat, pin?.lng, googleKey])
+
+  useEffect(() => {
+    if (!preferredMode || !hasPin) return
+    if (preferredMode === 'street') {
+      if (streetAvailable === true) setMapMode('street')
+      else if (streetAvailable === false) setMapMode('map')
+      return
+    }
+    setMapMode(preferredMode)
+  }, [preferredMode, hasPin, streetAvailable])
 
   const streetEmbed =
     hasPin && googleKey && streetAvailable === true
