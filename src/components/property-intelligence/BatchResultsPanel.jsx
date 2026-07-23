@@ -79,7 +79,7 @@ export default function BatchResultsPanel({
               {enriched.length} / {batchRun.totals?.location_count} completed
             </p>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <div className="flex shrink-0 flex-col items-end gap-3">
             {onRequestNewReport ? (
               <button type="button" onClick={onRequestNewReport} className="dossier-btn-primary">
                 New report
