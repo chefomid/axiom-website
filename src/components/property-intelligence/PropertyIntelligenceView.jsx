@@ -82,6 +82,11 @@ export default function PropertyIntelligenceView() {
   const splitReportPaneRef = useRef(null)
   const mapInstanceRef = useRef(null)
 
+  const handleMapReady = useCallback(map => {
+    mapInstanceRef.current = map
+    setMapInstance(map)
+  }, [])
+
   const [inputMode, setInputMode] = useState('single')
   const [scheduleRows, setScheduleRows] = useState([])
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
@@ -1428,10 +1433,7 @@ export default function PropertyIntelligenceView() {
             showPlaceholder={false}
             locationLocked={Boolean(mapCoords) && (locationLocked || scheduleMode)}
             locationPhase={mapCoords ? (scheduleMode || locationLocked ? 'locked' : locationPhase) : locationPhase}
-            onMapReady={map => {
-              mapInstanceRef.current = map
-              setMapInstance(map)
-            }}
+            onMapReady={handleMapReady}
             scheduleLocations={scheduleMapLocations}
             scheduleFocusRowIndex={scheduleFocusRowIndex}
             scheduleFitAllSignal={scheduleFitAllSignal}

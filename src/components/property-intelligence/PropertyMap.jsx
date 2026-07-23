@@ -229,6 +229,9 @@ export default function PropertyMap({
     }
   }, [mapMode, mapReady])
 
+  const onMapReadyRef = useRef(onMapReady)
+  onMapReadyRef.current = onMapReady
+
   useEffect(() => {
     const container = mapContainerRef.current
     if (!container) return
@@ -262,16 +265,24 @@ export default function PropertyMap({
         setMapReady(true)
         setMapInstance(map)
         map.resize()
-        onMapReady?.(map)
+        onMapReadyRef.current?.(map)
       })
     }
 
     init()
 
     let resizeRaf = 0
-    const ro = new ResizeObserver(() => {
+    let lastW = 0
+    let lastH = 0
+    const ro = new ResizeObserver(entries => {
       // Skip thrashing MapLibre resize while the split handle is dragging.
       if (document.body.dataset.splitDragging === '1') return
+      const rect = entries[0]?.contentRect
+      const nextW = Math.round(rect?.width ?? 0)
+      const nextH = Math.round(rect?.height ?? 0)
+      if (nextW === lastW && nextH === lastH) return
+      lastW = nextW
+      lastH = nextH
       if (resizeRaf) return
       resizeRaf = window.requestAnimationFrame(() => {
         resizeRaf = 0
@@ -301,9 +312,9 @@ export default function PropertyMap({
       mapRef.current = null
       setMapReady(false)
       setMapInstance(null)
-      onMapReady?.(null)
+      onMapReadyRef.current?.(null)
     }
-  }, [onMapReady])
+  }, [])
 
   useEffect(() => {
     const map = mapRef.current
