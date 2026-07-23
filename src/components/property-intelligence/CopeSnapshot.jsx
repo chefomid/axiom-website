@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { formatCopeSourceLabel } from '../../utils/copeSourceLabels'
 
+const COPE_ORDER = ['C', 'O', 'P', 'E']
+
 const CONFIDENCE_CLASS = {
   high: 'text-command-stable',
   medium: 'text-command-watch',
@@ -38,54 +40,55 @@ function partitionSection(section) {
   return { populated, gaps, total: fields.length }
 }
 
-function sortSections(sections) {
-  return [...sections].sort((a, b) => {
-    const aPop = partitionSection(a).populated.length
-    const bPop = partitionSection(b).populated.length
-    if (aPop > 0 && bPop === 0) return -1
-    if (bPop > 0 && aPop === 0) return 1
-    return bPop - aPop
-  })
+function orderCopeSections(sections) {
+  const byLetter = new Map()
+  for (const section of sections ?? []) {
+    const letter = String(section.cope_letter ?? '').toUpperCase()
+    if (!byLetter.has(letter)) byLetter.set(letter, section)
+  }
+  const ordered = COPE_ORDER.map(letter => byLetter.get(letter)).filter(Boolean)
+  const extras = (sections ?? []).filter(
+    section => !COPE_ORDER.includes(String(section.cope_letter ?? '').toUpperCase()),
+  )
+  return [...ordered, ...extras]
 }
 
 function FieldCard({ field, variant = 'populated' }) {
   const isGap = variant === 'gap'
   return (
     <li
-      className={`rounded border px-3 py-2 ${
+      className={`rounded border px-2.5 py-2 ${
         isGap
           ? 'border-command-watch/25 bg-command-watch/[0.04]'
           : 'border-panel-border bg-panel-surface/60'
       }`}
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-ink-muted">
+      <div className="flex items-baseline justify-between gap-1.5">
+        <span className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
           {field.label}
         </span>
-        {!isGap ? (
-          <div className="flex items-center gap-2">
-            {field.method && field.method !== 'unknown' ? (
-              <span className="font-mono text-[8px] uppercase tracking-wider text-ink-faint">
-                {TRUST_METHOD_LABEL[field.method] ?? field.method}
-              </span>
-            ) : null}
-            <span className={`font-mono text-[9px] uppercase ${CONFIDENCE_CLASS[field.confidence] ?? ''}`}>
-              {field.confidence}
-            </span>
-          </div>
+        {!isGap && field.confidence ? (
+          <span className={`shrink-0 font-mono text-[8px] uppercase ${CONFIDENCE_CLASS[field.confidence] ?? ''}`}>
+            {field.confidence}
+          </span>
         ) : null}
       </div>
       {field.value ? (
         <>
-          <p className="dossier-value mt-1 font-mono text-xs">{field.value}</p>
+          <p className="dossier-value mt-1 font-mono text-[11px] leading-snug">{field.value}</p>
           {field.source ? (
-            <p className="mt-0.5 font-mono text-[9px] text-ink-faint">
+            <p className="mt-0.5 font-mono text-[8px] text-ink-faint">
               From {formatCopeSourceLabel(field.source)}
+            </p>
+          ) : null}
+          {field.method && field.method !== 'unknown' ? (
+            <p className="mt-0.5 font-mono text-[8px] uppercase tracking-wider text-ink-faint">
+              {TRUST_METHOD_LABEL[field.method] ?? field.method}
             </p>
           ) : null}
         </>
       ) : (
-        <p className="mt-1 font-mono text-[10px] italic text-command-watch/80">
+        <p className="mt-1 font-mono text-[9px] italic text-command-watch/80">
           {field.note ?? 'Not found in selected sources'}
         </p>
       )}
@@ -98,19 +101,19 @@ function SectionGaps({ gaps }) {
   if (!gaps.length) return null
 
   return (
-    <div className="mt-3 overflow-hidden rounded-md border border-command-watch/30 bg-command-watch/[0.06]">
+    <div className="mt-2 overflow-hidden rounded-md border border-command-watch/30 bg-command-watch/[0.06]">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left transition hover:bg-command-watch/[0.08]"
+        className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left transition hover:bg-command-watch/[0.08]"
       >
-        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-command-watch">
-          {gaps.length} field{gaps.length === 1 ? '' : 's'} not found
+        <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-command-watch">
+          {gaps.length} gap{gaps.length === 1 ? '' : 's'}
         </span>
         <span className="font-mono text-sm leading-none text-command-watch/60">{open ? '−' : '+'}</span>
       </button>
       {open ? (
-        <ul className="space-y-2 border-t border-command-watch/20 px-3 py-3">
+        <ul className="space-y-1.5 border-t border-command-watch/20 px-2.5 py-2">
           {gaps.map(field => (
             <FieldCard key={field.id} field={field} variant="gap" />
           ))}
@@ -120,86 +123,48 @@ function SectionGaps({ gaps }) {
   )
 }
 
-function PopulatedSection({ section }) {
+function CopeColumn({ section }) {
   const { populated, gaps, total } = partitionSection(section)
   const hasGaps = gaps.length > 0
+  const letter = String(section.cope_letter ?? '').toUpperCase() || '—'
 
   return (
-    <div
-      className={`border-b border-panel-border/60 p-4 ${
-        hasGaps ? 'border-l-[3px] border-l-command-watch/50' : ''
+    <section
+      className={`cope-runway__column flex min-h-0 min-w-0 flex-col border-panel-border/60 ${
+        hasGaps ? 'border-t-[3px] border-t-command-watch/55' : 'border-t-[3px] border-t-command-stable/45'
       }`}
     >
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <p className="dossier-value font-display text-xs">
-          {section.cope_letter ? `${section.cope_letter}, ` : ''}
-          {section.label}
-        </p>
-        <span
-          className={`font-mono text-[9px] tabular-nums ${hasGaps ? 'text-command-watch' : 'text-ink-muted'}`}
-        >
-          {hasGaps ? `${populated.length} of ${total} found` : section.completeness}
-        </span>
+      <header className="shrink-0 border-b border-panel-border/60 bg-panel-surface/20 px-3 py-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="font-display text-sm font-semibold tracking-[0.04em]">
+            <span className="text-command-watch">{letter}</span>
+            <span className="dossier-value ml-1.5 text-[11px] font-medium">
+              {section.label}
+            </span>
+          </p>
+          <span
+            className={`font-mono text-[9px] tabular-nums ${hasGaps ? 'text-command-watch' : 'text-ink-muted'}`}
+          >
+            {populated.length}/{total}
+          </span>
+        </div>
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-y-auto sleek-scrollbar px-2.5 py-2.5">
+        {populated.length > 0 ? (
+          <ul className="space-y-1.5">
+            {populated.map(field => (
+              <FieldCard key={field.id} field={field} variant="populated" />
+            ))}
+          </ul>
+        ) : (
+          <p className="px-1 py-2 font-mono text-[9px] leading-relaxed text-ink-faint">
+            No observed fields in this column yet.
+          </p>
+        )}
+        <SectionGaps gaps={gaps} />
       </div>
-      {populated.length > 0 ? (
-        <ul className="space-y-2">
-          {populated.map(field => (
-            <FieldCard key={field.id} field={field} variant="populated" />
-          ))}
-        </ul>
-      ) : null}
-      <SectionGaps gaps={gaps} />
-    </div>
-  )
-}
-
-function UnavailableSections({ sections }) {
-  const [open, setOpen] = useState(false)
-  if (!sections.length) return null
-
-  const totalGaps = sections.reduce((sum, s) => sum + partitionSection(s).gaps.length, 0)
-
-  return (
-    <div className="border-t-2 border-command-watch/30 bg-command-watch/[0.04]">
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-command-watch/[0.06]"
-      >
-        <div>
-          <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-command-watch">
-            Sections with no data
-          </p>
-          <p className="mt-1 font-mono text-[9px] text-ink-faint">
-            {sections.length} section{sections.length === 1 ? '' : 's'} · {totalGaps} field
-            {totalGaps === 1 ? '' : 's'} unavailable for this location
-          </p>
-        </div>
-        <span className="shrink-0 font-mono text-sm leading-none text-command-watch/60">
-          {open ? '−' : '+'}
-        </span>
-      </button>
-      {open ? (
-        <div className="border-t border-command-watch/20">
-          {sections.map(section => {
-            const { gaps } = partitionSection(section)
-            return (
-              <div key={section.id} className="border-b border-command-watch/15 p-4 last:border-0">
-                <p className="mb-2 font-display text-xs text-command-watch/90">
-                  {section.cope_letter ? `${section.cope_letter}, ` : ''}
-                  {section.label}
-                </p>
-                <ul className="space-y-2">
-                  {gaps.map(field => (
-                    <FieldCard key={field.id} field={field} variant="gap" />
-                  ))}
-                </ul>
-              </div>
-            )
-          })}
-        </div>
-      ) : null}
-    </div>
+    </section>
   )
 }
 
@@ -222,16 +187,13 @@ export default function CopeSnapshot({ cope }) {
       f => f.status === 'observed' && String(f.source ?? '').toLowerCase().includes('attom'),
     ),
   )
-
-  const sorted = sortSections(cope.sections)
-  const withData = sorted.filter(s => partitionSection(s).populated.length > 0)
-  const withoutData = sorted.filter(s => partitionSection(s).populated.length === 0)
+  const columns = orderCopeSections(cope.sections)
 
   return (
-    <div className="border-b border-panel-border">
-      <div className="border-b border-panel-border/60 bg-panel-surface/20 p-4">
+    <div className="flex min-h-0 flex-col border-b border-panel-border">
+      <div className="shrink-0 border-b border-panel-border/60 bg-panel-surface/20 px-4 py-3">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">COPE snapshot</p>
+          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">COPE runway</p>
           <span className="font-mono text-[10px] tabular-nums text-command-live">
             {score.completeness_pct ?? 0}% complete
           </span>
@@ -240,12 +202,6 @@ export default function CopeSnapshot({ cope }) {
         <p className="mt-2 font-mono text-[9px] text-ink-faint">
           {score.observed ?? 0} observed · {score.unknown ?? 0} unknown · {score.total ?? 0} fields
         </p>
-        {withData.length > 0 && withoutData.length > 0 ? (
-          <p className="mt-2 font-mono text-[9px] leading-relaxed text-ink-secondary">
-            Showing {withData.length} section{withData.length === 1 ? '' : 's'} with data first. Scroll down
-            for unavailable fields.
-          </p>
-        ) : null}
         {score.unknown > 0 ? (
           <p className="mt-2 font-mono text-[9px] leading-relaxed text-command-watch">
             {hasAttomData
@@ -255,11 +211,13 @@ export default function CopeSnapshot({ cope }) {
         ) : null}
       </div>
 
-      {withData.map(section => (
-        <PopulatedSection key={section.id} section={section} />
-      ))}
-
-      <UnavailableSections sections={withoutData} />
+      <div className="cope-runway min-h-0 flex-1 overflow-x-auto sleek-scrollbar">
+        <div className="cope-runway__track grid h-full min-h-[22rem] min-w-[52rem] grid-cols-4 divide-x divide-[color:var(--dossier-border,#d6d6d2)] lg:min-w-0">
+          {columns.map(section => (
+            <CopeColumn key={section.id} section={section} />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

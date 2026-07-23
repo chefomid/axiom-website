@@ -1277,7 +1277,7 @@ export default function PropertyIntelligenceView() {
 
         {showReportPanel ? (
           <aside
-            className={`flex min-h-0 w-full flex-col border-t border-panel-border bg-panel-bg lg:border-l lg:border-t-0 ${
+            className={`flex min-h-0 w-full flex-col border-t border-panel-border bg-[#f6f6f4] lg:border-l lg:border-t-0 ${
               reportExpanded
                 ? 'min-h-0 flex-1'
                 : 'min-h-0 flex-1 lg:w-[min(40rem,46vw)] lg:min-w-[30rem] lg:max-w-[680px] lg:flex-none'
