@@ -75,7 +75,7 @@ function DigestSection({ section }) {
   const lines = section.content.split('\n').filter(Boolean)
   return (
     <div className="rounded-md border border-panel-border/70 bg-panel-bg/60 px-3 py-2.5">
-      <p className="font-display text-xs text-white">{section.title}</p>
+      <p className="dossier-value font-display text-xs">{section.title}</p>
       <div className="mt-2 space-y-1.5 font-sans text-sm leading-relaxed text-ink-secondary">
         {lines.map((line, i) => (
           <p key={i} className={line.startsWith('|') ? 'text-ink-faint' : undefined}>
@@ -220,7 +220,7 @@ export default function ReportVisionPanel({ visionAnalysis }) {
           </div>
           <div className="px-4 py-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <p className="font-display text-lg font-semibold leading-tight text-white">{isoTitle}</p>
+              <p className="dossier-value font-display text-lg font-semibold leading-tight">{isoTitle}</p>
               {confidence ? (
                 <span
                   className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide ${confidenceStyle.badge}`}

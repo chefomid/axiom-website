@@ -77,7 +77,7 @@ function FieldCard({ field, variant = 'populated' }) {
       </div>
       {field.value ? (
         <>
-          <p className="mt-1 font-mono text-xs text-white">{field.value}</p>
+          <p className="dossier-value mt-1 font-mono text-xs">{field.value}</p>
           {field.source ? (
             <p className="mt-0.5 font-mono text-[9px] text-ink-faint">
               From {formatCopeSourceLabel(field.source)}
@@ -131,7 +131,7 @@ function PopulatedSection({ section }) {
       }`}
     >
       <div className="mb-3 flex items-baseline justify-between gap-2">
-        <p className="font-display text-xs text-white">
+        <p className="dossier-value font-display text-xs">
           {section.cope_letter ? `${section.cope_letter}, ` : ''}
           {section.label}
         </p>

@@ -45,7 +45,7 @@ function SovFieldTable({ statementOfValues }) {
           {entries.map(([fieldId, entry]) => (
             <tr key={fieldId} className="border-b border-panel-border/40 text-ink-secondary">
               <td className="py-1.5 pr-2 capitalize">{fieldId.replace(/_/g, ' ')}</td>
-              <td className="py-1.5 pr-2 text-white">{entry.value}</td>
+              <td className="dossier-value py-1.5 pr-2">{entry.value}</td>
               <td className="py-1.5 pr-2 text-ink-faint">{entry.primary_source || '-'}</td>
               <td className={`py-1.5 ${CONFIDENCE_CLASS[entry.confidence] ?? 'text-ink-faint'}`}>
                 {entry.confidence || '-'}
@@ -99,7 +99,7 @@ export default function ReportSovPanel({ statementOfValues, sovDigestMd, sovAnal
                 key={`${d.field_id}-${i}`}
                 className="rounded border border-panel-border bg-panel-surface/40 px-3 py-2"
               >
-                <p className="font-mono text-[10px] text-white">
+                <p className="dossier-value font-mono text-[10px]">
                   {d.field_id?.replace(/_/g, ' ')}{' '}
                   <span className="text-ink-faint">({d.status})</span>
                 </p>

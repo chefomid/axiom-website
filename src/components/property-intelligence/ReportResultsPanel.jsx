@@ -20,15 +20,6 @@ const BASE_TABS = [
 const IMAGE_TAB = { id: 'image', label: 'Image' }
 const SOV_TAB = { id: 'sov', label: 'SOV' }
 
-const TAB_ACTIVE_CLASS =
-  'border-white bg-white text-black shadow-none'
-const TAB_INACTIVE_CLASS =
-  'border-panel-border bg-panel-surface/40 text-ink-muted hover:border-ink-muted hover:text-ink-secondary'
-const ACTION_BTN_CLASS =
-  'rounded-md border border-white bg-white px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide text-black transition hover:bg-[#e8e8e8] disabled:border-panel-border disabled:bg-panel-surface/40 disabled:text-ink-muted disabled:opacity-60'
-const HAZARD_LINK_CLASS =
-  'inline-flex items-center gap-1 font-sans text-xs text-white transition hover:underline'
-
 function CollapseChevron({ expanded, onToggle, label = 'report details' }) {
   return (
     <button
@@ -36,7 +27,7 @@ function CollapseChevron({ expanded, onToggle, label = 'report details' }) {
       onClick={onToggle}
       aria-expanded={expanded}
       aria-label={expanded ? `Collapse ${label}` : `Expand ${label}`}
-      className="shrink-0 rounded border border-panel-border px-2 py-1.5 text-ink-muted transition hover:border-command-live/40 hover:text-white"
+      className="dossier-btn-ghost shrink-0"
       title={expanded ? 'Collapse details' : 'Expand details'}
     >
       <span
@@ -182,7 +173,7 @@ export default function ReportResultsPanel({
     <>
       <div className="border-b border-panel-border/60 px-5 py-3">
         {record.report_id ? (
-          <ConfirmationNumberCopy confirmationId={record.report_id} />
+          <ConfirmationNumberCopy confirmationId={record.report_id} tone="dossier" />
         ) : null}
         {hazardLink ? (
           publicDataCommandEnabled ? (
@@ -190,7 +181,9 @@ export default function ReportResultsPanel({
               to={hazardLink}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${HAZARD_LINK_CLASS} ${record.report_id ? 'mt-3' : ''}`}
+              className={`dossier-link inline-flex items-center gap-1 font-sans text-xs ${
+                record.report_id ? 'mt-3' : ''
+              }`}
             >
               Live hazards at this location
               <span className="font-mono text-[10px] text-ink-muted" aria-hidden>
@@ -201,7 +194,9 @@ export default function ReportResultsPanel({
             <button
               type="button"
               onClick={() => setActiveTab('hazards')}
-              className={`${HAZARD_LINK_CLASS} ${record.report_id ? 'mt-3' : ''}`}
+              className={`dossier-link inline-flex items-center gap-1 font-sans text-xs ${
+                record.report_id ? 'mt-3' : ''
+              }`}
             >
               View hazards for this location
             </button>
@@ -216,7 +211,7 @@ export default function ReportResultsPanel({
               type="button"
               onClick={handleExportPdf}
               disabled={exportingPdf || exportingExcel}
-              className={ACTION_BTN_CLASS}
+              className="dossier-btn-primary"
             >
               {exportingPdf ? 'Exporting…' : 'Export COPE PDF'}
             </button>
@@ -224,7 +219,7 @@ export default function ReportResultsPanel({
               type="button"
               onClick={handleExportExcel}
               disabled={exportingPdf || exportingExcel}
-              className={ACTION_BTN_CLASS}
+              className="dossier-btn-secondary"
             >
               {exportingExcel ? 'Exporting…' : 'Export COPE Excel'}
             </button>
@@ -259,9 +254,7 @@ export default function ReportResultsPanel({
               role="tab"
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`shrink-0 rounded-md border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide transition ${
-                activeTab === tab.id ? TAB_ACTIVE_CLASS : TAB_INACTIVE_CLASS
-              }`}
+              className={`dossier-tab shrink-0 ${activeTab === tab.id ? 'dossier-tab--active' : ''}`}
             >
               {tab.label}
             </button>
@@ -314,18 +307,26 @@ export default function ReportResultsPanel({
 
   if (isPanel) {
     return (
-      <div className="flex h-full min-h-0 flex-col bg-panel-bg">
+      <div className="report-dossier flex h-full min-h-0 flex-col">
         {showHeader ? (
-          <div className="shrink-0 border-b border-panel-border bg-panel-surface/20 px-5 py-4">
+          <div className="report-dossier-header shrink-0 px-5 py-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Report results</p>
-                <p className={`mt-1 font-display text-lg font-semibold capitalize ${statusTone}`}>{record.status}</p>
+                <p className="report-dossier-label font-mono text-[10px] uppercase tracking-[0.16em]">
+                  Report results
+                </p>
+                <p className={`mt-1 font-display text-lg font-semibold capitalize ${statusTone}`}>
+                  {record.status}
+                </p>
                 {summaryExpanded && record.display_name ? (
-                  <p className="mt-1.5 font-sans text-sm leading-relaxed text-ink-primary">{record.display_name}</p>
+                  <p className="report-dossier-address mt-1.5 font-sans text-sm leading-relaxed">
+                    {record.display_name}
+                  </p>
                 ) : null}
                 {!summaryExpanded && record.display_name ? (
-                  <p className="mt-1 line-clamp-1 font-sans text-xs text-ink-secondary">{record.display_name}</p>
+                  <p className="report-dossier-address--muted mt-1 line-clamp-1 font-sans text-xs">
+                    {record.display_name}
+                  </p>
                 ) : null}
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
@@ -338,7 +339,7 @@ export default function ReportResultsPanel({
                   <button
                     type="button"
                     onClick={onToggleExpand}
-                    className="rounded border border-panel-border px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-muted transition hover:border-command-live/40 hover:text-white"
+                    className="dossier-btn-ghost"
                     title={expanded ? 'Show map alongside report' : 'Expand report to full width'}
                   >
                     {expanded ? 'Split view' : 'Expand'}
@@ -354,14 +355,16 @@ export default function ReportResultsPanel({
   }
 
   return (
-    <div className="border-b border-panel-border">
+    <div className="report-dossier border-b border-panel-border">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
         className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left hover:bg-panel-surface/30"
       >
         <span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Report results</span>
+          <span className="report-dossier-label font-mono text-[10px] uppercase tracking-[0.16em]">
+            Report results
+          </span>
           <span className={`mt-1 block font-display text-sm font-semibold capitalize ${statusTone}`}>
             {record.status}
           </span>

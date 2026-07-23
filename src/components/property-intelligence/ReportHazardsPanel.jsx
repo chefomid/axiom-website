@@ -11,7 +11,7 @@ function renderValue(value, depth = 0) {
   if (value == null) return null
   if (typeof value !== 'object') {
     return (
-      <p className="font-mono text-xs text-white">{String(value)}</p>
+      <p className="dossier-value font-mono text-xs">{String(value)}</p>
     )
   }
   if (Array.isArray(value)) {
@@ -62,7 +62,7 @@ export default function ReportHazardsPanel({ hazards }) {
             {SOURCE_LABELS[key] ?? key}
           </p>
           {data.summary ? (
-            <p className="font-mono text-xs text-white">{data.summary}</p>
+            <p className="dossier-value font-mono text-xs">{data.summary}</p>
           ) : null}
           {data.error ? (
             <p className="mt-1 font-mono text-[10px] text-command-critical">{data.error}</p>

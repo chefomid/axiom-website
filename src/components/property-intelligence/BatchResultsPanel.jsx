@@ -64,14 +64,14 @@ export default function BatchResultsPanel({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-panel-border px-5 py-4">
+    <div className="report-dossier flex min-h-0 flex-1 flex-col">
+      <div className="report-dossier-header shrink-0 px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">
+            <p className="report-dossier-label font-mono text-[9px] uppercase tracking-[0.2em]">
               Batch {batchRun.batch_id}
             </p>
-            <p className="mt-1 font-display text-sm text-white">{batchRun.message}</p>
+            <p className="dossier-value mt-1 font-display text-sm">{batchRun.message}</p>
             <p className="mt-1 font-mono text-[10px] text-ink-faint">
               Charged {formatUsd(batchRun.totals?.user_price_usd)} ·{' '}
               {enriched.length} / {batchRun.totals?.location_count} completed
@@ -79,18 +79,14 @@ export default function BatchResultsPanel({
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {onToggleExpand ? (
-              <button
-                type="button"
-                onClick={onToggleExpand}
-                className="rounded border border-panel-border px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-muted transition hover:border-command-live/40 hover:text-white"
-              >
+              <button type="button" onClick={onToggleExpand} className="dossier-btn-ghost">
                 {expanded ? 'Split view' : 'Expand'}
               </button>
             ) : null}
           </div>
         </div>
         {batchRun.batch_id ? (
-          <ConfirmationNumberCopy confirmationId={batchRun.batch_id} className="mt-3" />
+          <ConfirmationNumberCopy confirmationId={batchRun.batch_id} tone="dossier" className="mt-3" />
         ) : null}
         {enriched.length > 0 ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -98,7 +94,7 @@ export default function BatchResultsPanel({
               type="button"
               onClick={handleExportExcel}
               disabled={exportingExcel}
-              className="rounded border border-panel-border px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider text-ink-secondary hover:border-command-live/40 hover:text-white disabled:opacity-50"
+              className="dossier-btn-secondary"
             >
               {exportingExcel ? 'Exporting…' : 'Export batch Excel'}
             </button>
@@ -118,10 +114,8 @@ export default function BatchResultsPanel({
                   key={loc.report_id ?? loc.row_index}
                   type="button"
                   onClick={() => setActiveIndex(index)}
-                  className={`max-w-[14rem] truncate rounded border px-2 py-1 font-mono text-[9px] transition ${
-                    index === activeIndex
-                      ? 'border-command-live/50 bg-command-live/10 text-white'
-                      : 'border-panel-border text-ink-muted hover:border-command-live/30 hover:text-white'
+                  className={`dossier-tab max-w-[14rem] truncate !normal-case tracking-normal ${
+                    index === activeIndex ? 'dossier-tab--active' : ''
                   }`}
                 >
                   {loc.row_index ? `${loc.row_index}. ` : ''}

@@ -57,7 +57,7 @@ export default function ReportSourceFields({ fields, crawlExcerpt, crawlSourceUr
                     {field.confidence ?? 'unknown'}
                   </span>
                 </div>
-                <p className="mt-1 font-mono text-xs text-white">{field.value}</p>
+                <p className="dossier-value mt-1 font-mono text-xs">{field.value}</p>
               </li>
             ))}
           </ul>

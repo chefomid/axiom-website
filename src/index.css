@@ -2632,6 +2632,205 @@ html::-webkit-scrollbar-thumb:hover,
   box-shadow: none;
 }
 
+/* Light report dossier (post-generate results panel only) */
+.report-dossier {
+  --dossier-bg: #f6f6f4;
+  --dossier-surface: #ffffff;
+  --dossier-surface-muted: #efefec;
+  --dossier-border: #d6d6d2;
+  --dossier-ink: #141414;
+  --dossier-ink-secondary: #3a3a3a;
+  --dossier-ink-muted: #5a5a5a;
+  --dossier-ink-faint: #787878;
+  background: var(--dossier-bg);
+  color: var(--dossier-ink);
+}
+
+.dossier-value {
+  color: var(--dossier-ink, #141414);
+}
+
+.report-dossier .text-white {
+  color: var(--dossier-ink);
+}
+
+.report-dossier .text-ink-primary {
+  color: var(--dossier-ink);
+}
+
+.report-dossier .text-ink-secondary {
+  color: var(--dossier-ink-secondary);
+}
+
+.report-dossier .text-ink-muted {
+  color: var(--dossier-ink-muted);
+}
+
+.report-dossier .text-ink-faint {
+  color: var(--dossier-ink-faint);
+}
+
+.report-dossier .border-panel-border,
+.report-dossier .border-panel-border\/40,
+.report-dossier .border-panel-border\/50,
+.report-dossier .border-panel-border\/60,
+.report-dossier .border-panel-border\/70,
+.report-dossier .border-panel-border\/80 {
+  border-color: var(--dossier-border);
+}
+
+.report-dossier .bg-panel-bg,
+.report-dossier .bg-panel-bg\/40,
+.report-dossier .bg-panel-bg\/50,
+.report-dossier .bg-panel-bg\/60 {
+  background-color: var(--dossier-surface-muted);
+}
+
+.report-dossier .bg-panel-surface\/20,
+.report-dossier .bg-panel-surface\/30,
+.report-dossier .bg-panel-surface\/40,
+.report-dossier .bg-panel-surface\/50,
+.report-dossier .bg-panel-surface\/60,
+.report-dossier .bg-panel-surface\/80 {
+  background-color: var(--dossier-surface);
+}
+
+.report-dossier .bg-panel-border {
+  background-color: #d0d0cc;
+}
+
+.report-dossier .hover\:text-white:hover {
+  color: var(--dossier-ink);
+}
+
+.report-dossier .hover\:bg-panel-surface\/30:hover,
+.report-dossier .hover\:bg-panel-surface\/50:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.report-dossier .bg-black\/40 {
+  background-color: rgba(20, 20, 20, 0.06);
+}
+
+.report-dossier-header {
+  border-bottom: 1px solid var(--dossier-border);
+  background: var(--dossier-surface);
+}
+
+.report-dossier-label {
+  color: var(--dossier-ink-muted);
+}
+
+.report-dossier-address {
+  color: var(--dossier-ink);
+}
+
+.report-dossier-address--muted {
+  color: var(--dossier-ink-secondary);
+}
+
+.dossier-btn-primary,
+.dossier-btn-secondary,
+.dossier-btn-ghost,
+.dossier-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.dossier-btn-primary {
+  border: 1px solid rgba(232, 168, 56, 0.85);
+  background: #e8a838;
+  color: #141414;
+  padding: 0.375rem 0.75rem;
+}
+
+.dossier-btn-primary:hover:not(:disabled) {
+  background: #f0b54a;
+  border-color: #f0b54a;
+}
+
+.dossier-btn-primary:disabled,
+.dossier-btn-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.dossier-btn-secondary {
+  border: 1px solid #2a2a2a;
+  background: transparent;
+  color: #1c1c1c;
+  padding: 0.375rem 0.75rem;
+}
+
+.dossier-btn-secondary:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: #141414;
+}
+
+.dossier-btn-ghost {
+  border: 1px solid var(--dossier-border);
+  background: transparent;
+  color: var(--dossier-ink-muted);
+  padding: 0.375rem 0.625rem;
+}
+
+.dossier-btn-ghost:hover {
+  border-color: rgba(232, 168, 56, 0.55);
+  color: #141414;
+}
+
+.dossier-tab {
+  border: 1px solid var(--dossier-border);
+  background: transparent;
+  color: var(--dossier-ink-muted);
+  padding: 0.375rem 0.75rem;
+}
+
+.dossier-tab:hover {
+  border-color: #b8b8b4;
+  color: var(--dossier-ink-secondary);
+}
+
+.dossier-tab--active {
+  border-color: #1c1c1c;
+  background: #1c1c1c;
+  color: #f6f6f4;
+}
+
+.dossier-tab--active:hover {
+  border-color: #1c1c1c;
+  background: #2a2a2a;
+  color: #f6f6f4;
+}
+
+.dossier-link {
+  color: #1c1c1c;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.dossier-link:hover {
+  color: #141414;
+  text-decoration: underline;
+}
+
+.dossier-card {
+  border: 1px solid rgba(232, 168, 56, 0.35);
+  background: rgba(232, 168, 56, 0.1);
+  border-radius: 0.375rem;
+}
+
 @keyframes workflow-cta-pulse {
   0%,
   100% {
