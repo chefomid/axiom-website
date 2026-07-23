@@ -288,7 +288,7 @@ function HazardColumn({ hazardKey, data, lat, lng, label }) {
         </p>
       </header>
 
-      <div className="cope-runway__column-body sleek-scrollbar px-2.5 py-2.5">
+      <div className="cope-runway__column-body px-2.5 py-2.5">
         {summary ? (
           <p className="mb-2 font-mono text-[10px] leading-relaxed text-ink-secondary">{summary}</p>
         ) : null}
@@ -332,7 +332,7 @@ export default function ReportHazardsPanel({ hazards, lat = null, lng = null, la
 
   return (
     <div className="cope-runway border-b border-panel-border">
-      <div className="cope-runway__scroll sleek-scrollbar">
+      <div className="cope-runway__scroll">
         <div
           className="cope-runway__track grid divide-x divide-[color:var(--dossier-border,#d6d6d2)]"
           style={{

@@ -167,7 +167,7 @@ function CopeColumn({ section }) {
         </div>
       </header>
 
-      <div className="cope-runway__column-body sleek-scrollbar px-2.5 py-2.5">
+      <div className="cope-runway__column-body px-2.5 py-2.5">
         {populated.length > 0 ? (
           <ul className="space-y-1.5">
             {populated.map(field => (
@@ -202,7 +202,7 @@ export default function CopeSnapshot({ cope }) {
 
   return (
     <div className="cope-runway border-b border-panel-border">
-      <div className="cope-runway__scroll sleek-scrollbar">
+      <div className="cope-runway__scroll">
         <div className="cope-runway__track grid min-w-[52rem] grid-cols-4 divide-x divide-[color:var(--dossier-border,#d6d6d2)] lg:min-w-0">
           {columns.map(section => (
             <CopeColumn key={section.id} section={section} />

@@ -3017,7 +3017,24 @@ html::-webkit-scrollbar-thumb:hover,
 .cope-runway__scroll {
   min-width: 0;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  scrollbar-color: #b0b0aa transparent;
+}
+
+.cope-runway__scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.cope-runway__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cope-runway__scroll::-webkit-scrollbar-thumb {
+  background: #c8c8c2;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .cope-runway__track {
@@ -3030,9 +3047,7 @@ html::-webkit-scrollbar-thumb:hover,
 }
 
 .cope-runway__column-body {
-  max-height: min(28rem, 65vh);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .dossier-tabrow {
@@ -3063,7 +3078,7 @@ html::-webkit-scrollbar-thumb:hover,
 }
 
 .pi-split-report .cope-runway__scroll {
-  overflow-x: scroll;
+  overflow-x: auto;
   overscroll-behavior-x: contain;
 }
 

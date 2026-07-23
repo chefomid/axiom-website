@@ -36,7 +36,7 @@ function SourceColumn({ source, fields }) {
         </p>
       </header>
 
-      <div className="cope-runway__column-body sleek-scrollbar px-2.5 py-2.5">
+      <div className="cope-runway__column-body px-2.5 py-2.5">
         {fields.length > 0 ? (
           <ul className="space-y-1.5">
             {fields.map((field, i) => (
@@ -110,7 +110,7 @@ export default function ReportSourceFields({ fields, crawlExcerpt, crawlSourceUr
     <div className="border-b border-panel-border">
       {grouped.length ? (
         <div className="cope-runway">
-          <div className="cope-runway__scroll sleek-scrollbar">
+          <div className="cope-runway__scroll">
             <div
               className="cope-runway__track grid divide-x divide-[color:var(--dossier-border,#d6d6d2)]"
               style={{
