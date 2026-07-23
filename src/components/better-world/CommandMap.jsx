@@ -28,8 +28,20 @@ import FeedErrorBanner from './FeedErrorBanner'
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 const MAP_STYLE_FALLBACK = 'https://demotiles.maplibre.org/style.json'
+const SCANLINE_STORAGE_KEY = 'axiom-pdc-scanline'
 
 const EMPTY_GEOJSON = { type: 'FeatureCollection', features: [] }
+
+function readScanlinePreference() {
+  try {
+    const raw = localStorage.getItem(SCANLINE_STORAGE_KEY)
+    if (raw === '0' || raw === 'false') return false
+    if (raw === '1' || raw === 'true') return true
+  } catch {
+    /* ignore */
+  }
+  return true
+}
 
 /** Deep red spokes from user location to in-radius events (local scope). */
 const LOCAL_RADIUS_LINE_COLOR = '#7a1212'
@@ -380,6 +392,19 @@ export default function CommandMap({
   onBreakPinChainBlocked,
   pinCount = 0,
 }) {
+  const [scanlineOn, setScanlineOn] = useState(readScanlinePreference)
+
+  const handleToggleScanline = () => {
+    setScanlineOn(prev => {
+      const next = !prev
+      try {
+        localStorage.setItem(SCANLINE_STORAGE_KEY, next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const userMarkerRef = useRef(null)
@@ -1327,7 +1352,10 @@ export default function CommandMap({
       {mapReady &&
         mapContainerRef.current &&
         createPortal(
-          <div className="command-scanline" aria-hidden>
+          <div
+            className={`command-scanline${scanlineOn ? '' : ' command-scanline--off'}`}
+            aria-hidden
+          >
             <div className="command-scanline__beam" />
           </div>,
           mapContainerRef.current,
@@ -1450,6 +1478,8 @@ export default function CommandMap({
         pins={pins}
         selectedPinId={selectedPinId}
         onAnalyzeAtPin={onAnalyzeAtPin}
+        scanlineOn={scanlineOn}
+        onToggleScanline={handleToggleScanline}
       />
 
       {liveFeedErrors.length > 0 && (

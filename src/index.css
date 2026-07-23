@@ -770,6 +770,8 @@ html::-webkit-scrollbar-thumb:hover,
 .command-scanline {
   pointer-events: none;
   overflow: visible;
+  opacity: 1;
+  transition: opacity 0.45s ease;
   /* Soft fade at map top/bottom so glow is not hard-clipped */
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -785,6 +787,14 @@ html::-webkit-scrollbar-thumb:hover,
     #000 90%,
     transparent 100%
   );
+}
+
+.command-scanline--off {
+  opacity: 0;
+}
+
+.command-scanline--off .command-scanline__beam {
+  animation-play-state: paused;
 }
 
 /* Scanline, dark green beam with soft vertical + horizontal falloff */
@@ -866,6 +876,18 @@ html::-webkit-scrollbar-thumb:hover,
   100% {
     top: 100%;
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .command-scanline {
+    transition: opacity 0.2s ease;
+  }
+
+  .command-scanline__beam {
+    animation: none;
+    top: 42%;
+    opacity: 0.85;
   }
 }
 

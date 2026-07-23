@@ -114,7 +114,7 @@ export function ToggleSwitch({ active, accent = 'cyber', className = '' }) {
 }
 
 /** Map dock tab, Layers, Sources, Pin, Mag */
-export function DockTab({ active, onClick, children, accent = 'cyber' }) {
+export function DockTab({ active, onClick, children, accent = 'cyber', title, 'aria-pressed': ariaPressed }) {
   const activeClass =
     accent === 'live'
       ? 'bg-white/[0.06] text-command-live ring-1 ring-command-live/25'
@@ -124,6 +124,8 @@ export function DockTab({ active, onClick, children, accent = 'cyber' }) {
     <button
       type="button"
       onClick={onClick}
+      title={title}
+      aria-pressed={ariaPressed === undefined ? undefined : ariaPressed}
       className={`rounded-lg px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] transition-all duration-200 ${
         active ? activeClass : 'text-ink-muted hover:bg-white/[0.03] hover:text-white'
       }`}
