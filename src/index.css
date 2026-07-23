@@ -2875,13 +2875,22 @@ html::-webkit-scrollbar-thumb:hover,
   color: var(--dossier-ink);
 }
 
-.report-dossier .cope-runway__column > header p,
-.report-dossier .cope-runway__column > header .dossier-value {
-  color: var(--dossier-ink);
+.cope-runway__header {
+  background: #141414;
+  border-bottom: 1px solid #2a2a2a;
+  color: #f0f0f0;
 }
 
-.report-dossier .cope-runway__column > header .text-ink-secondary {
-  color: var(--dossier-ink-secondary);
+.cope-runway__letter {
+  color: #f0f0f0;
+}
+
+.cope-runway__label {
+  color: #c4c4c4;
+}
+
+.cope-runway__count {
+  color: #9a9a9a;
 }
 
 /* Status amber on paper needs a darker tone for contrast */

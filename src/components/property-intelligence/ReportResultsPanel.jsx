@@ -293,13 +293,6 @@ export default function ReportResultsPanel({
     </>
   )
 
-  const statusDot =
-    record.status === 'complete'
-      ? 'bg-command-stable'
-      : record.status === 'partial'
-        ? 'bg-command-watch'
-        : 'bg-[color:var(--dossier-ink-faint,#787878)]'
-
   if (isPanel) {
     return (
       <div className="report-dossier flex h-full min-h-0 flex-col">
@@ -310,17 +303,12 @@ export default function ReportResultsPanel({
                 <p className="report-dossier-label font-mono text-[10px] uppercase tracking-[0.16em]">
                   Report results
                 </p>
-                <p className="dossier-value mt-1 flex items-center gap-2 font-display text-lg font-semibold capitalize">
-                  <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${statusDot}`} aria-hidden />
-                  {record.status}
-                </p>
-                {summaryExpanded && record.display_name ? (
-                  <p className="report-dossier-address mt-1.5 font-sans text-sm leading-relaxed">
-                    {record.display_name}
-                  </p>
-                ) : null}
-                {!summaryExpanded && record.display_name ? (
-                  <p className="report-dossier-address--muted mt-1 line-clamp-1 font-sans text-xs">
+                {record.display_name ? (
+                  <p
+                    className={`report-dossier-address mt-1 font-display font-semibold leading-snug ${
+                      summaryExpanded ? 'text-lg' : 'line-clamp-1 text-sm'
+                    }`}
+                  >
                     {record.display_name}
                   </p>
                 ) : null}
@@ -381,10 +369,11 @@ export default function ReportResultsPanel({
           <span className="report-dossier-label font-mono text-[10px] uppercase tracking-[0.16em]">
             Report results
           </span>
-          <span className="dossier-value mt-1 flex items-center gap-2 font-display text-sm font-semibold capitalize">
-            <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${statusDot}`} aria-hidden />
-            {record.status}
-          </span>
+          {record.display_name ? (
+            <span className="report-dossier-address mt-1 block font-display text-sm font-semibold leading-snug">
+              {record.display_name}
+            </span>
+          ) : null}
         </span>
         <span className="font-mono text-sm text-ink-faint">{open ? '−' : '+'}</span>
       </button>

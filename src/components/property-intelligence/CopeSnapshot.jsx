@@ -54,7 +54,14 @@ function orderCopeSections(sections) {
 }
 
 function FieldCard({ field, variant = 'populated' }) {
+  const [sourceOpen, setSourceOpen] = useState(false)
   const isGap = variant === 'gap'
+  const methodLabel =
+    field.method && field.method !== 'unknown'
+      ? (TRUST_METHOD_LABEL[field.method] ?? field.method)
+      : ''
+  const hasSourceMeta = Boolean(field.source) || Boolean(methodLabel)
+
   return (
     <li
       className={`rounded border px-2.5 py-2 ${
@@ -75,23 +82,44 @@ function FieldCard({ field, variant = 'populated' }) {
       </div>
       {field.value ? (
         <>
-          <p className="dossier-value mt-1 font-mono text-[11px] leading-snug">{field.value}</p>
-          {field.source ? (
-            <p className="mt-0.5 font-mono text-[8px] text-ink-faint">
-              From {formatCopeSourceLabel(field.source)}
-            </p>
-          ) : null}
-          {field.method && field.method !== 'unknown' ? (
-            <p className="mt-0.5 font-mono text-[8px] uppercase tracking-wider text-ink-faint">
-              {TRUST_METHOD_LABEL[field.method] ?? field.method}
-            </p>
+          <div className="mt-1 flex items-start justify-between gap-1.5">
+            <p className="dossier-value min-w-0 font-mono text-[11px] leading-snug">{field.value}</p>
+            {hasSourceMeta ? (
+              <button
+                type="button"
+                onClick={() => setSourceOpen(v => !v)}
+                aria-expanded={sourceOpen}
+                aria-label={sourceOpen ? 'Hide source details' : 'Show source details'}
+                title={sourceOpen ? 'Hide source' : 'Show source'}
+                className="shrink-0 rounded px-0.5 py-0.5 text-ink-faint transition hover:bg-black/[0.04] hover:text-ink-secondary"
+              >
+                <span
+                  className={`block font-mono text-[10px] leading-none transition-transform duration-150 ${
+                    sourceOpen ? 'rotate-180' : ''
+                  }`}
+                  aria-hidden
+                >
+                  ▾
+                </span>
+              </button>
+            ) : null}
+          </div>
+          {sourceOpen && hasSourceMeta ? (
+            <div className="mt-1 space-y-0.5 border-t border-panel-border/50 pt-1">
+              {field.source ? (
+                <p className="font-mono text-[8px] text-ink-faint">
+                  From {formatCopeSourceLabel(field.source)}
+                </p>
+              ) : null}
+              {methodLabel ? (
+                <p className="font-mono text-[8px] uppercase tracking-wider text-ink-faint">
+                  {methodLabel}
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </>
-      ) : (
-        <p className="mt-1 font-mono text-[9px] italic text-ink-secondary">
-          {field.note ?? 'Not found in selected sources'}
-        </p>
-      )}
+      ) : null}
     </li>
   )
 }
@@ -125,24 +153,19 @@ function SectionGaps({ gaps }) {
 
 function CopeColumn({ section }) {
   const { populated, gaps, total } = partitionSection(section)
-  const hasGaps = gaps.length > 0
   const letter = String(section.cope_letter ?? '').toUpperCase() || '—'
 
   return (
-    <section
-      className={`cope-runway__column flex min-h-0 min-w-0 flex-col border-panel-border/60 ${
-        hasGaps ? 'border-t-[3px] border-t-command-watch/55' : 'border-t-[3px] border-t-command-stable/45'
-      }`}
-    >
-      <header className="shrink-0 border-b border-panel-border/60 bg-panel-surface/20 px-3 py-3">
+    <section className="cope-runway__column flex min-h-0 min-w-0 flex-col border-panel-border/60">
+      <header className="cope-runway__header shrink-0 px-3 py-3">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="font-display text-sm font-semibold tracking-[0.04em] dossier-value">
-            <span>{letter}</span>
-            <span className="ml-1.5 text-[11px] font-medium text-ink-secondary">
+          <p className="font-display text-sm font-semibold tracking-[0.04em]">
+            <span className="cope-runway__letter">{letter}</span>
+            <span className="cope-runway__label ml-1.5 text-[11px] font-medium">
               {section.label}
             </span>
           </p>
-          <span className="font-mono text-[9px] tabular-nums text-ink-muted">
+          <span className="cope-runway__count font-mono text-[9px] tabular-nums">
             {populated.length}/{total}
           </span>
         </div>
