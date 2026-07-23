@@ -88,7 +88,7 @@ function FieldCard({ field, variant = 'populated' }) {
           ) : null}
         </>
       ) : (
-        <p className="mt-1 font-mono text-[9px] italic text-command-watch/80">
+        <p className="mt-1 font-mono text-[9px] italic text-ink-secondary">
           {field.note ?? 'Not found in selected sources'}
         </p>
       )}
@@ -136,9 +136,9 @@ function CopeColumn({ section }) {
     >
       <header className="shrink-0 border-b border-panel-border/60 bg-panel-surface/20 px-3 py-3">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="font-display text-sm font-semibold tracking-[0.04em]">
-            <span className="text-command-watch">{letter}</span>
-            <span className="dossier-value ml-1.5 text-[11px] font-medium">
+          <p className="font-display text-sm font-semibold tracking-[0.04em] dossier-value">
+            <span>{letter}</span>
+            <span className="ml-1.5 text-[11px] font-medium text-ink-secondary">
               {section.label}
             </span>
           </p>
@@ -203,7 +203,7 @@ export default function CopeSnapshot({ cope }) {
           {score.observed ?? 0} observed · {score.unknown ?? 0} unknown · {score.total ?? 0} fields
         </p>
         {score.unknown > 0 ? (
-          <p className="mt-2 font-mono text-[9px] leading-relaxed text-command-watch">
+          <p className="mt-2 font-mono text-[9px] leading-relaxed text-ink-secondary">
             {hasAttomData
               ? 'Remaining gaps are missing from vendor records, hazard/protection feeds, or sources that did not return for this address.'
               : 'Add ATTOM (or assessor crawl) for detailed Construction & Occupancy from licensed sources.'}

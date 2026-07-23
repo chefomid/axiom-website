@@ -25,10 +25,17 @@ export default function ConfirmationNumberCopy({
     }
   }, [id])
 
+  const idClass = isDossier
+    ? 'font-mono tabular-nums tracking-wide dossier-value'
+    : 'font-mono tabular-nums tracking-wide text-command-watch'
+  const labelClass = isDossier
+    ? 'font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted'
+    : 'font-mono text-[9px] uppercase tracking-[0.14em] text-command-watch'
+
   if (compact) {
     return (
       <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-        <span className="font-mono text-sm tabular-nums tracking-wide text-command-watch">{id}</span>
+        <span className={`${idClass} text-sm`}>{id}</span>
         <button type="button" onClick={() => void handleCopy()} className={copyBtnClass}>
           {copied ? 'Copied' : 'Copy'}
         </button>
@@ -42,11 +49,11 @@ export default function ConfirmationNumberCopy({
         isDossier ? 'dossier-card' : 'rounded-md border border-command-watch/25 bg-command-watch/8'
       } px-3 py-2.5 ${className}`}
     >
-      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-command-watch">
+      <p className={labelClass}>
         Confirmation number
       </p>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
-        <span className="font-mono text-base font-semibold tabular-nums tracking-wide text-command-watch">
+        <span className={`${idClass} text-base font-semibold`}>
           {id}
         </span>
         <button type="button" onClick={() => void handleCopy()} className={copyBtnClass}>

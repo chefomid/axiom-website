@@ -238,7 +238,7 @@ export default function ReportResultsPanel({
 
       <div className="flex items-center gap-2 border-b border-panel-border/60 px-5 py-2">
         {!summaryExpanded && record.report_id ? (
-          <span className="min-w-0 truncate font-mono text-[10px] tabular-nums text-command-watch">
+          <span className="dossier-value min-w-0 truncate font-mono text-[10px] tabular-nums">
             {record.report_id}
           </span>
         ) : null}
@@ -298,12 +298,12 @@ export default function ReportResultsPanel({
     </>
   )
 
-  const statusTone =
+  const statusDot =
     record.status === 'complete'
-      ? 'text-command-stable'
+      ? 'bg-command-stable'
       : record.status === 'partial'
-        ? 'text-command-watch'
-        : 'text-ink-secondary'
+        ? 'bg-command-watch'
+        : 'bg-[color:var(--dossier-ink-faint,#787878)]'
 
   if (isPanel) {
     return (
@@ -315,7 +315,8 @@ export default function ReportResultsPanel({
                 <p className="report-dossier-label font-mono text-[10px] uppercase tracking-[0.16em]">
                   Report results
                 </p>
-                <p className={`mt-1 font-display text-lg font-semibold capitalize ${statusTone}`}>
+                <p className="dossier-value mt-1 flex items-center gap-2 font-display text-lg font-semibold capitalize">
+                  <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${statusDot}`} aria-hidden />
                   {record.status}
                 </p>
                 {summaryExpanded && record.display_name ? (
@@ -365,7 +366,8 @@ export default function ReportResultsPanel({
           <span className="report-dossier-label font-mono text-[10px] uppercase tracking-[0.16em]">
             Report results
           </span>
-          <span className={`mt-1 block font-display text-sm font-semibold capitalize ${statusTone}`}>
+          <span className="dossier-value mt-1 flex items-center gap-2 font-display text-sm font-semibold capitalize">
+            <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${statusDot}`} aria-hidden />
             {record.status}
           </span>
         </span>
