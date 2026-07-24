@@ -3,6 +3,15 @@ import { isPropertyAddressQuery, searchUsAddressSuggestions } from '../../servic
 import AddressGeocodeInput from '../ui/AddressGeocodeInput'
 import { WORKFLOW_CTL, WORKFLOW_CTL_NEUTRAL, WORKFLOW_INPUT, WORKFLOW_SECTION_LABEL } from './workflowControls'
 
+/** Stable reference so AddressGeocodeInput does not restart search on parent re-render. */
+function searchPropertyAddressSuggestions(q, opts) {
+  return searchUsAddressSuggestions(q, {
+    ...opts,
+    countryId: 'US',
+    bbox: SEISMIC_COUNTRY_BBOX.US,
+  })
+}
+
 const PHASE_COPY = {
   idle: '',
   composing: 'Pick a suggestion or press Enter to lock the property on the map',
@@ -88,13 +97,7 @@ export default function PropertySearchBar({
         onSelect={onAddressSelect}
         countryId="US"
         bbox={SEISMIC_COUNTRY_BBOX.US}
-        searchFn={(q, opts) =>
-          searchUsAddressSuggestions(q, {
-            ...opts,
-            countryId: 'US',
-            bbox: SEISMIC_COUNTRY_BBOX.US,
-          })
-        }
+        searchFn={searchPropertyAddressSuggestions}
         searchDebounceMs={350}
         minSearchLength={5}
         isQuerySearchable={isPropertyAddressQuery}

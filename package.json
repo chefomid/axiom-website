@@ -18,6 +18,7 @@
     "smoke:careers-organize": "node scripts/smoke_careers_organize.mjs",
     "smoke:rate-limits": "node scripts/smoke_rate_limits.mjs",
     "smoke:careers-apply": "node scripts/smoke_careers_apply.mjs",
+    "smoke:geocode": "node scripts/smoke_geocode.mjs",
     "migrate:careers-db": "node scripts/migrate_careers_db.mjs"
   },
   "dependencies": {

@@ -1,9 +1,30 @@
+import { isSearchableAddressQuery, withGeocodeTimeout } from './geocodeQuery'
+
+export {
+  GEOCODE_FETCH_TIMEOUT_MS,
+  isPropertyAddressQuery,
+  isSearchableAddressQuery,
+  withGeocodeTimeout,
+} from './geocodeQuery'
+
 const PHOTON_BASE = import.meta.env.DEV
   ? '/api/photon/api/'
   : 'https://photon.komoot.io/api/'
 
 const HOUSE_NUMBER_RE = /^\s*(\d+[\w/-]*)/
 const MAX_REFINE_DRIFT_M = 400
+
+async function fetchGeocodeJson(url, { signal, headers } = {}) {
+  const timed = withGeocodeTimeout(signal)
+  try {
+    const res = await fetch(url, { signal: timed.signal, headers })
+    return res.ok ? res : null
+  } catch {
+    return null
+  } finally {
+    timed.cleanup()
+  }
+}
 
 function formatShortLabel(props) {
   const street = [props.housenumber, props.street].filter(Boolean).join(' ')
@@ -135,23 +156,6 @@ function matchesCountryAndBbox(props, lat, lng, countryId, bbox) {
   return bbox?.length === 4 ? inBbox(lat, lng, bbox) : false
 }
 
-/** House number alone (e.g. "825") returns junk worldwide, require a street name. */
-export function isSearchableAddressQuery(query, minLength = 4) {
-  const q = query.trim()
-  if (q.length < minLength) return false
-  if (/[a-zA-Z]{2,}/.test(q)) return true
-  if (/^\d+\s+[a-zA-Z]/.test(q)) return true
-  return false
-}
-
-/** Property workflow, wait for a fuller address before suggesting or resolving. */
-export function isPropertyAddressQuery(query) {
-  const q = query.trim()
-  if (!isSearchableAddressQuery(q, 5)) return false
-  if (q.includes(',')) return true
-  return /^\d+\s+[a-zA-Z]+\s+[a-zA-Z]{2,}/.test(q)
-}
-
 /**
  * @param {string} query
  * @param {{ countryId?: string, bbox?: number[], limit?: number, signal?: AbortSignal }} [options]
@@ -170,21 +174,12 @@ export async function searchAddresses(query, { countryId, bbox, limit = 5, signa
     url.searchParams.set('bbox', bbox.join(','))
   }
 
-  const fetchPhoton = async target => {
-    try {
-      const res = await fetch(target, { signal, headers: { Accept: 'application/json' } })
-      if (res.ok) return res
-    } catch {
-      /* try fallback */
-    }
-    return null
-  }
-
-  let res = await fetchPhoton(url)
+  const headers = { Accept: 'application/json' }
+  let res = await fetchGeocodeJson(url, { signal, headers })
   if (!res && import.meta.env.DEV && PHOTON_BASE.startsWith('/api/photon')) {
     const direct = new URL('https://photon.komoot.io/api/')
     direct.search = url.searchParams.toString()
-    res = await fetchPhoton(direct)
+    res = await fetchGeocodeJson(direct, { signal, headers })
   }
   if (!res) return []
 
@@ -238,21 +233,12 @@ async function fetchCensusMatches(address, { signal } = {}) {
   url.searchParams.set('benchmark', 'Public_AR_Current')
   url.searchParams.set('format', 'json')
 
-  const fetchCensus = async target => {
-    try {
-      const res = await fetch(target, { signal, headers: { Accept: 'application/json' } })
-      if (res.ok) return res
-    } catch {
-      /* try fallback */
-    }
-    return null
-  }
-
-  let res = await fetchCensus(url)
+  const headers = { Accept: 'application/json' }
+  let res = await fetchGeocodeJson(url, { signal, headers })
   if (!res && import.meta.env.DEV && CENSUS_BASE.startsWith('/api/census')) {
     const direct = new URL('https://geocoding.geo.census.gov/geocoder/locations/onelineaddress')
     direct.search = url.searchParams.toString()
-    res = await fetchCensus(direct)
+    res = await fetchGeocodeJson(direct, { signal, headers })
   }
   if (!res) return []
 
@@ -411,27 +397,18 @@ export async function reverseGeocodeUs(lat, lng, { signal, bbox } = {}) {
   if (!pair) return null
   if (!inBbox(pair.lat, pair.lng, bbox)) return null
 
-  const fetchReverse = async target => {
-    try {
-      const res = await fetch(target, { signal, headers: { Accept: 'application/json' } })
-      if (res.ok) return res
-    } catch {
-      /* try fallback */
-    }
-    return null
-  }
-
+  const headers = { Accept: 'application/json' }
   const censusUrl = new URL(CENSUS_REVERSE_BASE, window.location.origin)
   censusUrl.searchParams.set('x', String(pair.lng))
   censusUrl.searchParams.set('y', String(pair.lat))
   censusUrl.searchParams.set('benchmark', 'Public_AR_Current')
   censusUrl.searchParams.set('format', 'json')
 
-  let res = await fetchReverse(censusUrl)
+  let res = await fetchGeocodeJson(censusUrl, { signal, headers })
   if (!res && import.meta.env.DEV && CENSUS_REVERSE_BASE.startsWith('/api/census')) {
     const direct = new URL('https://geocoding.geo.census.gov/geocoder/locations/coordinates')
     direct.search = censusUrl.searchParams.toString()
-    res = await fetchReverse(direct)
+    res = await fetchGeocodeJson(direct, { signal, headers })
   }
 
   if (res) {
@@ -460,11 +437,11 @@ export async function reverseGeocodeUs(lat, lng, { signal, bbox } = {}) {
   photonUrl.searchParams.set('lon', String(pair.lng))
   photonUrl.searchParams.set('lang', 'en')
 
-  res = await fetchReverse(photonUrl)
+  res = await fetchGeocodeJson(photonUrl, { signal, headers })
   if (!res && import.meta.env.DEV) {
     const direct = new URL('https://photon.komoot.io/reverse')
     direct.search = photonUrl.searchParams.toString()
-    res = await fetchReverse(direct)
+    res = await fetchGeocodeJson(direct, { signal, headers })
   }
 
   if (!res) {
@@ -562,21 +539,12 @@ export async function searchCityStateLocations(query, { countryId = 'us', limit 
   url.searchParams.set('lang', 'en')
   url.searchParams.set('layer', 'city')
 
-  const fetchPhoton = async target => {
-    try {
-      const res = await fetch(target, { signal, headers: { Accept: 'application/json' } })
-      if (res.ok) return res
-    } catch {
-      /* try fallback */
-    }
-    return null
-  }
-
-  let res = await fetchPhoton(url)
+  const headers = { Accept: 'application/json' }
+  let res = await fetchGeocodeJson(url, { signal, headers })
   if (!res && import.meta.env.DEV && PHOTON_BASE.startsWith('/api/photon')) {
     const direct = new URL('https://photon.komoot.io/api/')
     direct.search = url.searchParams.toString()
-    res = await fetchPhoton(direct)
+    res = await fetchGeocodeJson(direct, { signal, headers })
   }
   if (!res) return []
 

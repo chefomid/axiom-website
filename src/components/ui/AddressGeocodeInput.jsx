@@ -64,12 +64,17 @@ export default function AddressGeocodeInput({
   const rootRef = useRef(null)
   const inputRef = useRef(null)
   const selectedLabelRef = useRef(null)
+  const searchFnRef = useRef(searchFn)
+  const isQuerySearchableRef = useRef(isQuerySearchable)
   const [suggestions, setSuggestions] = useState([])
   const [staleSuggestions, setStaleSuggestions] = useState([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [highlightIndex, setHighlightIndex] = useState(-1)
   const [hint, setHint] = useState('')
+
+  searchFnRef.current = searchFn
+  isQuerySearchableRef.current = isQuerySearchable
 
   const isPremium = variant === 'premium'
   const inputDisabled = disabled || (requireCountry && !countryId)
@@ -95,7 +100,8 @@ export default function AddressGeocodeInput({
     optionHighlightClassName ??
     (isPremium ? 'bg-command-live/15 text-white' : 'bg-[#ff9348]/15 text-white')
 
-  const querySearchable = q => (isQuerySearchable ?? isSearchableAddressQuery)(q, minSearchLength)
+  const querySearchable = q =>
+    (isQuerySearchableRef.current ?? isSearchableAddressQuery)(q, minSearchLength)
   const displaySuggestions = suggestions.length > 0 ? suggestions : staleSuggestions
   const isStaleLoading = loading && suggestions.length === 0 && staleSuggestions.length > 0
   const inputHasFocus = () => inputRef.current === document.activeElement
@@ -186,7 +192,7 @@ export default function AddressGeocodeInput({
 
     const runSearch = async () => {
       try {
-        const search = searchFn ?? searchAddresses
+        const search = searchFnRef.current ?? searchAddresses
         const results = await search(q, {
           countryId,
           bbox,
@@ -203,7 +209,7 @@ export default function AddressGeocodeInput({
         if (normalized.length === 0) {
           if (controller.signal.aborted) return
           setHint(
-            searchFn
+            searchFnRef.current
               ? 'No matches, try a fuller address with city and state.'
               : 'No matches in this country, try a fuller address.',
           )
@@ -220,22 +226,25 @@ export default function AddressGeocodeInput({
       }
     }
 
-    if (searchDebounceMs <= 0) {
-      runSearch()
-    } else {
-      const timer = setTimeout(runSearch, searchDebounceMs)
-      return () => {
-        clearTimeout(timer)
-        controller.abort()
-      }
+    const cancel = () => {
+      controller.abort()
+      setLoading(false)
     }
 
-    return () => controller.abort()
+    if (searchDebounceMs <= 0) {
+      runSearch()
+      return cancel
+    }
+
+    const timer = setTimeout(runSearch, searchDebounceMs)
+    return () => {
+      clearTimeout(timer)
+      cancel()
+    }
   }, [
     value,
     countryId,
     bbox,
-    searchFn,
     requireCountry,
     hideDropdown,
     searchDebounceMs,
@@ -273,7 +282,7 @@ export default function AddressGeocodeInput({
     setOpen(true)
     setHint('')
     try {
-      const search = searchFn ?? searchAddresses
+      const search = searchFnRef.current ?? searchAddresses
       const results = await search(q, { countryId, bbox, limit: 5 })
       const normalized = results.map(normalizeSuggestion).filter(Boolean)
       if (normalized.length) {
@@ -302,7 +311,7 @@ export default function AddressGeocodeInput({
     setOpen(true)
     setHint('')
     try {
-      const search = searchFn ?? searchAddresses
+      const search = searchFnRef.current ?? searchAddresses
       const results = await search(q, { countryId, bbox, limit: 1 })
       const normalized = results.map(normalizeSuggestion).filter(Boolean)[0]
       if (normalized) {
