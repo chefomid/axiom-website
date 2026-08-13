@@ -80,6 +80,7 @@ function eonetOfficialUrl(evt, lat, lng) {
     const url = source?.url
     if (typeof url !== 'string' || !url.startsWith('http')) continue
     if (/eonet\.gsfc\.nasa\.gov\/api\//i.test(url)) continue
+    if (/irwin\.doi\.gov/i.test(url)) continue
     return url
   }
   if (Number.isFinite(lat) && Number.isFinite(lng)) {

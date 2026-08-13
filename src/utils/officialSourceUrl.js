@@ -51,38 +51,20 @@ function resolveFemaPublicUrl(marker) {
   return 'https://msc.fema.gov/portal/home'
 }
 
-const UNIQUE_FIRE_ID = /^20\d{2}-[A-Z0-9]+-\d+$/i
-
 function firmsMapUrl(lat, lng, zoom = 11) {
   return `https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;@${lng},${lat},${zoom}z`
 }
 
-function isGenericWildfireHome(url) {
+function isInaccessibleWildfireUrl(url) {
   if (typeof url !== 'string') return true
+  if (/irwin\.doi\.gov/i.test(url)) return true
+  if (/eonet\.gsfc\.nasa\.gov\/api\//i.test(url)) return true
   const bare = url.split('#')[0].replace(/\/$/, '')
   return (
     /^https:\/\/firms\.modaps\.eosdis\.nasa\.gov\/map$/i.test(bare) ||
     /^https:\/\/eonet\.gsfc\.nasa\.gov$/i.test(bare) ||
-    /^https:\/\/data-nifc\.opendata\.arcgis\.com$/i.test(bare) ||
-    /eonet\.gsfc\.nasa\.gov\/api\//i.test(url)
+    /^https:\/\/data-nifc\.opendata\.arcgis\.com$/i.test(bare)
   )
-}
-
-function uniqueFireIdFrom(marker) {
-  const raw = marker.raw ?? {}
-  const candidates = [
-    raw.UniqueFireIdentifier,
-    raw.uniqueFireIdentifier,
-    marker.label,
-  ]
-  for (const value of candidates) {
-    if (typeof value === 'string' && UNIQUE_FIRE_ID.test(value.trim())) return value.trim()
-  }
-  const fromIrwin = String(marker.officialUrl ?? '').match(
-    /irwin\.doi\.gov\/observer\/incidents\/(20\d{2}-[A-Z0-9]+-\d+)/i,
-  )
-  if (fromIrwin) return fromIrwin[1]
-  return null
 }
 
 function firstIncidentSourceUrl(marker) {
@@ -90,20 +72,17 @@ function firstIncidentSourceUrl(marker) {
   if (!Array.isArray(sources)) return null
   for (const source of sources) {
     const url = sanitizePublicUrl(source?.url)
-    if (url && !isGenericWildfireHome(url)) return url
+    if (url && !isInaccessibleWildfireUrl(url)) return url
   }
   return null
 }
 
 function resolveWildfirePublicUrl(marker) {
-  const uniqueId = uniqueFireIdFrom(marker)
-  if (uniqueId) return `https://irwin.doi.gov/observer/incidents/${uniqueId}`
-
   const sourceUrl = firstIncidentSourceUrl(marker)
   if (sourceUrl) return sourceUrl
 
   const official = sanitizePublicUrl(marker.officialUrl)
-  if (official && !isGenericWildfireHome(official)) return official
+  if (official && !isInaccessibleWildfireUrl(official)) return official
 
   const lat = Number(marker.lat)
   const lng = Number(marker.lng)
