@@ -1,26 +1,14 @@
 import { firmsApiUrl } from '../utils/apiBase'
 import { getMarkerReportUrl } from '../utils/markerReportUrl'
 import { headlineForMarker, locationLabelForMarker } from '../utils/signalLocation'
-import { getScopeBbox, bboxToFirmsArea, pointInBbox } from '../utils/scopeBbox'
+import { getScopeBbox, pointInBbox } from '../utils/scopeBbox'
+import { firmsAreaForScope, parseFirmsCsv } from '../utils/firmsFeed'
 import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
 import { fetchNifcWildfires } from './nifcWildfire'
 
 const FIRMS_SOURCE = 'VIIRS_SNPP_NRT'
 const DAY_RANGE = 1
-
-function parseCsv(text) {
-  const lines = text.trim().split('\n')
-  if (lines.length < 2) return []
-  const headers = lines[0].split(',').map(h => h.trim())
-  return lines.slice(1).map(line => {
-    const values = line.split(',')
-    const row = {}
-    headers.forEach((h, i) => {
-      row[h] = values[i]?.trim()
-    })
-    return row
-  })
-}
+const MAX_HOTSPOTS = 2000
 
 function brightnessSeverity(brightness) {
   const b = Number(brightness)
@@ -80,7 +68,7 @@ function rowToRiskEvent(row) {
 export function buildFirmsRequestUrl(scopeConfig) {
   const key = import.meta.env.VITE_NASA_FIRMS_MAP_KEY
   const bbox = getScopeBbox(scopeConfig)
-  const area = bboxToFirmsArea(bbox)
+  const area = firmsAreaForScope(scopeConfig.scope, bbox)
   return firmsApiUrl(`/api/area/csv/${key}/${FIRMS_SOURCE}/${area}/${DAY_RANGE}`)
 }
 
@@ -114,7 +102,7 @@ function eonetEventToRiskEvent(evt) {
       evt.description,
       acres != null ? `${acres} acres` : null,
       latest.date ? `Updated ${new Date(latest.date).toLocaleString()}` : null,
-      'NASA EONET (add VITE_NASA_FIRMS_MAP_KEY for FIRMS hotspots)',
+      'NASA EONET',
     ]
       .filter(Boolean)
       .join(' · '),
@@ -133,7 +121,7 @@ async function fetchEonetWildfires(scopeConfig, options = {}) {
   const events = (data.events ?? [])
     .map(eonetEventToRiskEvent)
     .filter(Boolean)
-    .filter(e => pointInBbox(e.lat, e.lng, bbox))
+    .filter(e => scopeConfig.scope === 'global' || pointInBbox(e.lat, e.lng, bbox))
 
   return {
     events,
@@ -149,8 +137,8 @@ async function fetchFirmsArea(scopeConfig, options = {}) {
   if (!res.ok) throw new Error(`NASA FIRMS API error (${res.status})`)
 
   const text = await res.text()
-  const rows = parseCsv(text)
-  const events = rows.map(rowToRiskEvent).filter(Boolean)
+  const rows = parseFirmsCsv(text)
+  const events = rows.map(rowToRiskEvent).filter(Boolean).slice(0, MAX_HOTSPOTS)
 
   return {
     events,
@@ -183,7 +171,7 @@ export async function fetchNasaFirms(scopeConfig, options = {}) {
   const satelliteProvider = mapKey ? 'firms' : 'eonet'
 
   const cacheKey = riskCacheKey([
-    'wildfire-v2',
+    'wildfire-v3',
     satelliteProvider,
     scopeConfig.scope,
     scopeConfig.countryId,
@@ -197,32 +185,38 @@ export async function fetchNasaFirms(scopeConfig, options = {}) {
     if (cached) return { ...cached, fromCache: true }
   }
 
-  const satellitePromise = mapKey
+  const eonetPromise = fetchEonetWildfires(scopeConfig, options).catch(err => {
+    if (err?.name === 'AbortError') throw err
+    return null
+  })
+
+  const firmsPromise = mapKey
     ? fetchFirmsArea(scopeConfig, options).catch(err => {
         if (err?.name === 'AbortError') throw err
         return null
       })
-    : fetchEonetWildfires(scopeConfig, options).catch(err => {
-        if (err?.name === 'AbortError') throw err
-        return null
-      })
+    : Promise.resolve(null)
 
   const nifcPromise = fetchNifcWildfires(scopeConfig, options).catch(err => {
     if (err?.name === 'AbortError') throw err
     return null
   })
 
-  const [satellite, nifc] = await Promise.all([satellitePromise, nifcPromise])
+  const [eonet, firms, nifc] = await Promise.all([eonetPromise, firmsPromise, nifcPromise])
 
-  if (!satellite && !nifc) {
-    throw new Error('Wildfire feeds unavailable (FIRMS/EONET and NIFC)')
+  if (!eonet && !firms && !nifc) {
+    throw new Error('Wildfire feeds unavailable (EONET, FIRMS, and NIFC)')
   }
 
-  const events = dedupeWildfireEvents([...(nifc?.events ?? []), ...(satellite?.events ?? [])])
-  const providers = [nifc && 'nifc', satellite?.provider].filter(Boolean)
+  const events = dedupeWildfireEvents([
+    ...(nifc?.events ?? []),
+    ...(eonet?.events ?? []),
+    ...(firms?.events ?? []),
+  ])
+  const providers = [nifc && 'nifc', eonet && 'eonet', firms && 'firms'].filter(Boolean)
   const payload = {
     events,
-    requestUrl: nifc?.requestUrl || satellite?.requestUrl || null,
+    requestUrl: nifc?.requestUrl || eonet?.requestUrl || firms?.requestUrl || null,
     totalFetched: events.length,
     provider: providers.join('+') || satelliteProvider,
     missingApiKey: !mapKey,

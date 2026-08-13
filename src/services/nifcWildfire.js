@@ -92,15 +92,18 @@ export async function fetchNifcWildfires(scopeConfig, options = {}) {
   const params = new URLSearchParams({
     where: "IncidentTypeCategory IN ('WF','CX','RX')",
     outFields: OUT_FIELDS,
-    geometry: `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`,
-    geometryType: 'esriGeometryEnvelope',
-    inSR: '4326',
-    spatialRel: 'esriSpatialRelIntersects',
     outSR: '4326',
     returnGeometry: 'true',
     f: 'geojson',
     resultRecordCount: '500',
   })
+
+  if (scopeConfig.scope === 'local' && scopeConfig.userLocation) {
+    params.set('geometry', `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`)
+    params.set('geometryType', 'esriGeometryEnvelope')
+    params.set('inSR', '4326')
+    params.set('spatialRel', 'esriSpatialRelIntersects')
+  }
 
   const requestUrl = `${NIFC_CURRENT_URL}?${params}`
   const res = await fetch(requestUrl, { signal: options.signal })
@@ -114,7 +117,7 @@ export async function fetchNifcWildfires(scopeConfig, options = {}) {
   const events = (data.features ?? [])
     .map(featureToRiskEvent)
     .filter(Boolean)
-    .filter(e => pointInBbox(e.lat, e.lng, bbox))
+    .filter(e => scopeConfig.scope !== 'local' || pointInBbox(e.lat, e.lng, bbox))
 
   return {
     events,

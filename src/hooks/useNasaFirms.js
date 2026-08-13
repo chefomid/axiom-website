@@ -25,7 +25,7 @@ function firmsCacheKey(scopeConfig) {
   const mapKey = import.meta.env.VITE_NASA_FIRMS_MAP_KEY?.trim()
   const satelliteProvider = mapKey ? 'firms' : 'eonet'
   return riskCacheKey([
-    'wildfire-v2',
+    'wildfire-v3',
     satelliteProvider,
     scopeConfig.scope,
     scopeConfig.countryId,

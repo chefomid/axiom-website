@@ -14,8 +14,7 @@ export function femaArcgisUrl(path) {
 
 export function firmsApiUrl(path) {
   const normalized = path.startsWith('/') ? path : `/${path}`
-  if (import.meta.env.DEV) return `/api/firms${normalized}`
-  return `https://firms.modaps.eosdis.nasa.gov${normalized}`
+  return `/api/firms${normalized}`
 }
 
 export function defaultFetchHeaders(extra = {}) {
