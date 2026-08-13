@@ -293,8 +293,7 @@ function Thesis() {
           Enterprise risk is the terrain through which every organization must
           grow. Navigating it with full awareness, across every layer of the
           environment, is what allows organizations to pursue their objectives
-          responsibly and with confidence. That clarity does not emerge from any
-          single tool. It requires an ecosystem.
+          responsibly and with confidence.
         </motion.p>
       </div>
     </section>
