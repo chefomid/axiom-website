@@ -25,9 +25,9 @@ export default function WildfireLayerChip({
         onClick={onToggleLayer}
         aria-pressed={active}
         aria-busy={loading || undefined}
-        className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium tracking-wide"
+        className="inline-flex items-center gap-2 font-mono text-[13px] font-semibold tracking-wide"
       >
-        <WildfireFlameIcon active={active} className={loading ? 'h-2.5 w-2.5 animate-pulse' : 'h-2.5 w-2.5'} />
+        <WildfireFlameIcon active={active} className={loading ? 'h-4 w-4 animate-pulse' : 'h-4 w-4'} />
         <span>
           Wildfire
           {!loading && count > 0 ? ` · ${count}` : ''}
@@ -47,7 +47,7 @@ export default function WildfireLayerChip({
               role="radio"
               aria-checked={selected}
               onClick={() => onKindChange?.(opt.id)}
-              className={`rounded-full border px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.08em] transition-colors ${
+              className={`rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] transition-colors ${
                 selected && active
                   ? 'border-white/25 bg-white/15 text-white'
                   : 'border-[#333] bg-transparent text-ink-faint hover:border-[#555] hover:text-white'

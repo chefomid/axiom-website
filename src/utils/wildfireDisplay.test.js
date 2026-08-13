@@ -2,9 +2,27 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   filterMarkersByWildfireKind,
+  mergeWildfireEvents,
   wildfireFlameScale,
   wildfireKindFromMarker,
 } from './wildfireDisplay.js'
+
+describe('mergeWildfireEvents', () => {
+  it('keeps a FIRMS hotspot even when it sits on the same coordinate as a named fire', () => {
+    const named = { id: 'nifc-1', lat: 39.8, lng: -121.5, layer: 'wildfire' }
+    const hotspotAtSameSpot = {
+      id: 'firms-39.8--121.5-2026-08-12-1812',
+      lat: 39.8,
+      lng: -121.5,
+      layer: 'wildfire',
+    }
+    const merged = mergeWildfireEvents([named], [hotspotAtSameSpot])
+    assert.deepEqual(
+      merged.map(m => m.id).sort(),
+      [hotspotAtSameSpot.id, named.id].sort(),
+    )
+  })
+})
 
 const hotspot = {
   id: 'firms-39.8--121.5-2026-08-12-1812',

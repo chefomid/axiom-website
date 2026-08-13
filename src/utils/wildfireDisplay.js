@@ -4,6 +4,33 @@ export const WILDFIRE_KIND_OPTIONS = [
   { id: 'both', label: 'Both' },
 ]
 
+export function mergeWildfireEvents(namedEvents = [], hotspotEvents = []) {
+  const named = dedupeByIdAndCoord(namedEvents)
+  const namedIds = new Set(named.map(e => e.id))
+  const hotspots = []
+  const hotspotIds = new Set()
+  for (const event of hotspotEvents) {
+    if (!event?.id || namedIds.has(event.id) || hotspotIds.has(event.id)) continue
+    hotspotIds.add(event.id)
+    hotspots.push(event)
+  }
+  return [...named, ...hotspots]
+}
+
+function dedupeByIdAndCoord(events) {
+  const seen = new Set()
+  const out = []
+  for (const event of events) {
+    if (!event) continue
+    const coordKey = `${Number(event.lat).toFixed(3)}|${Number(event.lng).toFixed(3)}`
+    if (seen.has(event.id) || seen.has(coordKey)) continue
+    seen.add(event.id)
+    seen.add(coordKey)
+    out.push(event)
+  }
+  return out
+}
+
 export function wildfireKindFromMarker(marker) {
   const id = String(marker?.id ?? '')
   if (id.startsWith('firms-')) return 'hotspot'
@@ -48,20 +75,20 @@ function scaleFromAcres(acres) {
 function scaleFromHotspot(raw) {
   const frp = Number(raw?.frp)
   if (Number.isFinite(frp) && frp > 0) {
-    if (frp < 5) return 0.38
-    if (frp < 15) return 0.48
-    if (frp < 40) return 0.58
-    if (frp < 80) return 0.68
-    return 0.78
+    if (frp < 5) return 0.55
+    if (frp < 15) return 0.62
+    if (frp < 40) return 0.7
+    if (frp < 80) return 0.78
+    return 0.88
   }
   const brightness = Number(raw?.bright_ti4 ?? raw?.brightness)
   if (Number.isFinite(brightness)) {
-    if (brightness < 330) return 0.4
-    if (brightness < 350) return 0.5
-    if (brightness < 400) return 0.6
-    return 0.7
+    if (brightness < 330) return 0.55
+    if (brightness < 350) return 0.62
+    if (brightness < 400) return 0.7
+    return 0.8
   }
-  return 0.45
+  return 0.6
 }
 
 export function wildfireFlameScale(marker) {

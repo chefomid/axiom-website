@@ -4,6 +4,7 @@ import { headlineForMarker, locationLabelForMarker } from '../utils/signalLocati
 import { getScopeBbox, pointInBbox } from '../utils/scopeBbox'
 import { firmsAreaForScope, parseFirmsCsv } from '../utils/firmsFeed'
 import { getLastGoodRiskCache, getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
+import { mergeWildfireEvents } from '../utils/wildfireDisplay'
 import { fetchNifcWildfires } from './nifcWildfire'
 
 const FIRMS_SOURCE = 'VIIRS_SNPP_NRT'
@@ -146,6 +147,90 @@ async function fetchEonetWildfires(scopeConfig, options = {}) {
   }
 }
 
+const VIIRS_HOTSPOT_URL =
+  'https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Satellite_VIIRS_Thermal_Hotspots_and_Fire_Activity/FeatureServer/0/query'
+
+function viirsFeatureToRiskEvent(feature) {
+  const props = feature?.properties ?? {}
+  const coords = feature?.geometry?.coordinates
+  const lng = Array.isArray(coords) ? Number(coords[0]) : Number(props.longitude)
+  const lat = Array.isArray(coords) ? Number(coords[1]) : Number(props.latitude)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+
+  const acqDateMs = Number(props.acq_date)
+  const acqDate = Number.isFinite(acqDateMs) ? new Date(acqDateMs).toISOString().slice(0, 10) : null
+  const id = `firms-${lat}-${lng}-${acqDate ?? ''}-${props.OBJECTID ?? ''}`
+
+  return {
+    id,
+    source: 'NASA',
+    layer: 'wildfire',
+    geometryType: 'point',
+    lat,
+    lng,
+    country: lat >= 18 && lat <= 72 && lng >= -180 && lng <= -65 ? 'US' : null,
+    label: `FIRMS-${lat.toFixed(2)},${lng.toFixed(2)}`,
+    title: `Fire hotspot · ${acqDate ?? 'recent'}`,
+    severity: brightnessSeverity(props.bright_ti4),
+    timestamp: Number.isFinite(acqDateMs) ? new Date(acqDateMs).toISOString() : null,
+    confidence: props.confidence === 'high' ? 95 : props.confidence === 'nominal' ? 70 : 85,
+    detail: [
+      `Brightness ${props.bright_ti4 ?? 'n/a'}`,
+      props.confidence ? `Confidence ${props.confidence}` : null,
+      props.frp != null ? `FRP ${props.frp} MW` : null,
+      acqDate ? `Acquired ${acqDate}` : null,
+      'VIIRS thermal hotspot',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    dataSources: ['nasa'],
+    raw: props,
+    links: {
+      official: `https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;@${lng},${lat},11z`,
+    },
+  }
+}
+
+async function fetchViirsHotspots(scopeConfig, options = {}) {
+  const bbox = getScopeBbox(scopeConfig)
+  const params = new URLSearchParams({
+    where: 'hours_old <= 24',
+    outFields: 'latitude,longitude,bright_ti4,frp,acq_date,confidence,hours_old,OBJECTID',
+    outSR: '4326',
+    returnGeometry: 'true',
+    f: 'geojson',
+    resultRecordCount: String(MAX_HOTSPOTS),
+    orderByFields: 'frp DESC',
+  })
+
+  if (scopeConfig.scope !== 'global') {
+    params.set('geometry', `${bbox.west},${bbox.south},${bbox.east},${bbox.north}`)
+    params.set('geometryType', 'esriGeometryEnvelope')
+    params.set('inSR', '4326')
+    params.set('spatialRel', 'esriSpatialRelIntersects')
+  }
+
+  const requestUrl = `${VIIRS_HOTSPOT_URL}?${params}`
+  const res = await fetch(requestUrl, { signal: options.signal })
+  if (!res.ok) throw new Error(`VIIRS hotspot API error (${res.status})`)
+
+  const data = await res.json()
+  if (data.error) throw new Error(data.error?.message || 'VIIRS hotspot query failed')
+
+  const events = (data.features ?? [])
+    .map(viirsFeatureToRiskEvent)
+    .filter(Boolean)
+    .filter(e => scopeConfig.scope === 'global' || pointInBbox(e.lat, e.lng, bbox))
+    .slice(0, MAX_HOTSPOTS)
+
+  return {
+    events,
+    requestUrl,
+    totalFetched: events.length,
+    provider: 'firms',
+  }
+}
+
 async function fetchFirmsArea(scopeConfig, options = {}) {
   const url = buildFirmsRequestUrl(scopeConfig)
   const res = await fetch(url, { signal: options.signal })
@@ -163,31 +248,14 @@ async function fetchFirmsArea(scopeConfig, options = {}) {
   }
 }
 
-function dedupeWildfireEvents(events) {
-  const seen = new Set()
-  const out = []
-  for (const event of events) {
-    if (!event) continue
-    const coordKey = `${Number(event.lat).toFixed(3)}|${Number(event.lng).toFixed(3)}`
-    const idKey = event.id
-    if (seen.has(idKey) || seen.has(coordKey)) continue
-    seen.add(idKey)
-    seen.add(coordKey)
-    out.push(event)
-  }
-  return out
-}
-
 /**
- * Active wildfire layer: NASA FIRMS (or EONET fallback) + free NIFC WFIGS incidents.
+ * Active wildfire layer: named NIFC/EONET incidents plus VIIRS hotspots.
  */
 export async function fetchNasaFirms(scopeConfig, options = {}) {
   const mapKey = import.meta.env.VITE_NASA_FIRMS_MAP_KEY?.trim()
-  const satelliteProvider = mapKey ? 'firms' : 'eonet'
 
   const cacheKey = riskCacheKey([
-    'wildfire-v3',
-    satelliteProvider,
+    'wildfire-v4',
     scopeConfig.scope,
     scopeConfig.countryId,
     scopeConfig.userLocation?.lat,
@@ -205,21 +273,23 @@ export async function fetchNasaFirms(scopeConfig, options = {}) {
     return null
   })
 
-  const firmsPromise = mapKey
-    ? fetchFirmsArea(scopeConfig, options).catch(err => {
-        if (err?.name === 'AbortError') throw err
-        return null
-      })
-    : Promise.resolve(null)
+  const hotspotPromise = fetchViirsHotspots(scopeConfig, options).catch(err => {
+    if (err?.name === 'AbortError') throw err
+    if (!mapKey) return null
+    return fetchFirmsArea(scopeConfig, options).catch(fallbackErr => {
+      if (fallbackErr?.name === 'AbortError') throw fallbackErr
+      return null
+    })
+  })
 
   const nifcPromise = fetchNifcWildfires(scopeConfig, options).catch(err => {
     if (err?.name === 'AbortError') throw err
     return null
   })
 
-  const [eonet, firms, nifc] = await Promise.all([eonetPromise, firmsPromise, nifcPromise])
+  const [eonet, hotspots, nifc] = await Promise.all([eonetPromise, hotspotPromise, nifcPromise])
 
-  if (!eonet && !firms && !nifc) {
+  if (!eonet && !hotspots && !nifc) {
     const lastGood = getLastGoodRiskCache('firms', cacheKey)
     if (lastGood?.data?.events?.length) {
       return { ...lastGood.data, fromCache: true, stale: true }
@@ -227,19 +297,18 @@ export async function fetchNasaFirms(scopeConfig, options = {}) {
     throw new Error('Wildfire feeds unavailable (EONET, FIRMS, and NIFC)')
   }
 
-  const events = dedupeWildfireEvents([
-    ...(nifc?.events ?? []),
-    ...(eonet?.events ?? []),
-    ...(firms?.events ?? []),
-  ])
-  const providers = [nifc && 'nifc', eonet && 'eonet', firms && 'firms'].filter(Boolean)
+  const events = mergeWildfireEvents(
+    [...(nifc?.events ?? []), ...(eonet?.events ?? [])],
+    hotspots?.events ?? [],
+  )
+  const providers = [nifc && 'nifc', eonet && 'eonet', hotspots && 'firms'].filter(Boolean)
   const payload = {
     events,
-    requestUrl: nifc?.requestUrl || eonet?.requestUrl || firms?.requestUrl || null,
+    requestUrl: nifc?.requestUrl || eonet?.requestUrl || hotspots?.requestUrl || null,
     totalFetched: events.length,
-    provider: providers.join('+') || satelliteProvider,
-    missingApiKey: !mapKey,
-    usingFallback: !mapKey,
+    provider: providers.join('+') || 'eonet',
+    missingApiKey: false,
+    usingFallback: !hotspots,
     providers,
   }
 
