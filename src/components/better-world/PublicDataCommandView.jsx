@@ -22,6 +22,7 @@ import {
   filterMarkersByScope,
   filterZones,
 } from '../../utils/filterMapData'
+import { filterMarkersByWildfireKind } from '../../utils/wildfireDisplay'
 import { getFeedDataRangeLabel } from '../../utils/feedDataRange'
 import {
   dataSourceToggleMessage,
@@ -87,6 +88,7 @@ function PublicDataCommandViewInner() {
   const [scopeModalOpen, setScopeModalOpen] = useState(false)
   const [scopeApplyKey, setScopeApplyKey] = useState(0)
   const [minEarthquakeMag, setMinEarthquakeMag] = useState(2.5)
+  const [wildfireKind, setWildfireKind] = useState('both')
 
   useEffect(() => {
     if (!hasDeepLocation) return
@@ -172,12 +174,15 @@ function PublicDataCommandViewInner() {
 
   const visibleMarkers = useMemo(
     () =>
-      filterMarkers(allPointMarkers, {
-        activeLayers,
-        activeDataSources,
-        ...scopeConfig,
-      }),
-    [allPointMarkers, activeLayers, activeDataSources, scope, userLocation, radiusMiles, countryId],
+      filterMarkersByWildfireKind(
+        filterMarkers(allPointMarkers, {
+          activeLayers,
+          activeDataSources,
+          ...scopeConfig,
+        }),
+        wildfireKind,
+      ),
+    [allPointMarkers, activeLayers, activeDataSources, scope, userLocation, radiusMiles, countryId, wildfireKind],
   )
 
   const visibleZones = useMemo(
@@ -271,6 +276,24 @@ function PublicDataCommandViewInner() {
         pushEvent({
           text: layerToggleMessage(label, enabling),
           type: enabling ? 'live' : 'stable',
+          source: TELEMETRY_SOURCE.layers,
+        })
+        return next
+      })
+    },
+    [pushEvent],
+  )
+
+  const handleWildfireKindChange = useCallback(
+    kind => {
+      setWildfireKind(kind)
+      setActiveLayers(prev => {
+        if (prev.has('wildfire')) return prev
+        const next = new Set(prev)
+        next.add('wildfire')
+        pushEvent({
+          text: layerToggleMessage('Wildfire', true),
+          type: 'live',
           source: TELEMETRY_SOURCE.layers,
         })
         return next
@@ -588,6 +611,9 @@ function PublicDataCommandViewInner() {
           layerLoading={layerLoading}
           feedStatus={feedStatus}
           signals={mobileSignals}
+          layerCounts={layerCounts}
+          wildfireKind={wildfireKind}
+          onWildfireKindChange={handleWildfireKindChange}
         />
       </>
     )
@@ -656,6 +682,8 @@ function PublicDataCommandViewInner() {
                 onBreakPinChainBlocked={breakPinChainBlocked}
                 onMakeSquare={makeSquareFromLastFour}
                 pinCount={pinCount}
+                wildfireKind={wildfireKind}
+                onWildfireKindChange={handleWildfireKindChange}
               />
           </MapErrorBoundary>
         </div>

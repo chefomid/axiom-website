@@ -1,0 +1,70 @@
+export const WILDFIRE_KIND_OPTIONS = [
+  { id: 'hotspot', label: 'Hotspot' },
+  { id: 'named', label: 'Named Fires' },
+  { id: 'both', label: 'Both' },
+]
+
+export function wildfireKindFromMarker(marker) {
+  const id = String(marker?.id ?? '')
+  if (id.startsWith('firms-')) return 'hotspot'
+  if (id.startsWith('nifc-') || id.startsWith('eonet-')) return 'named'
+  if (marker?.layer === 'wildfire' && marker?.source === 'NIFC') return 'named'
+  if (marker?.layer === 'wildfire') return 'hotspot'
+  return null
+}
+
+export function filterMarkersByWildfireKind(markers, kind = 'both') {
+  if (kind === 'both') return markers
+  return markers.filter(marker => {
+    if (marker.layer !== 'wildfire') return true
+    return wildfireKindFromMarker(marker) === kind
+  })
+}
+
+function acresFromMarker(marker) {
+  const raw = marker?.raw ?? {}
+  const size = Number(raw.IncidentSize)
+  if (Number.isFinite(size) && size > 0) return size
+
+  const geometries = Array.isArray(raw.geometry) ? raw.geometry : []
+  for (let i = geometries.length - 1; i >= 0; i -= 1) {
+    const g = geometries[i]
+    if (g?.magnitudeUnit === 'acres' && Number.isFinite(Number(g.magnitudeValue))) {
+      return Number(g.magnitudeValue)
+    }
+  }
+  return null
+}
+
+function scaleFromAcres(acres) {
+  if (!Number.isFinite(acres) || acres <= 0) return 0.75
+  if (acres < 10) return 0.55
+  if (acres < 100) return 0.72
+  if (acres < 1000) return 0.95
+  if (acres < 10000) return 1.2
+  return 1.45
+}
+
+function scaleFromHotspot(raw) {
+  const frp = Number(raw?.frp)
+  if (Number.isFinite(frp) && frp > 0) {
+    if (frp < 5) return 0.38
+    if (frp < 15) return 0.48
+    if (frp < 40) return 0.58
+    if (frp < 80) return 0.68
+    return 0.78
+  }
+  const brightness = Number(raw?.bright_ti4 ?? raw?.brightness)
+  if (Number.isFinite(brightness)) {
+    if (brightness < 330) return 0.4
+    if (brightness < 350) return 0.5
+    if (brightness < 400) return 0.6
+    return 0.7
+  }
+  return 0.45
+}
+
+export function wildfireFlameScale(marker) {
+  if (wildfireKindFromMarker(marker) === 'named') return scaleFromAcres(acresFromMarker(marker))
+  return scaleFromHotspot(marker?.raw)
+}

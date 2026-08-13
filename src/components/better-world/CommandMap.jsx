@@ -5,6 +5,7 @@ import maplibregl from '../../lib/maplibre'
 import { MapCornerControls } from '../../lib/mapCornerControls'
 import { COUNTRIES, RISK_LAYERS, SEVERITY_HEX } from '../../data/commandMapData'
 import { ensureWildfireIcon, WILDFIRE_ICON_ID } from '../../utils/wildfireIcon'
+import { wildfireFlameScale } from '../../utils/wildfireDisplay'
 import {
   createCirclePolygon,
   geometryCentroid,
@@ -339,6 +340,7 @@ function markersToGeoJSON(markers, selectedMarkerId) {
           color: SEVERITY_HEX[marker.severity] ?? SEVERITY_HEX.live,
           selected: marker.id === selectedMarkerId,
           pointRadius: marker.pointRadius ?? 5,
+          flameScale: marker.layer === 'wildfire' ? wildfireFlameScale(marker) : 1,
         },
       })),
   }
@@ -393,6 +395,8 @@ export default function CommandMap({
   onBreakPinChain,
   onBreakPinChainBlocked,
   pinCount = 0,
+  wildfireKind = 'both',
+  onWildfireKindChange,
 }) {
   const [scanlineOn, setScanlineOn] = useState(readScanlinePreference)
 
@@ -634,11 +638,23 @@ export default function CommandMap({
             ['linear'],
             ['zoom'],
             2,
-            ['case', ['==', ['get', 'selected'], true], 0.62, 0.45],
+            [
+              '*',
+              ['coalesce', ['get', 'flameScale'], 0.7],
+              ['case', ['==', ['get', 'selected'], true], 0.58, 0.45],
+            ],
             8,
-            ['case', ['==', ['get', 'selected'], true], 0.9, 0.7],
+            [
+              '*',
+              ['coalesce', ['get', 'flameScale'], 0.7],
+              ['case', ['==', ['get', 'selected'], true], 0.9, 0.7],
+            ],
             12,
-            ['case', ['==', ['get', 'selected'], true], 1.15, 0.95],
+            [
+              '*',
+              ['coalesce', ['get', 'flameScale'], 0.7],
+              ['case', ['==', ['get', 'selected'], true], 1.22, 0.95],
+            ],
           ],
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
@@ -1508,6 +1524,8 @@ export default function CommandMap({
         pins={pins}
         selectedPinId={selectedPinId}
         onAnalyzeAtPin={onAnalyzeAtPin}
+        wildfireKind={wildfireKind}
+        onWildfireKindChange={onWildfireKindChange}
       />
 
       <button

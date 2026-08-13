@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { DATA_SOURCES, EARTHQUAKE_MAGNITUDE_OPTIONS, RISK_LAYERS } from '../../data/commandMapData'
 import { DockTab, SourceToggle, TextAction, ToggleChip } from '../ui/CommandControls'
-import WildfireFlameIcon from './WildfireFlameIcon'
+import WildfireLayerChip from './WildfireLayerChip'
 
 export default function MapControlsDock({
   activeLayers,
@@ -28,6 +28,8 @@ export default function MapControlsDock({
   onAnalyzeAtPin,
   pins = [],
   selectedPinId = null,
+  wildfireKind = 'both',
+  onWildfireKindChange,
 }) {
   const [openPanel, setOpenPanel] = useState(null)
   const dockRef = useRef(null)
@@ -72,25 +74,33 @@ export default function MapControlsDock({
                     <TextAction onClick={onClearAllLayers}>Clear</TextAction>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-start gap-2">
                   {RISK_LAYERS.map(layer => {
                     const active = activeLayers.has(layer.id)
                     const count = layerCounts[layer.id] ?? 0
-                    const isWildfire = layer.id === 'wildfire'
+                    if (layer.id === 'wildfire') {
+                      return (
+                        <WildfireLayerChip
+                          key={layer.id}
+                          active={active}
+                          count={count}
+                          loading={layerLoading[layer.id]}
+                          kind={wildfireKind}
+                          onToggleLayer={() => onToggleLayer(layer.id)}
+                          onKindChange={onWildfireKindChange}
+                        />
+                      )
+                    }
                     return (
                       <ToggleChip
                         key={layer.id}
                         active={active}
                         layerColor={layer.color}
-                        showDot={!isWildfire}
                         loading={layerLoading[layer.id]}
                         onClick={() => onToggleLayer(layer.id)}
                       >
-                        <span className="inline-flex items-center gap-1.5">
-                          {isWildfire && <WildfireFlameIcon active={active} />}
-                          {layer.shortLabel ?? layer.label}
-                          {!layerLoading[layer.id] && count > 0 ? ` · ${count}` : ''}
-                        </span>
+                        {layer.shortLabel ?? layer.label}
+                        {!layerLoading[layer.id] && count > 0 ? ` · ${count}` : ''}
                       </ToggleChip>
                     )
                   })}

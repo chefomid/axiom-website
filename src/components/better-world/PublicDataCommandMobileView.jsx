@@ -12,7 +12,7 @@ import FeedStatusBar from './FeedStatusBar'
 import IntelligencePanel from './IntelligencePanel'
 import { SegmentButton, ToggleChip } from '../ui/CommandControls'
 import StatusChip from './StatusChip'
-import WildfireFlameIcon from './WildfireFlameIcon'
+import WildfireLayerChip from './WildfireLayerChip'
 
 const PEEK_BAR_HEIGHT = '4.25rem'
 
@@ -53,6 +53,9 @@ function MobileFilterPanel({
   onApplyRadius,
   onToggleLayer,
   onToggleSource,
+  layerCounts = {},
+  wildfireKind = 'both',
+  onWildfireKindChange,
 }) {
   return (
     <div className="sleek-scrollbar max-h-[min(70vh,520px)] overflow-y-auto">
@@ -152,10 +155,22 @@ function MobileFilterPanel({
           ))}
         </div>
         <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-faint">Layers</p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           {RISK_LAYERS.map(layer => {
             const active = activeLayers.has(layer.id)
-            const isWildfire = layer.id === 'wildfire'
+            if (layer.id === 'wildfire') {
+              return (
+                <WildfireLayerChip
+                  key={layer.id}
+                  active={active}
+                  count={layerCounts[layer.id] ?? 0}
+                  loading={layerLoading[layer.id]}
+                  kind={wildfireKind}
+                  onToggleLayer={() => onToggleLayer(layer.id)}
+                  onKindChange={onWildfireKindChange}
+                />
+              )
+            }
             return (
               <ToggleChip
                 key={layer.id}
@@ -163,12 +178,8 @@ function MobileFilterPanel({
                 onClick={() => onToggleLayer(layer.id)}
                 loading={layerLoading[layer.id]}
                 layerColor={layer.color}
-                showDot={!isWildfire}
               >
-                <span className="inline-flex items-center gap-1.5">
-                  {isWildfire && <WildfireFlameIcon active={active} />}
-                  {layer.shortLabel}
-                </span>
+                {layer.shortLabel}
               </ToggleChip>
             )
           })}
@@ -191,6 +202,9 @@ export default function PublicDataCommandMobileView({
   layerLoading,
   feedStatus,
   signals,
+  layerCounts = {},
+  wildfireKind = 'both',
+  onWildfireKindChange,
 }) {
   const [draftScope, setDraftScope] = useState(scope)
   const [draftRadius, setDraftRadius] = useState(radiusMiles)
@@ -417,6 +431,9 @@ export default function PublicDataCommandMobileView({
                 onApplyRadius={applyRadius}
                 onToggleLayer={toggleLayer}
                 onToggleSource={toggleSource}
+                layerCounts={layerCounts}
+                wildfireKind={wildfireKind}
+                onWildfireKindChange={onWildfireKindChange}
               />
             </motion.div>
           )}
