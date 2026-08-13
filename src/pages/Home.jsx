@@ -193,7 +193,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
         className="text-ink-muted text-base leading-relaxed max-w-xl mb-16"
       >
         Each system operates independently. Together they form a unified
-        intelligence stack, modular by design and configurable to any deployment.
+        intelligence stack, modular and configurable to the client it serves.
       </motion.p>
 
       <div className="grid grid-cols-1 gap-px bg-[#1a1a1a]">
