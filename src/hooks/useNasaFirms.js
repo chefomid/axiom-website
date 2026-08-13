@@ -14,7 +14,7 @@ import { riskEventsToPoints } from '../utils/riskNormalize'
 const FIRMS_DAY_RANGE = 1
 
 const EMPTY_META = {
-  sourceName: 'NASA FIRMS',
+  sourceName: 'Wildfire',
   lastFetchedAt: null,
   recordCount: 0,
   requestUrl: null,
@@ -23,9 +23,10 @@ const EMPTY_META = {
 
 function firmsCacheKey(scopeConfig) {
   const mapKey = import.meta.env.VITE_NASA_FIRMS_MAP_KEY?.trim()
-  const provider = mapKey ? 'firms' : 'eonet'
+  const satelliteProvider = mapKey ? 'firms' : 'eonet'
   return riskCacheKey([
-    provider,
+    'wildfire-v2',
+    satelliteProvider,
     scopeConfig.scope,
     scopeConfig.countryId,
     scopeConfig.userLocation?.lat,
@@ -36,10 +37,19 @@ function firmsCacheKey(scopeConfig) {
 
 function applyFirmsResult(result, { fetchedAt, stale = false }) {
   const points = riskEventsToPoints(result.events)
+  const providers = result.providers ?? []
+  const sourceName =
+    providers.includes('nifc') && (providers.includes('firms') || providers.includes('eonet'))
+      ? 'NIFC + NASA'
+      : providers.includes('nifc')
+        ? 'NIFC WFIGS'
+        : providers.includes('firms')
+          ? 'NASA FIRMS'
+          : 'NASA EONET'
   return {
     points,
     meta: {
-      sourceName: 'NASA FIRMS',
+      sourceName,
       lastFetchedAt: fetchedAt,
       recordCount: points.length,
       requestUrl: result.requestUrl ?? null,
@@ -93,7 +103,7 @@ export default function useNasaFirms({ scope, userLocation, radiusMiles, country
         }
       } catch (err) {
         if (cancelled || err.name === 'AbortError') return
-        const message = err.message ?? 'Failed to load NASA FIRMS data'
+        const message = err.message ?? 'Failed to load wildfire data'
         const staleEntry = getStaleRiskCache('firms', cacheKey)
 
         if (staleEntry?.data) {
@@ -113,7 +123,7 @@ export default function useNasaFirms({ scope, userLocation, radiusMiles, country
           if (!cancelled) load()
         })
         pushEvent({
-          text: feedFailedMessage('NASA FIRMS', message, { stale: !!staleEntry?.data }),
+          text: feedFailedMessage('Wildfire', message, { stale: !!staleEntry?.data }),
           type: staleEntry?.data ? 'watch' : 'critical',
           source: telemetrySourceForLayer('wildfire'),
         })

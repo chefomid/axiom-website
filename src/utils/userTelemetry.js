@@ -93,8 +93,13 @@ export function telemetrySourceForFeed(source) {
     USGS: TELEMETRY_SOURCE.earthquake,
     NWS: TELEMETRY_SOURCE.weather,
     'NASA FIRMS': TELEMETRY_SOURCE.wildfire,
+    'NASA EONET': TELEMETRY_SOURCE.wildfire,
+    'NIFC WFIGS': TELEMETRY_SOURCE.wildfire,
+    'NIFC + NASA': TELEMETRY_SOURCE.wildfire,
+    Wildfire: TELEMETRY_SOURCE.wildfire,
     'FEMA NFHL': TELEMETRY_SOURCE.flood,
     NASA: TELEMETRY_SOURCE.wildfire,
+    NIFC: TELEMETRY_SOURCE.wildfire,
     FEMA: TELEMETRY_SOURCE.flood,
   }
   return map[source] ?? source

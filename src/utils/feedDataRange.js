@@ -6,7 +6,7 @@ export const FIRMS_DAY_RANGE = 1
 
 /**
  * Human-readable coverage window for each Public Data Command feed.
- * @param {'USGS'|'NWS'|'NASA FIRMS'|'FEMA NFHL'} sourceName
+ * @param {string} sourceName
  * @param {{ minMagnitude?: number }} [options]
  */
 export function getFeedDataRangeLabel(sourceName, options = {}) {
@@ -22,6 +22,13 @@ export function getFeedDataRangeLabel(sourceName, options = {}) {
       return 'active alerts'
     case 'NASA FIRMS':
       return FIRMS_DAY_RANGE === 1 ? 'last 24h' : `last ${FIRMS_DAY_RANGE}d`
+    case 'NASA EONET':
+      return 'open events'
+    case 'NIFC WFIGS':
+      return 'current incidents'
+    case 'NIFC + NASA':
+    case 'Wildfire':
+      return 'current · last 24h'
     case 'FEMA NFHL':
       return 'reference map'
     default:

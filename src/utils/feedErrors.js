@@ -3,6 +3,10 @@ export const FEED_RETRY_DELAY_MS = 60_000
 
 const FEED_LABELS = {
   'NASA FIRMS': 'Wildfire data',
+  'NASA EONET': 'Wildfire data',
+  'NIFC WFIGS': 'Wildfire data',
+  'NIFC + NASA': 'Wildfire data',
+  Wildfire: 'Wildfire data',
   USGS: 'Earthquake data',
   NWS: 'Weather alerts',
   'FEMA NFHL': 'Flood zone data',

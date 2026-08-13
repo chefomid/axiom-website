@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion'
 import maplibregl from '../../lib/maplibre'
 import { MapCornerControls } from '../../lib/mapCornerControls'
 import { COUNTRIES, RISK_LAYERS, SEVERITY_HEX } from '../../data/commandMapData'
+import { ensureWildfireIcon, WILDFIRE_ICON_ID } from '../../utils/wildfireIcon'
 import {
   createCirclePolygon,
   geometryCentroid,
@@ -334,6 +335,7 @@ function markersToGeoJSON(markers, selectedMarkerId) {
         geometry: { type: 'Point', coordinates: [marker.lng, marker.lat] },
         properties: {
           id: marker.id,
+          layer: marker.layer ?? '',
           color: SEVERITY_HEX[marker.severity] ?? SEVERITY_HEX.live,
           selected: marker.id === selectedMarkerId,
           pointRadius: marker.pointRadius ?? 5,
@@ -606,16 +608,43 @@ export default function CommandMap({
       })
 
       map.addSource('risk-events', { type: 'geojson', data: EMPTY_GEOJSON })
+      ensureWildfireIcon(map)
       map.addLayer({
         id: 'risk-points',
         type: 'circle',
         source: 'risk-events',
+        filter: ['!=', ['get', 'layer'], 'wildfire'],
         paint: {
           'circle-color': ['get', 'color'],
           'circle-radius': RISK_POINT_RADIUS,
           'circle-stroke-width': ['case', ['==', ['get', 'selected'], true], 2, 0.75],
           'circle-stroke-color': '#ffffff',
           'circle-opacity': ['interpolate', ['linear'], ['zoom'], 2, 0.55, 8, 0.85, 12, 0.95],
+        },
+      })
+      map.addLayer({
+        id: 'risk-wildfire-icons',
+        type: 'symbol',
+        source: 'risk-events',
+        filter: ['==', ['get', 'layer'], 'wildfire'],
+        layout: {
+          'icon-image': WILDFIRE_ICON_ID,
+          'icon-size': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            2,
+            ['case', ['==', ['get', 'selected'], true], 0.62, 0.45],
+            8,
+            ['case', ['==', ['get', 'selected'], true], 0.9, 0.7],
+            12,
+            ['case', ['==', ['get', 'selected'], true], 1.15, 0.95],
+          ],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-opacity': ['interpolate', ['linear'], ['zoom'], 2, 0.75, 8, 0.92, 12, 1],
         },
       })
 
@@ -712,7 +741,7 @@ export default function CommandMap({
         })
       }
 
-      map.on('click', 'risk-points', e => {
+      const onRiskPointClick = e => {
         if (pinModeRef.current) return
         const id = e.features?.[0]?.properties?.id
         if (!id) return
@@ -725,7 +754,9 @@ export default function CommandMap({
             zoom: Math.max(map.getZoom(), 5),
             duration: 900,
           })
-      })
+      }
+      map.on('click', 'risk-points', onRiskPointClick)
+      map.on('click', 'risk-wildfire-icons', onRiskPointClick)
 
       map.on('click', 'risk-zones-fill', e => {
         if (pinModeRef.current) return
@@ -838,7 +869,7 @@ export default function CommandMap({
           return
         }
         const hazardFeatures = map.queryRenderedFeatures(e.point, {
-          layers: ['risk-points', 'risk-zones-fill'],
+          layers: ['risk-points', 'risk-wildfire-icons', 'risk-zones-fill'],
         })
         if (hazardFeatures.length > 0) return
         onAddPinRef.current?.(e.lngLat.lat, e.lngLat.lng)
@@ -888,7 +919,7 @@ export default function CommandMap({
         onBreakPinChainRef.current?.()
       })
 
-      map.on('mousemove', 'risk-points', e => {
+      const onRiskPointMove = e => {
         if (pinModeRef.current) {
           clearHoverTip()
           return
@@ -910,8 +941,11 @@ export default function CommandMap({
           layer: marker.layer,
           severity: marker.severity,
         })
-      })
+      }
+      map.on('mousemove', 'risk-points', onRiskPointMove)
+      map.on('mousemove', 'risk-wildfire-icons', onRiskPointMove)
       map.on('mouseleave', 'risk-points', clearHoverTip)
+      map.on('mouseleave', 'risk-wildfire-icons', clearHoverTip)
       map.on('mouseout', clearHoverTip)
 
       const clearTriangleHoverState = () => {
@@ -985,6 +1019,7 @@ export default function CommandMap({
       map.on('mouseleave', 'user-pins', setMapCursor)
 
       bindLayerPointer('risk-points', 'pointer')
+      bindLayerPointer('risk-wildfire-icons', 'pointer')
       bindLayerPointer('risk-zones-fill', 'pointer')
       eventsBoundRef.current = true
       setMapReady(true)

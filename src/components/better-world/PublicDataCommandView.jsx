@@ -457,7 +457,7 @@ function PublicDataCommandViewInner() {
     }
     if (firmsError) {
       errors.push({
-        source: 'NASA FIRMS',
+        source: firmsMeta.sourceName || 'Wildfire',
         message: firmsError,
         retryAt: firmsErrorRetryAt,
         stale: firmsMeta.stale,
@@ -487,6 +487,7 @@ function PublicDataCommandViewInner() {
     firmsErrorRetryAt,
     firmsMeta.stale,
     firmsMeta.lastFetchedAt,
+    firmsMeta.sourceName,
     femaError,
     femaErrorRetryAt,
     femaMeta.stale,
@@ -518,7 +519,7 @@ function PublicDataCommandViewInner() {
         dataRange: getFeedDataRangeLabel('NWS'),
       },
       {
-        sourceName: 'NASA FIRMS',
+        sourceName: firmsMeta.sourceName || 'Wildfire',
         enabled: activeDataSources.has('nasa'),
         loading: firmsLoading,
         error: firmsError,
@@ -526,7 +527,7 @@ function PublicDataCommandViewInner() {
         recordCount: firmsMeta.recordCount,
         lastFetchedAt: firmsMeta.lastFetchedAt,
         requestUrl: firmsMeta.requestUrl,
-        dataRange: getFeedDataRangeLabel('NASA FIRMS'),
+        dataRange: getFeedDataRangeLabel(firmsMeta.sourceName || 'NASA FIRMS'),
       },
       {
         sourceName: 'FEMA NFHL',

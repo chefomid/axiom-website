@@ -157,7 +157,7 @@ export const RISK_LAYERS = [
     id: 'wildfire',
     label: 'Wildfire Hotspots',
     shortLabel: 'Wildfire',
-    sources: 'NASA FIRMS',
+    sources: 'NIFC · NASA',
     color: LAYER_COLORS.wildfire,
     defaultActive: true,
   },

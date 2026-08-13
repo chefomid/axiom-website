@@ -3,6 +3,7 @@ import { getMarkerReportUrl } from '../utils/markerReportUrl'
 import { headlineForMarker, locationLabelForMarker } from '../utils/signalLocation'
 import { getScopeBbox, bboxToFirmsArea, pointInBbox } from '../utils/scopeBbox'
 import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
+import { fetchNifcWildfires } from './nifcWildfire'
 
 const FIRMS_SOURCE = 'VIIRS_SNPP_NRT'
 const DAY_RANGE = 1
@@ -159,12 +160,31 @@ async function fetchFirmsArea(scopeConfig, options = {}) {
   }
 }
 
+function dedupeWildfireEvents(events) {
+  const seen = new Set()
+  const out = []
+  for (const event of events) {
+    if (!event) continue
+    const coordKey = `${Number(event.lat).toFixed(3)}|${Number(event.lng).toFixed(3)}`
+    const idKey = event.id
+    if (seen.has(idKey) || seen.has(coordKey)) continue
+    seen.add(idKey)
+    seen.add(coordKey)
+    out.push(event)
+  }
+  return out
+}
+
+/**
+ * Active wildfire layer: NASA FIRMS (or EONET fallback) + free NIFC WFIGS incidents.
+ */
 export async function fetchNasaFirms(scopeConfig, options = {}) {
   const mapKey = import.meta.env.VITE_NASA_FIRMS_MAP_KEY?.trim()
-  const provider = mapKey ? 'firms' : 'eonet'
+  const satelliteProvider = mapKey ? 'firms' : 'eonet'
 
   const cacheKey = riskCacheKey([
-    provider,
+    'wildfire-v2',
+    satelliteProvider,
     scopeConfig.scope,
     scopeConfig.countryId,
     scopeConfig.userLocation?.lat,
@@ -177,11 +197,38 @@ export async function fetchNasaFirms(scopeConfig, options = {}) {
     if (cached) return { ...cached, fromCache: true }
   }
 
-  const result = mapKey
-    ? await fetchFirmsArea(scopeConfig, options)
-    : await fetchEonetWildfires(scopeConfig, options)
+  const satellitePromise = mapKey
+    ? fetchFirmsArea(scopeConfig, options).catch(err => {
+        if (err?.name === 'AbortError') throw err
+        return null
+      })
+    : fetchEonetWildfires(scopeConfig, options).catch(err => {
+        if (err?.name === 'AbortError') throw err
+        return null
+      })
 
-  const payload = { ...result, missingApiKey: false, usingFallback: !mapKey }
+  const nifcPromise = fetchNifcWildfires(scopeConfig, options).catch(err => {
+    if (err?.name === 'AbortError') throw err
+    return null
+  })
+
+  const [satellite, nifc] = await Promise.all([satellitePromise, nifcPromise])
+
+  if (!satellite && !nifc) {
+    throw new Error('Wildfire feeds unavailable (FIRMS/EONET and NIFC)')
+  }
+
+  const events = dedupeWildfireEvents([...(nifc?.events ?? []), ...(satellite?.events ?? [])])
+  const providers = [nifc && 'nifc', satellite?.provider].filter(Boolean)
+  const payload = {
+    events,
+    requestUrl: nifc?.requestUrl || satellite?.requestUrl || null,
+    totalFetched: events.length,
+    provider: providers.join('+') || satelliteProvider,
+    missingApiKey: !mapKey,
+    usingFallback: !mapKey,
+    providers,
+  }
   setRiskCache('firms', cacheKey, payload)
   return payload
 }
@@ -196,7 +243,12 @@ export function firmsToSignals(markers, limit = 6) {
       title: marker.title,
       headline: headlineForMarker(marker),
       locationLabel: locationLabelForMarker(marker),
-      source: 'NASA FIRMS',
+      source:
+        marker.source === 'NIFC'
+          ? 'NIFC WFIGS'
+          : marker.id?.startsWith('eonet-')
+            ? 'NASA EONET'
+            : 'NASA FIRMS',
       dataSources: ['nasa'],
       confidence: marker.confidence,
       action: marker.action,

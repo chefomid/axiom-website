@@ -12,6 +12,7 @@ import FeedStatusBar from './FeedStatusBar'
 import IntelligencePanel from './IntelligencePanel'
 import { SegmentButton, ToggleChip } from '../ui/CommandControls'
 import StatusChip from './StatusChip'
+import WildfireFlameIcon from './WildfireFlameIcon'
 
 const PEEK_BAR_HEIGHT = '4.25rem'
 
@@ -152,18 +153,25 @@ function MobileFilterPanel({
         </div>
         <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-faint">Layers</p>
         <div className="flex flex-wrap gap-2">
-          {RISK_LAYERS.map(layer => (
-            <ToggleChip
-              key={layer.id}
-              active={activeLayers.has(layer.id)}
-              onClick={() => onToggleLayer(layer.id)}
-              loading={layerLoading[layer.id]}
-              layerColor={layer.color}
-              showDot
-            >
-              {layer.shortLabel}
-            </ToggleChip>
-          ))}
+          {RISK_LAYERS.map(layer => {
+            const active = activeLayers.has(layer.id)
+            const isWildfire = layer.id === 'wildfire'
+            return (
+              <ToggleChip
+                key={layer.id}
+                active={active}
+                onClick={() => onToggleLayer(layer.id)}
+                loading={layerLoading[layer.id]}
+                layerColor={layer.color}
+                showDot={!isWildfire}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  {isWildfire && <WildfireFlameIcon active={active} />}
+                  {layer.shortLabel}
+                </span>
+              </ToggleChip>
+            )
+          })}
         </div>
       </div>
     </div>

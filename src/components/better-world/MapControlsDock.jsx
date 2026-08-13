@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { DATA_SOURCES, EARTHQUAKE_MAGNITUDE_OPTIONS, RISK_LAYERS } from '../../data/commandMapData'
 import { DockTab, SourceToggle, TextAction, ToggleChip } from '../ui/CommandControls'
+import WildfireFlameIcon from './WildfireFlameIcon'
 
 export default function MapControlsDock({
   activeLayers,
@@ -81,16 +82,21 @@ export default function MapControlsDock({
                   {RISK_LAYERS.map(layer => {
                     const active = activeLayers.has(layer.id)
                     const count = layerCounts[layer.id] ?? 0
+                    const isWildfire = layer.id === 'wildfire'
                     return (
                       <ToggleChip
                         key={layer.id}
                         active={active}
                         layerColor={layer.color}
+                        showDot={!isWildfire}
                         loading={layerLoading[layer.id]}
                         onClick={() => onToggleLayer(layer.id)}
                       >
-                        {layer.shortLabel ?? layer.label}
-                        {!layerLoading[layer.id] && count > 0 ? ` · ${count}` : ''}
+                        <span className="inline-flex items-center gap-1.5">
+                          {isWildfire && <WildfireFlameIcon active={active} />}
+                          {layer.shortLabel ?? layer.label}
+                          {!layerLoading[layer.id] && count > 0 ? ` · ${count}` : ''}
+                        </span>
                       </ToggleChip>
                     )
                   })}
