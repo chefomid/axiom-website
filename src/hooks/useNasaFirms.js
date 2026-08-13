@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTelemetry } from '../context/TelemetryContext'
 import { fetchNasaFirms } from '../services/nasaFirms'
-import { getStaleRiskCache, riskCacheKey } from '../utils/riskCache'
+import { getLastGoodRiskCache, getStaleRiskCache, riskCacheKey } from '../utils/riskCache'
 import useFeedRetry from './useFeedRetry'
 import {
   feedFailedMessage,
@@ -81,6 +81,16 @@ export default function useNasaFirms({ scope, userLocation, radiusMiles, country
     const scopeConfig = { scope, userLocation, radiusMiles, countryId }
     const cacheKey = firmsCacheKey(scopeConfig)
 
+    const lastGood = getLastGoodRiskCache('firms', cacheKey)
+    if (lastGood?.data?.events?.length) {
+      const hydrated = applyFirmsResult(lastGood.data, {
+        fetchedAt: new Date(lastGood.fetchedAt),
+        stale: true,
+      })
+      setMarkers(hydrated.points)
+      setMeta(hydrated.meta)
+    }
+
     async function load() {
       setLoading(true)
       setError(null)
@@ -90,7 +100,10 @@ export default function useNasaFirms({ scope, userLocation, radiusMiles, country
         const result = await fetchNasaFirms(scopeConfig, { signal: controller.signal })
         if (cancelled) return
 
-        const { points, meta: nextMeta } = applyFirmsResult(result, { fetchedAt: new Date() })
+        const { points, meta: nextMeta } = applyFirmsResult(result, {
+          fetchedAt: result.stale && lastGood?.fetchedAt ? new Date(lastGood.fetchedAt) : new Date(),
+          stale: Boolean(result.stale),
+        })
         setMarkers(points)
         setMeta(nextMeta)
 
@@ -104,7 +117,8 @@ export default function useNasaFirms({ scope, userLocation, radiusMiles, country
       } catch (err) {
         if (cancelled || err.name === 'AbortError') return
         const message = err.message ?? 'Failed to load wildfire data'
-        const staleEntry = getStaleRiskCache('firms', cacheKey)
+        const lastGoodEntry = getLastGoodRiskCache('firms', cacheKey)
+        const staleEntry = lastGoodEntry ?? getStaleRiskCache('firms', cacheKey)
 
         if (staleEntry?.data) {
           const { points, meta: staleMeta } = applyFirmsResult(staleEntry.data, {

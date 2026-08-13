@@ -3,7 +3,7 @@ import { getMarkerReportUrl } from '../utils/markerReportUrl'
 import { headlineForMarker, locationLabelForMarker } from '../utils/signalLocation'
 import { getScopeBbox, pointInBbox } from '../utils/scopeBbox'
 import { firmsAreaForScope, parseFirmsCsv } from '../utils/firmsFeed'
-import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
+import { getLastGoodRiskCache, getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
 import { fetchNifcWildfires } from './nifcWildfire'
 
 const FIRMS_SOURCE = 'VIIRS_SNPP_NRT'
@@ -60,7 +60,7 @@ function rowToRiskEvent(row) {
     dataSources: ['nasa'],
     raw: row,
     links: {
-      official: 'https://firms.modaps.eosdis.nasa.gov/map/',
+      official: `https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;@${lng},${lat},11z`,
     },
   }
 }
@@ -73,6 +73,20 @@ export function buildFirmsRequestUrl(scopeConfig) {
 }
 
 const EONET_URL = 'https://eonet.gsfc.nasa.gov/api/v3/events?category=wildfires&status=open&limit=120'
+
+function eonetOfficialUrl(evt, lat, lng) {
+  const sources = Array.isArray(evt.sources) ? evt.sources : []
+  for (const source of sources) {
+    const url = source?.url
+    if (typeof url !== 'string' || !url.startsWith('http')) continue
+    if (/eonet\.gsfc\.nasa\.gov\/api\//i.test(url)) continue
+    return url
+  }
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    return `https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;@${lng},${lat},11z`
+  }
+  return 'https://eonet.gsfc.nasa.gov/'
+}
 
 function eonetEventToRiskEvent(evt) {
   const geometries = evt.geometry ?? []
@@ -108,7 +122,7 @@ function eonetEventToRiskEvent(evt) {
       .join(' · '),
     dataSources: ['nasa'],
     raw: evt,
-    links: { official: evt.link ?? 'https://eonet.gsfc.nasa.gov/' },
+    links: { official: eonetOfficialUrl(evt, lat, lng) },
   }
 }
 
@@ -182,7 +196,7 @@ export async function fetchNasaFirms(scopeConfig, options = {}) {
 
   if (!options.skipCache) {
     const cached = getRiskCache('firms', cacheKey)
-    if (cached) return { ...cached, fromCache: true }
+    if (cached?.events?.length) return { ...cached, fromCache: true }
   }
 
   const eonetPromise = fetchEonetWildfires(scopeConfig, options).catch(err => {
@@ -205,6 +219,10 @@ export async function fetchNasaFirms(scopeConfig, options = {}) {
   const [eonet, firms, nifc] = await Promise.all([eonetPromise, firmsPromise, nifcPromise])
 
   if (!eonet && !firms && !nifc) {
+    const lastGood = getLastGoodRiskCache('firms', cacheKey)
+    if (lastGood?.data?.events?.length) {
+      return { ...lastGood.data, fromCache: true, stale: true }
+    }
     throw new Error('Wildfire feeds unavailable (EONET, FIRMS, and NIFC)')
   }
 
@@ -223,6 +241,17 @@ export async function fetchNasaFirms(scopeConfig, options = {}) {
     usingFallback: !mapKey,
     providers,
   }
+
+  if (events.length > 0) {
+    setRiskCache('firms', cacheKey, payload)
+    return payload
+  }
+
+  const lastGood = getLastGoodRiskCache('firms', cacheKey)
+  if (lastGood?.data?.events?.length) {
+    return { ...lastGood.data, fromCache: true, stale: true }
+  }
+
   setRiskCache('firms', cacheKey, payload)
   return payload
 }

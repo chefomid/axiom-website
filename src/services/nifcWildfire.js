@@ -78,7 +78,9 @@ function featureToRiskEvent(feature) {
     provider: 'nifc',
     raw: props,
     links: {
-      official: 'https://data-nifc.opendata.arcgis.com/',
+      official: props.UniqueFireIdentifier
+        ? `https://irwin.doi.gov/observer/incidents/${props.UniqueFireIdentifier}`
+        : `https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;@${lng},${lat},11z`,
     },
   }
 }

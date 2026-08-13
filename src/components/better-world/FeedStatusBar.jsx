@@ -26,7 +26,7 @@ function FeedStatusChip({ feed }) {
     )
   }
 
-  if (feed.error && feed.stale) {
+  if (feed.stale) {
     return (
       <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-command-watch">
         {feed.sourceName}: stale · {feed.recordCount} record{feed.recordCount === 1 ? '' : 's'}
