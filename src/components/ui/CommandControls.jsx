@@ -142,7 +142,7 @@ export function TextAction({ onClick, children, highlight = false, disabled = fa
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-md border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] transition-all duration-200 disabled:opacity-40 ${
+      className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] transition-all duration-200 disabled:opacity-40 ${
         highlight
           ? 'border-command-cyber/30 text-command-cyber hover:border-command-cyber/50 hover:bg-command-cyber/8'
           : 'border-[#333] text-ink-faint hover:border-[#555] hover:bg-white/[0.03] hover:text-white'

@@ -57,21 +57,15 @@ export default function MapControlsDock({
     <div ref={dockRef} className="absolute bottom-4 left-1/2 z-20 w-[min(100%,34rem)] -translate-x-1/2 px-3">
       <div className="cmd-dock-bar overflow-hidden rounded-2xl border border-[#2e2e2e] bg-[#0a0a0a] shadow-lg">
         {openPanel && (
-          <div className="relative px-4 py-4 pr-10">
-            <button
-              type="button"
-              onClick={() => setOpenPanel(null)}
-              aria-label="Close panel"
-              className="absolute right-3 top-3 rounded-md border border-[#333] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-faint transition hover:border-[#555] hover:text-white"
-            >
-              Close
-            </button>
-
+          <div className="px-4 py-4">
             {openPanel === 'layers' && (
               <>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Layers</p>
-                  <div className="flex gap-2">
+                <div className="mb-3 flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Layers</p>
+                    <TextAction onClick={() => setOpenPanel(null)}>Close</TextAction>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <TextAction highlight onClick={onEnableAllLayers}>
                       All
                     </TextAction>
@@ -106,7 +100,10 @@ export default function MapControlsDock({
 
             {openPanel === 'sources' && (
               <>
-                <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Data sources</p>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Data sources</p>
+                  <TextAction onClick={() => setOpenPanel(null)}>Close</TextAction>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   {DATA_SOURCES.map(source => (
                     <SourceToggle
@@ -122,10 +119,15 @@ export default function MapControlsDock({
 
             {openPanel === 'pins' && (
               <>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Measure pins</p>
+                <div className="mb-3 flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">Measure pins</p>
+                    <TextAction onClick={() => setOpenPanel(null)}>Close</TextAction>
+                  </div>
                   {pinCount > 0 && onClearPins && (
-                    <TextAction onClick={onClearPins}>Clear pins</TextAction>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <TextAction onClick={onClearPins}>Clear pins</TextAction>
+                    </div>
                   )}
                 </div>
                 <p className="font-mono text-[11px] leading-relaxed text-ink-secondary">
@@ -172,7 +174,10 @@ export default function MapControlsDock({
 
             {openPanel === 'earthquake' && showEarthquakeControls && (
               <>
-                <p className="section-label-sm">Minimum magnitude</p>
+                <div className="mb-1 flex items-center justify-between gap-3">
+                  <p className="section-label-sm">Minimum magnitude</p>
+                  <TextAction onClick={() => setOpenPanel(null)}>Close</TextAction>
+                </div>
                 <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-ink-faint">
                   USGS · last 30 days · {earthquakeCount} shown
                   {activeMagOption ? ` · ${activeMagOption.description}` : ''}
