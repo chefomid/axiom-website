@@ -162,7 +162,7 @@ export function SourceToggle({ source, active, onClick }) {
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`group relative flex w-full items-center gap-2 rounded-lg py-2 pl-0 pr-1 text-left transition-all duration-200 ${
+      className={`group relative flex w-full items-center gap-2 rounded-lg py-2 pl-3 pr-1 text-left transition-all duration-200 ${
         active ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'
       }`}
     >

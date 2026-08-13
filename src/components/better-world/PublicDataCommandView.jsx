@@ -16,7 +16,7 @@ import { useIsLgUp } from '../../hooks/useMediaQuery'
 import { earthquakesToSignals } from '../../services/usgsEarthquakes'
 import { nwsToSignals } from '../../services/nwsAlerts'
 import { firmsToSignals } from '../../services/nasaFirms'
-import { nfhlToSignals } from '../../services/femaNfhl'
+import { nfhlToSignals, buildNfhlRasterTileUrl } from '../../services/femaNfhl'
 import {
   filterMarkers,
   filterMarkersByScope,
@@ -247,10 +247,11 @@ function PublicDataCommandViewInner() {
     [allVisibleSignals],
   )
 
-  const nfhlRaster = useMemo(() => {
-    if (!femaEnabled || !femaMeta.rasterUrl || !femaMeta.bbox) return null
-    return { url: femaMeta.rasterUrl, bbox: femaMeta.bbox }
-  }, [femaEnabled, femaMeta.rasterUrl, femaMeta.bbox])
+  const nfhlTilesUrl = useMemo(() => {
+    if (!femaEnabled) return null
+    if (scope === 'national' && countryId !== 'US') return null
+    return buildNfhlRasterTileUrl()
+  }, [femaEnabled, scope, countryId])
 
   useEffect(() => {
     const allIds = new Set([...visibleMarkers.map(m => m.id), ...visibleZones.map(z => z.id)])
@@ -531,14 +532,15 @@ function PublicDataCommandViewInner() {
       },
       {
         sourceName: 'FEMA NFHL',
-        enabled: activeDataSources.has('fema'),
+        enabled: femaEnabled,
         loading: femaLoading,
         error: femaError,
         stale: femaMeta.stale,
         recordCount: femaMeta.recordCount,
+        statusText: femaMeta.overlay ? 'overlay' : null,
         lastFetchedAt: femaMeta.lastFetchedAt,
         requestUrl: femaMeta.requestUrl,
-        dataRange: getFeedDataRangeLabel('FEMA NFHL'),
+        dataRange: getFeedDataRangeLabel('FEMA NFHL', { overlay: femaMeta.overlay }),
       },
     ],
     [
@@ -555,6 +557,7 @@ function PublicDataCommandViewInner() {
       femaLoading,
       femaError,
       femaMeta,
+      femaEnabled,
       minEarthquakeMag,
     ],
   )
@@ -603,7 +606,7 @@ function PublicDataCommandViewInner() {
               className="h-full w-full"
                 markers={visibleMarkers}
                 zones={visibleZones}
-                nfhlRaster={nfhlRaster}
+                nfhlTilesUrl={nfhlTilesUrl}
                 scope={scope}
                 radiusMiles={radiusMiles}
                 countryId={countryId}

@@ -30,7 +30,7 @@ export function getFeedDataRangeLabel(sourceName, options = {}) {
     case 'Wildfire':
       return 'current · last 24h'
     case 'FEMA NFHL':
-      return 'reference map'
+      return options.overlay ? 'zoom in for zones' : 'reference map'
     default:
       return null
   }

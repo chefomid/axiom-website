@@ -19,6 +19,7 @@ const EMPTY_META = {
   requestUrl: null,
   rasterUrl: null,
   bbox: null,
+  overlay: false,
   stale: false,
 }
 
@@ -46,6 +47,7 @@ function applyNfhlResult(result, { fetchedAt, stale = false }) {
       requestUrl: result.requestUrl ?? null,
       rasterUrl: result.rasterUrl ?? null,
       bbox: result.bbox ?? null,
+      overlay: Boolean(result.overlay),
       stale,
     },
   }
@@ -89,8 +91,8 @@ export default function useFemaNfhl({ scope, userLocation, radiusMiles, countryI
 
         if (shouldAnnounceFeedLoad(result.fromCache)) {
           pushEvent({
-            text: feedLoadedMessage('flood', markers.length),
-            type: markers.length > 0 ? 'stable' : 'watch',
+            text: feedLoadedMessage('flood', markers.length, { overlay: Boolean(result.overlay) }),
+            type: markers.length > 0 || result.overlay ? 'stable' : 'watch',
             source: telemetrySourceForLayer('flood'),
           })
         }

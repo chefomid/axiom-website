@@ -50,6 +50,9 @@ export function feedLoadedMessage(layer, count, options = {}) {
         ? 'No active weather alerts in this area'
         : `${count} weather alert${count === 1 ? '' : 's'} in this area`
     case 'flood':
+      if (options.overlay) {
+        return 'Flood zones appear as you zoom into the United States'
+      }
       return count === 0
         ? 'No flood zones in this area'
         : `${count} flood zone${count === 1 ? '' : 's'} in this area`

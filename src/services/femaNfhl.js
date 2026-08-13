@@ -2,6 +2,7 @@ import { defaultFetchHeaders, femaArcgisUrl } from '../utils/apiBase'
 import { getMarkerReportUrl } from '../utils/markerReportUrl'
 import { headlineForMarker, locationLabelForMarker } from '../utils/signalLocation'
 import { getScopeBbox, bboxToEsriEnvelope } from '../utils/scopeBbox'
+import { canQueryNfhlVectors } from '../utils/nfhlScope'
 import { getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
 import { geometryCentroid } from '../utils/geo'
 
@@ -95,9 +96,16 @@ export function buildNfhlRasterUrl(bbox) {
   return femaArcgisUrl(`/arcgis/rest/services/public/NFHL/MapServer/export?${params}`)
 }
 
+/** MapLibre raster tiles. Layer 0 draws at country scale, layer 28 at city scale. */
+export function buildNfhlRasterTileUrl() {
+  return femaArcgisUrl(
+    '/arcgis/rest/services/public/NFHL/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&dpi=96&format=png32&transparent=true&layers=show:0,28&f=image',
+  )
+}
+
 export async function fetchFemaNfhlZones(scopeConfig, options = {}) {
   if (scopeConfig.scope === 'national' && scopeConfig.countryId !== 'US') {
-    return { events: [], requestUrl: null, totalFetched: 0 }
+    return { events: [], requestUrl: null, totalFetched: 0, overlay: false }
   }
 
   const bbox = getScopeBbox(scopeConfig)
@@ -110,6 +118,17 @@ export async function fetchFemaNfhlZones(scopeConfig, options = {}) {
     bbox.north,
   ])
 
+  if (!canQueryNfhlVectors(scopeConfig)) {
+    return {
+      events: [],
+      requestUrl: buildNfhlRasterTileUrl(),
+      totalFetched: 0,
+      overlay: true,
+      rasterUrl: null,
+      bbox,
+    }
+  }
+
   if (!options.skipCache) {
     const cached = getRiskCache('nfhl', cacheKey)
     if (cached) return { ...cached, fromCache: true }
@@ -120,6 +139,9 @@ export async function fetchFemaNfhlZones(scopeConfig, options = {}) {
   if (!res.ok) throw new Error(`FEMA NFHL API error (${res.status})`)
 
   const data = await res.json()
+  if (data.error) {
+    throw new Error(data.error.message || 'FEMA NFHL query failed')
+  }
   const features = data.features ?? []
   const events = features.map(arcgisFeatureToRiskEvent).filter(Boolean).slice(0, MAX_ZONES)
 
@@ -127,6 +149,7 @@ export async function fetchFemaNfhlZones(scopeConfig, options = {}) {
     events,
     requestUrl: url,
     totalFetched: events.length,
+    overlay: false,
     rasterUrl: buildNfhlRasterUrl(bbox),
     bbox,
   }

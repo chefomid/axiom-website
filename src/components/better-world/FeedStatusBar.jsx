@@ -49,7 +49,8 @@ function FeedStatusChip({ feed }) {
     <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-muted">
       <span className="text-command-live">{feed.sourceName}</span>
       {': '}
-      {feed.recordCount} record{feed.recordCount === 1 ? '' : 's'}
+      {feed.statusText ??
+        `${feed.recordCount} record${feed.recordCount === 1 ? '' : 's'}`}
       <DataRangeSuffix dataRange={feed.dataRange} />
       <span className="text-ink-faint"> · synced {formatRefreshTime(feed.lastFetchedAt)}</span>
     </span>

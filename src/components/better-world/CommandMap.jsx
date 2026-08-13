@@ -348,7 +348,7 @@ export default function CommandMap({
   className = '',
   markers,
   zones = [],
-  nfhlRaster = null,
+  nfhlTilesUrl = null,
   scope,
   radiusMiles,
   countryId,
@@ -1037,7 +1037,7 @@ export default function CommandMap({
         center: [-20, 30],
         zoom: 1.8,
         minZoom: 2,
-        maxZoom: 14,
+        maxZoom: 16,
         attributionControl: false,
       })
 
@@ -1203,42 +1203,37 @@ export default function CommandMap({
     if (!map || !mapReady || !map.isStyleLoaded()) return
 
     try {
-      if (!nfhlRaster?.url || !nfhlRaster?.bbox) {
+      if (!nfhlTilesUrl) {
         if (map.getLayer('nfhl-raster-layer')) map.removeLayer('nfhl-raster-layer')
+        if (map.getSource('nfhl-tiles')) map.removeSource('nfhl-tiles')
         if (map.getSource('nfhl-raster')) map.removeSource('nfhl-raster')
         return
       }
 
-      const { west, south, east, north } = nfhlRaster.bbox
-      const coords = [
-        [west, north],
-        [east, north],
-        [east, south],
-        [west, south],
-      ]
+      if (map.getSource('nfhl-tiles')) return
+      if (!map.getLayer('risk-zones-fill')) return
 
-      if (map.getSource('nfhl-raster')) {
-        map.getSource('nfhl-raster').updateImage({ url: nfhlRaster.url, coordinates: coords })
-      } else if (map.getLayer('risk-zones-fill')) {
-        map.addSource('nfhl-raster', {
-          type: 'image',
-          url: nfhlRaster.url,
-          coordinates: coords,
-        })
-        map.addLayer(
-          {
-            id: 'nfhl-raster-layer',
-            type: 'raster',
-            source: 'nfhl-raster',
-            paint: { 'raster-opacity': 0.45 },
-          },
-          'risk-zones-fill',
-        )
-      }
+      if (map.getLayer('nfhl-raster-layer')) map.removeLayer('nfhl-raster-layer')
+      if (map.getSource('nfhl-raster')) map.removeSource('nfhl-raster')
+
+      map.addSource('nfhl-tiles', {
+        type: 'raster',
+        tiles: [nfhlTilesUrl],
+        tileSize: 256,
+      })
+      map.addLayer(
+        {
+          id: 'nfhl-raster-layer',
+          type: 'raster',
+          source: 'nfhl-tiles',
+          paint: { 'raster-opacity': 0.55 },
+        },
+        'risk-zones-fill',
+      )
     } catch (err) {
       console.error('Failed to update NFHL raster:', err)
     }
-  }, [nfhlRaster, mapReady])
+  }, [nfhlTilesUrl, mapReady])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1246,7 +1241,7 @@ export default function CommandMap({
 
     const selected = zones.find(z => z.id === selectedMarkerId)
     const dimRaster = selected?.layer === 'flood'
-    map.setPaintProperty('nfhl-raster-layer', 'raster-opacity', dimRaster ? 0.18 : 0.45)
+    map.setPaintProperty('nfhl-raster-layer', 'raster-opacity', dimRaster ? 0.18 : 0.55)
   }, [selectedMarkerId, zones, mapReady])
 
   useEffect(() => {
