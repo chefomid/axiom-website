@@ -1,4 +1,5 @@
 import { getScopeBbox, pointInBbox } from '../utils/scopeBbox'
+import { resolveOfficialSourceUrl } from '../utils/officialSourceUrl'
 
 /** NIFC WFIGS current wildland fire incident points (IRWIN-backed, free). */
 const NIFC_CURRENT_URL =
@@ -52,7 +53,7 @@ function featureToRiskEvent(feature) {
     .filter(Boolean)
     .join(', ')
 
-  return {
+  const event = {
     id: `nifc-${props.UniqueFireIdentifier || props.OBJECTID || `${lat}-${lng}`}`,
     source: 'NIFC',
     layer: 'wildfire',
@@ -77,10 +78,9 @@ function featureToRiskEvent(feature) {
     dataSources: ['nasa'],
     provider: 'nifc',
     raw: props,
-    links: {
-      official: `https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;@${lng},${lat},11z`,
-    },
   }
+  event.links = { official: resolveOfficialSourceUrl(event) }
+  return event
 }
 
 /**

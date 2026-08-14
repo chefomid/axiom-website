@@ -83,7 +83,9 @@ function eonetOfficialUrl(evt, lat, lng) {
     return url
   }
   if (Number.isFinite(lat) && Number.isFinite(lng)) {
-    return `https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;@${lng},${lat},11z`
+    return `https://inciweb.wildfire.gov/accessible-view?combine=${encodeURIComponent(
+      String(evt.title ?? 'wildfire').replace(/^wildfire\s+/i, '').split(',')[0].trim(),
+    )}`
   }
   return 'https://eonet.gsfc.nasa.gov/'
 }
