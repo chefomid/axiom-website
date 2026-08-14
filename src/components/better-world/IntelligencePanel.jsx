@@ -82,7 +82,7 @@ function SignalCardBody({ signal, index, accent, layer, layerColor, occurredAt, 
           <p className="mt-1 font-mono text-[10px] tabular-nums text-ink-faint">{occurredAt}</p>
         )}
         <p className="mt-1.5 font-mono text-[10px] text-ink-muted">
-          Source: {signal.source} · Confidence: {signal.confidence}%
+          Source: {signal.source}
         </p>
         {isFeed && (
           <p className={`mt-2 font-mono text-[10px] ${accent.text}`}>→ {signal.action}</p>

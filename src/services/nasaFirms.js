@@ -35,7 +35,6 @@ function rowToRiskEvent(row) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
 
   const id = `firms-${row.latitude}-${row.longitude}-${row.acq_date ?? ''}-${row.acq_time ?? ''}`
-  const conf = row.confidence ? `${row.confidence}%` : 'n/a'
 
   return {
     id,
@@ -52,7 +51,6 @@ function rowToRiskEvent(row) {
     confidence: row.confidence === 'h' ? 95 : row.confidence === 'n' ? 70 : 85,
     detail: [
       `Brightness ${row.bright_ti4 ?? row.brightness ?? 'n/a'}`,
-      `Confidence ${conf}`,
       row.frp ? `FRP ${row.frp} MW` : null,
       `Acquired ${row.acq_date ?? ''} ${row.acq_time ?? ''} UTC`,
     ]
@@ -176,7 +174,6 @@ function viirsFeatureToRiskEvent(feature) {
     confidence: props.confidence === 'high' ? 95 : props.confidence === 'nominal' ? 70 : 85,
     detail: [
       `Brightness ${props.bright_ti4 ?? 'n/a'}`,
-      props.confidence ? `Confidence ${props.confidence}` : null,
       props.frp != null ? `FRP ${props.frp} MW` : null,
       acqDate ? `Acquired ${acqDate}` : null,
       'VIIRS thermal hotspot',

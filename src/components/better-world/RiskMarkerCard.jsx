@@ -1,11 +1,16 @@
 import { motion } from 'framer-motion'
 import { IconButton } from '../ui/CommandControls'
 import { getMarkerReportUrl } from '../../utils/markerReportUrl'
+import { containedPercent } from '../../utils/wildfireDisplay'
+
+const CONTAINED_GRADIENT =
+  'linear-gradient(to right, #e05252 0%, #e07040 25%, #e8a838 50%, #e8d44a 75%, #3dd68c 100%)'
 
 export default function RiskMarkerCard({ marker, onClose }) {
   if (!marker) return null
 
   const reportUrl = getMarkerReportUrl(marker)
+  const containedPct = containedPercent(marker)
 
   return (
     <motion.div
@@ -26,11 +31,27 @@ export default function RiskMarkerCard({ marker, onClose }) {
       </div>
 
       <p className="mt-3 text-sm leading-relaxed text-ink-secondary">{marker.detail}</p>
+      {containedPct != null ? (
+        <div
+          className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#1a1a1a]"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(containedPct)}
+          aria-label={`${Math.round(containedPct)} percent contained`}
+        >
+          <div
+            className="h-full w-full rounded-full"
+            style={{
+              background: CONTAINED_GRADIENT,
+              clipPath: `inset(0 ${100 - containedPct}% 0 0)`,
+            }}
+          />
+        </div>
+      ) : null}
 
       <div className="mt-3 space-y-1 border-t border-[#222] pt-3">
-        <p className="font-mono text-[10px] text-ink-muted">
-          Source: {marker.source} · Confidence: {marker.confidence}%
-        </p>
+        <p className="font-mono text-[10px] text-ink-muted">Source: {marker.source}</p>
         {reportUrl ? (
           <a
             href={reportUrl}

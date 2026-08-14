@@ -95,3 +95,14 @@ export function wildfireFlameScale(marker) {
   if (wildfireKindFromMarker(marker) === 'named') return scaleFromAcres(acresFromMarker(marker))
   return scaleFromHotspot(marker?.raw)
 }
+
+export function containedPercent(marker) {
+  const raw = Number(marker?.raw?.PercentContained)
+  if (Number.isFinite(raw)) return Math.min(100, Math.max(0, raw))
+
+  const match = String(marker?.detail ?? '').match(/(\d+(?:\.\d+)?)\s*%\s*contained/i)
+  if (!match) return null
+  const fromDetail = Number(match[1])
+  if (!Number.isFinite(fromDetail)) return null
+  return Math.min(100, Math.max(0, fromDetail))
+}

@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  containedPercent,
   filterMarkersByWildfireKind,
   mergeWildfireEvents,
   wildfireFlameScale,
@@ -112,5 +113,21 @@ describe('wildfireFlameScale', () => {
     const weak = wildfireFlameScale({ ...hotspot, raw: { frp: '2' } })
     const strong = wildfireFlameScale({ ...hotspot, raw: { frp: '70' } })
     assert.ok(strong > weak)
+  })
+})
+
+describe('containedPercent', () => {
+  it('reads NIFC PercentContained and clamps to 0-100', () => {
+    assert.equal(containedPercent({ raw: { PercentContained: 72 } }), 72)
+    assert.equal(containedPercent({ raw: { PercentContained: 140 } }), 100)
+    assert.equal(containedPercent({ raw: { PercentContained: -4 } }), 0)
+  })
+
+  it('falls back to detail text and skips fires without containment', () => {
+    assert.equal(
+      containedPercent({ detail: 'Wildfire · 102,004 acres · 72% contained' }),
+      72,
+    )
+    assert.equal(containedPercent(hotspot), null)
   })
 })
