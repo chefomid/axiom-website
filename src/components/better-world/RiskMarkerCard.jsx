@@ -4,7 +4,14 @@ import { getMarkerReportUrl } from '../../utils/markerReportUrl'
 import { containedPercent } from '../../utils/wildfireDisplay'
 
 const CONTAINED_GRADIENT =
-  'linear-gradient(to right, #e05252 0%, #e07040 25%, #e8a838 50%, #e8d44a 75%, #3dd68c 100%)'
+  'linear-gradient(to right, #8f4a48 0%, #a67a4a 25%, #a8884c 55%, #7a8f62 100%)'
+
+function detailWithoutContained(detail) {
+  return String(detail ?? '')
+    .split(' · ')
+    .filter(part => !/\d+(?:\.\d+)?%\s*contained/i.test(part))
+    .join(' · ')
+}
 
 export default function RiskMarkerCard({ marker, onClose }) {
   if (!marker) return null
@@ -30,23 +37,30 @@ export default function RiskMarkerCard({ marker, onClose }) {
         </IconButton>
       </div>
 
-      <p className="mt-3 text-sm leading-relaxed text-ink-secondary">{marker.detail}</p>
+      <p className="mt-3 text-sm leading-relaxed text-ink-secondary">
+        {containedPct != null ? detailWithoutContained(marker.detail) : marker.detail}
+      </p>
       {containedPct != null ? (
-        <div
-          className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#1a1a1a]"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(containedPct)}
-          aria-label={`${Math.round(containedPct)} percent contained`}
-        >
+        <div className="mt-3">
+          <p className="mb-1.5 font-mono text-[10px] tabular-nums text-ink-muted">
+            {Math.round(containedPct)}% contained
+          </p>
           <div
-            className="h-full w-full rounded-full"
-            style={{
-              background: CONTAINED_GRADIENT,
-              clipPath: `inset(0 ${100 - containedPct}% 0 0)`,
-            }}
-          />
+            className="h-2 w-full overflow-hidden rounded-full border border-[#555] bg-[#3a3a3a]"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(containedPct)}
+            aria-label={`${Math.round(containedPct)} percent contained`}
+          >
+            <div
+              className="h-full w-full rounded-full"
+              style={{
+                background: CONTAINED_GRADIENT,
+                clipPath: `inset(0 ${100 - containedPct}% 0 0)`,
+              }}
+            />
+          </div>
         </div>
       ) : null}
 
