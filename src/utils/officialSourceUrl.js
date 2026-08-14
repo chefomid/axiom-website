@@ -66,11 +66,17 @@ function isInaccessibleWildfireUrl(url) {
   if (/irwin\.doi\.gov/i.test(url)) return true
   if (/eonet\.gsfc\.nasa\.gov\/api\//i.test(url)) return true
   if (isFirmsMapUrl(url)) return true
+  if (/inciweb\.wildfire\.gov\/accessible-view/i.test(url)) return true
   const bare = url.split('#')[0].replace(/\/$/, '')
   return (
     /^https:\/\/eonet\.gsfc\.nasa\.gov$/i.test(bare) ||
-    /^https:\/\/data-nifc\.opendata\.arcgis\.com$/i.test(bare)
+    /^https:\/\/data-nifc\.opendata\.arcgis\.com$/i.test(bare) ||
+    /^https:\/\/inciweb\.wildfire\.gov$/i.test(bare)
   )
+}
+
+function isGuessedInciwebUrl(url) {
+  return typeof url === 'string' && /inciweb\.wildfire\.gov\/incident-information\//i.test(url)
 }
 
 function firstIncidentSourceUrl(marker) {
@@ -101,39 +107,45 @@ function uniqueFireIdFrom(marker) {
   return null
 }
 
-function incidentNameFrom(marker) {
-  const raw = marker.raw ?? {}
-  const named = raw.IncidentName ?? marker.title ?? marker.label
-  if (typeof named !== 'string') return null
-  return named
-    .replace(/^wildfire\s+/i, '')
-    .split(',')[0]
-    .trim()
-}
-
-function slugifyIncidentName(name) {
-  return String(name)
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
 function unitFromUniqueFireId(uniqueId) {
   const parts = String(uniqueId).split('-')
-  return parts.length >= 3 ? parts[1].toLowerCase() : null
+  return parts.length >= 3 ? parts[1] : null
 }
 
-function inciwebIncidentUrl(marker) {
+function stateCodeFrom(marker) {
+  const poo = String(marker.raw?.POOState ?? '').toUpperCase()
+  const pooMatch = poo.match(/^(?:US-)?([A-Z]{2})$/)
+  if (pooMatch) return pooMatch[1]
+
   const uniqueId = uniqueFireIdFrom(marker)
-  const name = incidentNameFrom(marker)
   const unit = uniqueId ? unitFromUniqueFireId(uniqueId) : null
-  const slug = name ? slugifyIncidentName(name) : ''
-  if (unit && slug) return `https://inciweb.wildfire.gov/incident-information/${unit}-${slug}`
-  if (name) {
-    return `https://inciweb.wildfire.gov/accessible-view?combine=${encodeURIComponent(name)}`
-  }
+  if (typeof unit === 'string' && /^[A-Z]{2}/i.test(unit)) return unit.slice(0, 2).toUpperCase()
   return null
+}
+
+const STATE_WILDFIRE_INFO = {
+  AK: 'https://akfireinfo.com/',
+  AZ: 'https://dffm.az.gov/',
+  CA: 'https://www.fire.ca.gov/incidents',
+  CO: 'https://dfpc.colorado.gov/wildfire-information',
+  ID: 'https://www.idl.idaho.gov/fire-management/',
+  MT: 'https://dnrc.mt.gov/Forestry/Wildfire',
+  NM: 'https://www.emnrd.nm.gov/sfd/',
+  NV: 'https://forestry.nv.gov/',
+  OR: 'https://www.oregon.gov/odf/fire/pages/default.aspx',
+  TX: 'https://tfsweb.tamu.edu/Wildfires/',
+  UT: 'https://utah-fire-info-utahdnr.hub.arcgis.com/',
+  WA: 'https://www.dnr.wa.gov/Wildfires',
+  WY: 'https://wsfd.wyo.gov/',
+}
+
+const NIFC_WFIGS_ITEM_ID = '4181a117dc9e43db8598533e29972015'
+
+function nifcIncidentMapUrl(lat, lng) {
+  const y = Number(lat)
+  const x = Number(lng)
+  if (!Number.isFinite(y) || !Number.isFinite(x)) return null
+  return `https://www.arcgis.com/apps/mapviewer/index.html?layers=${NIFC_WFIGS_ITEM_ID}&center=${x},${y}&level=12`
 }
 
 function resolveWildfirePublicUrl(marker) {
@@ -141,12 +153,17 @@ function resolveWildfirePublicUrl(marker) {
   if (sourceUrl) return sourceUrl
 
   if (wildfireKindFromMarker(marker) === 'named') {
-    const incidentUrl = inciwebIncidentUrl(marker)
-    if (incidentUrl) return incidentUrl
+    const stateUrl = STATE_WILDFIRE_INFO[stateCodeFrom(marker)]
+    if (stateUrl) return stateUrl
+    const mapUrl = nifcIncidentMapUrl(marker.lat, marker.lng)
+    if (mapUrl) return mapUrl
+    return 'https://www.nifc.gov/fire-information/nfn'
   }
 
   const official = sanitizePublicUrl(marker.officialUrl)
-  if (official && !isInaccessibleWildfireUrl(official)) return official
+  if (official && !isInaccessibleWildfireUrl(official) && !isGuessedInciwebUrl(official)) {
+    return official
+  }
 
   const lat = Number(marker.lat)
   const lng = Number(marker.lng)

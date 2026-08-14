@@ -6,6 +6,7 @@ import { MapCornerControls } from '../../lib/mapCornerControls'
 import { COUNTRIES, RISK_LAYERS, SEVERITY_HEX } from '../../data/commandMapData'
 import { ensureWildfireIcon, WILDFIRE_ICON_ID } from '../../utils/wildfireIcon'
 import { wildfireFlameScale } from '../../utils/wildfireDisplay'
+import { insetPointToward } from '../../utils/shapeAnalyzeHover'
 import {
   createCirclePolygon,
   geometryCentroid,
@@ -109,6 +110,7 @@ function flyToMapItem(map, item) {
 const MIN_SEGMENT_LABEL_PX = 18
 const MIN_TRIANGLE_INLINE_AREA_PX = 3200
 const SHAPE_ANALYZE_HOVER_MS = 700
+const SHAPE_ANALYZE_DISMISS_MS = 800
 const MIN_LABEL_FONT_PX = 6
 const MAX_LABEL_FONT_PX = 22
 
@@ -432,6 +434,8 @@ export default function CommandMap({
   const triangleAreaPopupRef = useRef(null)
   const shapeAnalyzePromptRef = useRef(null)
   const shapeHoverTimerRef = useRef(null)
+  const shapeAnalyzeDismissTimerRef = useRef(null)
+  const pendingShapeAnalyzeRef = useRef(null)
   const hoveredShapeForAnalyzeRef = useRef(null)
   const hoveredTriangleIdRef = useRef(null)
   const markersByIdRef = useRef(new Map())
@@ -981,10 +985,25 @@ export default function CommandMap({
         shapeHoverTimerRef.current = null
       }
 
+      const clearShapeAnalyzeDismissTimer = () => {
+        if (shapeAnalyzeDismissTimerRef.current == null) return
+        clearTimeout(shapeAnalyzeDismissTimerRef.current)
+        shapeAnalyzeDismissTimerRef.current = null
+      }
+
       const clearShapeAnalyzePrompt = () => {
         clearShapeHoverTimer()
+        clearShapeAnalyzeDismissTimer()
         hoveredShapeForAnalyzeRef.current = null
+        pendingShapeAnalyzeRef.current = null
         shapeAnalyzePromptRef.current?.(null)
+      }
+
+      const scheduleShapeAnalyzeDismiss = () => {
+        clearShapeAnalyzeDismissTimer()
+        shapeAnalyzeDismissTimerRef.current = setTimeout(() => {
+          clearShapeAnalyzePrompt()
+        }, SHAPE_ANALYZE_DISMISS_MS)
       }
 
       map.on('mousemove', 'user-pin-triangles-fill', e => {
@@ -999,35 +1018,51 @@ export default function CommandMap({
         }
 
         map.getCanvas().style.cursor = 'pointer'
+        clearShapeAnalyzeDismissTimer()
 
-        if (!usgsEnabledRef.current || id === hoveredShapeForAnalyzeRef.current) return
+        const centroid = featureShapeCentroid(feature)
+        pendingShapeAnalyzeRef.current = {
+          id,
+          x: e.point.x,
+          y: e.point.y,
+          centroid,
+          areaSqMiles: Number(feature.properties?.areaSqMiles),
+        }
+
+        if (!usgsEnabledRef.current) return
+        // Same shape: keep Analyze still once it is up, but let the pending
+        // hover point track the cursor so the button appears near where they wait.
+        if (id === hoveredShapeForAnalyzeRef.current) return
 
         clearShapeHoverTimer()
         shapeAnalyzePromptRef.current?.(null)
         hoveredShapeForAnalyzeRef.current = id
-
-        const centroid = featureShapeCentroid(feature)
         if (!centroid) return
 
-        const areaSqMiles = Number(feature.properties?.areaSqMiles)
-        const point = { x: e.point.x, y: e.point.y }
-
         shapeHoverTimerRef.current = setTimeout(() => {
-          if (hoveredShapeForAnalyzeRef.current !== id) return
+          const pending = pendingShapeAnalyzeRef.current
+          if (!pending || pending.id !== id || hoveredShapeForAnalyzeRef.current !== id) return
+          if (!pending.centroid) return
+          const centroidPoint = map.project([pending.centroid.lng, pending.centroid.lat])
+          const placed = insetPointToward(
+            { x: pending.x, y: pending.y },
+            centroidPoint,
+            48,
+          )
           shapeAnalyzePromptRef.current?.({
             id,
-            x: point.x,
-            y: point.y,
-            lat: centroid.lat,
-            lng: centroid.lng,
-            areaSqMiles,
+            x: placed.x,
+            y: placed.y,
+            lat: pending.centroid.lat,
+            lng: pending.centroid.lng,
+            areaSqMiles: pending.areaSqMiles,
           })
         }, SHAPE_ANALYZE_HOVER_MS)
       })
 
       map.on('mouseleave', 'user-pin-triangles-fill', () => {
         clearTriangleHoverState()
-        clearShapeAnalyzePrompt()
+        scheduleShapeAnalyzeDismiss()
         setMapCursor()
       })
 
@@ -1350,22 +1385,30 @@ export default function CommandMap({
   useEffect(
     () => () => {
       if (shapeHoverTimerRef.current) clearTimeout(shapeHoverTimerRef.current)
+      if (shapeAnalyzeDismissTimerRef.current) clearTimeout(shapeAnalyzeDismissTimerRef.current)
     },
     [],
   )
 
-  const handleShapeAnalyzeClick = () => {
+  const handleShapeAnalyzeClick = event => {
+    event.preventDefault()
+    event.stopPropagation()
     if (!shapeAnalyzePrompt) return
     const label = Number.isFinite(shapeAnalyzePrompt.areaSqMiles)
       ? `Region (${formatArea(shapeAnalyzePrompt.areaSqMiles)})`
       : 'Region'
-    onAnalyzeAtPin?.({
+    onAnalyzeAtPinRef.current?.({
       lat: shapeAnalyzePrompt.lat,
       lng: shapeAnalyzePrompt.lng,
       label,
     })
     setShapeAnalyzePrompt(null)
     hoveredShapeForAnalyzeRef.current = null
+    pendingShapeAnalyzeRef.current = null
+    if (shapeAnalyzeDismissTimerRef.current) {
+      clearTimeout(shapeAnalyzeDismissTimerRef.current)
+      shapeAnalyzeDismissTimerRef.current = null
+    }
   }
 
   if (mapInitError) {
@@ -1460,10 +1503,29 @@ export default function CommandMap({
         <div
           className="map-shape-analyze-prompt"
           style={{ left: shapeAnalyzePrompt.x, top: shapeAnalyzePrompt.y }}
+          onMouseEnter={() => {
+            if (shapeAnalyzeDismissTimerRef.current) {
+              clearTimeout(shapeAnalyzeDismissTimerRef.current)
+              shapeAnalyzeDismissTimerRef.current = null
+            }
+          }}
+          onMouseLeave={() => {
+            if (shapeAnalyzeDismissTimerRef.current) {
+              clearTimeout(shapeAnalyzeDismissTimerRef.current)
+            }
+            shapeAnalyzeDismissTimerRef.current = setTimeout(() => {
+              hoveredShapeForAnalyzeRef.current = null
+              setShapeAnalyzePrompt(null)
+            }, SHAPE_ANALYZE_DISMISS_MS)
+          }}
         >
           <button
             type="button"
             className="map-shape-analyze-prompt__btn"
+            onMouseDown={event => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
             onClick={handleShapeAnalyzeClick}
           >
             Analyze

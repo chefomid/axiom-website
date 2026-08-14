@@ -5,6 +5,7 @@ import { getScopeBbox, pointInBbox } from '../utils/scopeBbox'
 import { firmsAreaForScope, parseFirmsCsv } from '../utils/firmsFeed'
 import { getLastGoodRiskCache, getRiskCache, setRiskCache, riskCacheKey } from '../utils/riskCache'
 import { mergeWildfireEvents } from '../utils/wildfireDisplay'
+import { resolveOfficialSourceUrl } from '../utils/officialSourceUrl'
 import { fetchNifcWildfires } from './nifcWildfire'
 
 const FIRMS_SOURCE = 'VIIRS_SNPP_NRT'
@@ -73,23 +74,6 @@ export function buildFirmsRequestUrl(scopeConfig) {
 
 const EONET_URL = 'https://eonet.gsfc.nasa.gov/api/v3/events?category=wildfires&status=open&limit=120'
 
-function eonetOfficialUrl(evt, lat, lng) {
-  const sources = Array.isArray(evt.sources) ? evt.sources : []
-  for (const source of sources) {
-    const url = source?.url
-    if (typeof url !== 'string' || !url.startsWith('http')) continue
-    if (/eonet\.gsfc\.nasa\.gov\/api\//i.test(url)) continue
-    if (/irwin\.doi\.gov/i.test(url)) continue
-    return url
-  }
-  if (Number.isFinite(lat) && Number.isFinite(lng)) {
-    return `https://inciweb.wildfire.gov/accessible-view?combine=${encodeURIComponent(
-      String(evt.title ?? 'wildfire').replace(/^wildfire\s+/i, '').split(',')[0].trim(),
-    )}`
-  }
-  return 'https://eonet.gsfc.nasa.gov/'
-}
-
 function eonetEventToRiskEvent(evt) {
   const geometries = evt.geometry ?? []
   const latest = geometries[geometries.length - 1]
@@ -101,7 +85,7 @@ function eonetEventToRiskEvent(evt) {
   const acres = latest.magnitudeUnit === 'acres' ? latest.magnitudeValue : null
   const severity = acres != null && acres >= 1000 ? 'critical' : acres != null && acres >= 100 ? 'watch' : 'live'
 
-  return {
+  const event = {
     id: `eonet-${evt.id}`,
     source: 'NASA',
     layer: 'wildfire',
@@ -124,8 +108,9 @@ function eonetEventToRiskEvent(evt) {
       .join(' · '),
     dataSources: ['nasa'],
     raw: evt,
-    links: { official: eonetOfficialUrl(evt, lat, lng) },
   }
+  event.links = { official: resolveOfficialSourceUrl(event) }
+  return event
 }
 
 async function fetchEonetWildfires(scopeConfig, options = {}) {

@@ -1252,7 +1252,8 @@ html::-webkit-scrollbar-thumb:hover,
   position: absolute;
   z-index: 17;
   pointer-events: auto;
-  transform: translate(-50%, calc(-100% - 10px));
+  transform: translate(-50%, calc(-100% - 4px));
+  padding: 4px 12px 36px;
 }
 
 .map-shape-analyze-prompt__btn {
