@@ -24,17 +24,18 @@ const publicDataCommandItems = [
   {
     id: 'fire',
     label: FIRE_HOTSPOTS_LABEL,
-    description: 'Live fire feeds, schedule upload, radius and wind tools',
     kind: 'external',
   },
   {
     id: 'seismic',
     label: EARTHQUAKE_ANALYSIS_LABEL,
-    description: 'USGS frequency by radius, timeline, and location',
     to: EARTHQUAKE_ANALYSIS_PATH,
     kind: 'internal',
   },
 ]
+
+const subNavItemClass =
+  'block py-0.5 text-[9px] uppercase tracking-[0.16em] text-ink-faint transition-colors duration-300 hover:text-white'
 
 function pathActive(pathname, to) {
   return pathname === to || (to !== '/' && pathname.startsWith(`${to}/`))
@@ -134,78 +135,48 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
 
       <AnimatePresence>
         {open ? (
-          <motion.div
+          <motion.ul
             id="nav-pdc-menu"
             role="menu"
             aria-label={PUBLIC_DATA_COMMAND_LABEL}
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: dropdownEase }}
-            className="pi-search-dropdown-enter absolute right-0 top-full z-[60] mt-2.5 w-[min(19rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-white/10 bg-panel-surface/95 shadow-2xl backdrop-blur-md [color-scheme:dark]"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -2 }}
+            transition={{ duration: 0.16, ease: dropdownEase }}
+            className="absolute right-0 top-full z-[60] mt-1 flex flex-col items-end gap-0.5"
           >
-            <div className="border-b border-white/8 px-4 py-3">
-              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted">
-                Hazard intelligence
-              </p>
-            </div>
-            <ul className="divide-y divide-white/6 py-1">
-              {publicDataCommandItems.map(item => {
-                if (item.kind === 'external' && !fireEnabled) return null
+            {publicDataCommandItems.map(item => {
+              if (item.kind === 'external' && !fireEnabled) return null
 
-                const itemActive =
-                  item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
+              const itemActive =
+                item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
 
-                const rowClass = `group/item flex w-full flex-col gap-0.5 px-4 py-3 text-left transition-colors ${
-                  itemActive
-                    ? 'bg-white/[0.06]'
-                    : 'hover:bg-white/[0.04] focus-visible:bg-white/[0.04]'
-                }`
+              const rowClass = `${subNavItemClass} ${itemActive ? 'text-white' : ''}`
 
-                if (item.kind === 'external') {
-                  return (
-                    <li key={item.id} role="none">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={handleFireSelect}
-                        className={rowClass}
-                      >
-                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-white transition-colors group-hover/item:text-command-watch">
-                          {item.label}
-                        </span>
-                        <span className="font-mono text-[9px] leading-relaxed text-ink-faint">
-                          {item.description}
-                        </span>
-                      </button>
-                    </li>
-                  )
-                }
-
+              if (item.kind === 'external') {
                 return (
                   <li key={item.id} role="none">
-                    <Link
-                      to={item.to}
-                      role="menuitem"
-                      onClick={() => setOpen(false)}
-                      className={rowClass}
-                    >
-                      <span
-                        className={`font-mono text-[10px] uppercase tracking-[0.14em] transition-colors ${
-                          itemActive ? 'text-command-watch' : 'text-white group-hover/item:text-command-live'
-                        }`}
-                      >
-                        {item.label}
-                      </span>
-                      <span className="font-mono text-[9px] leading-relaxed text-ink-faint">
-                        {item.description}
-                      </span>
-                    </Link>
+                    <button type="button" role="menuitem" onClick={handleFireSelect} className={rowClass}>
+                      {item.label}
+                    </button>
                   </li>
                 )
-              })}
-            </ul>
-          </motion.div>
+              }
+
+              return (
+                <li key={item.id} role="none">
+                  <Link
+                    to={item.to}
+                    role="menuitem"
+                    onClick={() => setOpen(false)}
+                    className={rowClass}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              )
+            })}
+          </motion.ul>
         ) : null}
       </AnimatePresence>
     </div>
@@ -227,13 +198,8 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
           active ? 'text-white' : 'text-ink-muted hover:text-white'
         }`}
       >
-        <span>
-          <span className="font-display text-base font-medium tracking-tight">
-            {PUBLIC_DATA_COMMAND_LABEL}
-          </span>
-          <span className="mt-1 block text-[12px] leading-relaxed text-ink-faint">
-            Live hazard feeds and regional intelligence
-          </span>
+        <span className="font-display text-base font-medium tracking-tight">
+          {PUBLIC_DATA_COMMAND_LABEL}
         </span>
         <ChevronDown
           className={`shrink-0 text-ink-faint transition-transform duration-300 ${
@@ -249,7 +215,7 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.22, ease: dropdownEase }}
-            className="overflow-hidden border-t border-[#141414] bg-[#080808]/80"
+            className="overflow-hidden pb-2"
           >
             {publicDataCommandItems.map(item => {
               if (item.kind === 'external' && !fireEnabled) return null
@@ -257,9 +223,7 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
               const itemActive =
                 item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
 
-              const rowClass = `block border-b border-[#121212] px-4 py-3.5 pl-6 transition-colors last:border-b-0 ${
-                itemActive ? 'bg-white/[0.04] text-white' : 'text-ink-muted hover:bg-white/[0.03] hover:text-white'
-              }`
+              const rowClass = `${subNavItemClass} w-full text-right ${itemActive ? 'text-white' : ''}`
 
               if (item.kind === 'external') {
                 return (
@@ -270,12 +234,9 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
                         onClose()
                         onNavigateFire()
                       }}
-                      className={`${rowClass} w-full text-left`}
+                      className={rowClass}
                     >
-                      <span className="font-display text-sm font-medium tracking-tight">{item.label}</span>
-                      <span className="mt-1 block text-[11px] leading-relaxed text-ink-faint">
-                        {item.description}
-                      </span>
+                      {item.label}
                     </button>
                   </li>
                 )
@@ -284,10 +245,7 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
               return (
                 <li key={item.id}>
                   <Link to={item.to} onClick={onClose} className={rowClass}>
-                    <span className="font-display text-sm font-medium tracking-tight">{item.label}</span>
-                    <span className="mt-1 block text-[11px] leading-relaxed text-ink-faint">
-                      {item.description}
-                    </span>
+                    {item.label}
                   </Link>
                 </li>
               )
