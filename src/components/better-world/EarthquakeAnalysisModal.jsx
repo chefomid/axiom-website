@@ -441,7 +441,7 @@ export default function EarthquakeAnalysisModal({
                               setDigestOpen(true)
                               setDigestExpanded(true)
                             }}
-                            className="rounded-lg border border-[#ff9348]/40 bg-[#ff9348]/10 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ff9348] shadow-lg transition hover:border-[#ff9348]/60 hover:bg-[#ff9348]/15"
+                            className="rounded-lg border border-[#ff9348] bg-[#ff9348] px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0a0a0a] shadow-lg transition hover:bg-[#ffaa6a] hover:border-[#ffaa6a]"
                           >
                             STAT DIGEST
                           </button>

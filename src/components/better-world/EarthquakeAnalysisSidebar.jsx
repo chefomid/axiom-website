@@ -144,7 +144,7 @@ export default function EarthquakeAnalysisSidebar({
         <button
           type="button"
           onClick={onClose}
-          className="w-full font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint transition hover:text-white"
+          className="w-full rounded-lg bg-white px-4 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-black transition hover:bg-white/90"
         >
           Back to map
         </button>
