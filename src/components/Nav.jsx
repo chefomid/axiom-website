@@ -31,7 +31,7 @@ const publicDataCommandItems = [
 ]
 
 const subNavItemClass =
-  'block py-0.5 text-left text-[9px] uppercase tracking-widest text-white/30 transition-colors duration-300 hover:text-white/55'
+  'block py-0.5 text-[9px] uppercase tracking-widest text-white/30 transition-colors duration-300 hover:text-white/55'
 
 function pathActive(pathname, to) {
   return pathname === to || (to !== '/' && pathname.startsWith(`${to}/`))
@@ -109,15 +109,15 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
 
   return (
     <div ref={rootRef} className="group relative shrink-0">
-      <div className="inline-flex items-start gap-1.5">
-        <div className="flex flex-col items-start">
+      <div className="inline-flex items-center gap-1.5">
+        <div className="relative">
           <button
             type="button"
             aria-expanded={open}
             aria-haspopup="menu"
             aria-controls="nav-pdc-menu"
             onClick={() => setOpen(value => !value)}
-            className={`text-left uppercase tracking-widest transition-colors duration-300 ${
+            className={`whitespace-nowrap text-left uppercase tracking-widest transition-colors duration-300 ${
               active || open ? 'text-white' : 'text-ink-muted hover:text-white'
             }`}
           >
@@ -134,7 +134,7 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -2 }}
                 transition={{ duration: 0.16, ease: dropdownEase }}
-                className="mt-1 flex flex-col items-start gap-0.5"
+                className="absolute right-0 top-full z-10 mt-1 flex w-full flex-col items-stretch gap-0.5 bg-black/90 py-0.5"
               >
                 {publicDataCommandItems.map(item => {
                   if (item.kind === 'external' && !fireEnabled) return null
@@ -142,7 +142,7 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
                   const itemActive =
                     item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
 
-                  const rowClass = `${subNavItemClass} ${itemActive ? 'text-white/55' : ''}`
+                  const rowClass = `${subNavItemClass} w-full text-right ${itemActive ? 'text-white/55' : ''}`}
 
                   if (item.kind === 'external') {
                     return (
@@ -173,7 +173,7 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
         </div>
 
         <ChevronDown
-          className={`mt-0.5 shrink-0 transition-all duration-300 ${
+          className={`shrink-0 transition-all duration-300 ${
             open
               ? 'rotate-180 opacity-100'
               : 'opacity-0 group-hover:opacity-70 group-focus-within:opacity-70'
@@ -224,7 +224,7 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
               const itemActive =
                 item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
 
-              const rowClass = `${subNavItemClass} pl-0 ${itemActive ? 'text-white/55' : ''}`
+              const rowClass = `${subNavItemClass} pl-0 text-left ${itemActive ? 'text-white/55' : ''}`
 
               if (item.kind === 'external') {
                 return (
@@ -413,7 +413,7 @@ export default function Nav() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 border-b border-[#141414]/80 bg-black/90 backdrop-blur-md transition-transform duration-300 ease-out will-change-transform md:translate-y-0 ${
+        className={`fixed top-0 left-0 right-0 z-50 overflow-visible border-b border-[#141414]/80 bg-black/90 backdrop-blur-md transition-transform duration-300 ease-out will-change-transform md:translate-y-0 ${
           headerVisible ? 'translate-y-0' : '-translate-y-full'
         }`}
         style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}
