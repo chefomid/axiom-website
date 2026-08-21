@@ -12,10 +12,6 @@ import {
   PUBLIC_DATA_COMMAND_PATH,
 } from '../constants/routes'
 import { isFireAlertsDemoEnabled } from '../config/features'
-import FirePreviewNoticeModal, {
-  ackFirePreviewNotice,
-  isFirePreviewNoticeAcked,
-} from './FirePreviewNoticeModal'
 
 const linkClass = 'hover:text-white transition-colors duration-300'
 const dropdownEase = [0.25, 0.1, 0.25, 1]
@@ -348,25 +344,12 @@ export default function Nav() {
   const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [headerHidden, setHeaderHidden] = useState(false)
-  const [fireNoticeOpen, setFireNoticeOpen] = useState(false)
   const lastScrollY = useRef(0)
   const isHome = pathname === '/'
 
   const navigateToFirePreview = useCallback(() => {
     if (!isFireAlertsDemoEnabled() || !FIRE_ALERTS_DEMO_URL) return
-
-    if (isFirePreviewNoticeAcked()) {
-      window.location.assign(FIRE_ALERTS_DEMO_URL)
-      return
-    }
-
-    setFireNoticeOpen(true)
-  }, [])
-
-  const handleFireContinue = useCallback(() => {
-    ackFirePreviewNotice()
-    setFireNoticeOpen(false)
-    if (FIRE_ALERTS_DEMO_URL) window.location.assign(FIRE_ALERTS_DEMO_URL)
+    window.location.assign(FIRE_ALERTS_DEMO_URL)
   }, [])
 
   useEffect(() => {
@@ -481,11 +464,6 @@ export default function Nav() {
         onNavigateFire={navigateToFirePreview}
       />
 
-      <FirePreviewNoticeModal
-        open={fireNoticeOpen}
-        onContinue={handleFireContinue}
-        onCancel={() => setFireNoticeOpen(false)}
-      />
     </>
   )
 }
