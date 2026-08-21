@@ -134,7 +134,7 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -2 }}
                 transition={{ duration: 0.16, ease: dropdownEase }}
-                className="absolute right-0 top-full z-10 mt-1 flex w-full flex-col items-stretch gap-0.5 bg-black/90 py-0.5"
+                className="absolute right-0 top-full z-10 mt-1 flex w-full flex-col items-stretch gap-0.5"
               >
                 {publicDataCommandItems.map(item => {
                   if (item.kind === 'external' && !fireEnabled) return null
