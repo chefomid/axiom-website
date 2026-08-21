@@ -61,7 +61,7 @@ export default function FirePreviewNoticeModal({ open, onContinue, onCancel }) {
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="rounded-lg border border-[#d0d0d0] px-4 py-2.5 font-mono text-[10px] uppercase tracking-wider text-[#555] transition hover:border-[#999] hover:text-[#141414]"
+                  className="rounded-lg border border-[#141414] px-4 py-2.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#141414] transition hover:bg-[#141414] hover:text-white"
                 >
                   Cancel
                 </button>
