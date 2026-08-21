@@ -39,6 +39,13 @@ export const COI_TRACKER_DEMO_URL =
   import.meta.env.VITE_COI_TRACKER_DEMO_URL?.trim() ||
   (import.meta.env.DEV ? 'http://localhost:5180' : '')
 
+/** Fire & Hotspots preview (separate deployed app) */
+export const FIRE_ALERTS_DEMO_URL =
+  import.meta.env.VITE_FIRE_ALERTS_DEMO_URL?.trim() ||
+  (import.meta.env.DEV ? 'http://localhost:5181' : '')
+
+export const FIRE_HOTSPOTS_LABEL = 'Fire & Hotspots'
+
 /** Deep-link Public Data Command to a lat/lng (local scope). */
 export function publicDataCommandAtLocation(lat, lng) {
   const params = new URLSearchParams({

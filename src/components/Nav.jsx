@@ -1,46 +1,71 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   EARTHQUAKE_ANALYSIS_LABEL,
   EARTHQUAKE_ANALYSIS_PATH,
+  FIRE_ALERTS_DEMO_URL,
+  FIRE_HOTSPOTS_LABEL,
   PROPERTY_INTELLIGENCE_LABEL,
   PROPERTY_INTELLIGENCE_PATH,
   PUBLIC_DATA_COMMAND_LABEL,
   PUBLIC_DATA_COMMAND_PATH,
 } from '../constants/routes'
+import { isFireAlertsDemoEnabled } from '../config/features'
+import FirePreviewNoticeModal, {
+  ackFirePreviewNotice,
+  isFirePreviewNoticeAcked,
+} from './FirePreviewNoticeModal'
 
 const linkClass = 'hover:text-white transition-colors duration-300'
+const dropdownEase = [0.25, 0.1, 0.25, 1]
 
-const navLinks = [
+const publicDataCommandItems = [
   {
-    to: PUBLIC_DATA_COMMAND_PATH,
-    label: PUBLIC_DATA_COMMAND_LABEL,
-    description: 'Live hazard feeds and regional intelligence',
+    id: 'fire',
+    label: FIRE_HOTSPOTS_LABEL,
+    description: 'Live fire feeds, schedule upload, radius and wind tools',
+    kind: 'external',
   },
   {
-    to: EARTHQUAKE_ANALYSIS_PATH,
+    id: 'seismic',
     label: EARTHQUAKE_ANALYSIS_LABEL,
     description: 'USGS frequency by radius, timeline, and location',
+    to: EARTHQUAKE_ANALYSIS_PATH,
+    kind: 'internal',
   },
-  {
-    to: PROPERTY_INTELLIGENCE_PATH,
-    label: PROPERTY_INTELLIGENCE_LABEL,
-    description: 'Address-level COPE enrichment and property dossiers',
-  },
-]
-
-const mobileMenuLinks = [
-  {
-    to: '/',
-    label: 'Home',
-    description: 'AXIOM overview and product showcase',
-  },
-  ...navLinks,
 ]
 
 function pathActive(pathname, to) {
   return pathname === to || (to !== '/' && pathname.startsWith(`${to}/`))
+}
+
+function publicDataCommandActive(pathname) {
+  return (
+    pathActive(pathname, PUBLIC_DATA_COMMAND_PATH) ||
+    pathActive(pathname, EARTHQUAKE_ANALYSIS_PATH)
+  )
+}
+
+function ChevronDown({ className = '' }) {
+  return (
+    <svg
+      className={className}
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M2 3.5 5 6.5 8 3.5"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 function NavLink({ to, label, pathname, className = linkClass, onClick }) {
@@ -56,10 +81,228 @@ function NavLink({ to, label, pathname, className = linkClass, onClick }) {
   )
 }
 
-function MobileMenuPanel({ open, onClose, pathname }) {
+function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
+  const rootRef = useRef(null)
+  const [open, setOpen] = useState(false)
+  const active = publicDataCommandActive(pathname)
+  const fireEnabled = isFireAlertsDemoEnabled() && Boolean(FIRE_ALERTS_DEMO_URL)
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    const onPointerDown = event => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false)
+    }
+    const onKeyDown = event => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  const handleFireSelect = () => {
+    setOpen(false)
+    onNavigateFire()
+  }
+
+  return (
+    <div ref={rootRef} className="group relative shrink-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-controls="nav-pdc-menu"
+        onClick={() => setOpen(value => !value)}
+        className={`inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors duration-300 ${
+          active || open ? 'text-white' : 'text-ink-muted hover:text-white'
+        }`}
+      >
+        <span>{PUBLIC_DATA_COMMAND_LABEL}</span>
+        <ChevronDown
+          className={`shrink-0 transition-all duration-300 ${
+            open
+              ? 'rotate-180 opacity-100'
+              : 'opacity-0 group-hover:opacity-70 group-focus-within:opacity-70'
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            id="nav-pdc-menu"
+            role="menu"
+            aria-label={PUBLIC_DATA_COMMAND_LABEL}
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: dropdownEase }}
+            className="pi-search-dropdown-enter absolute right-0 top-full z-[60] mt-2.5 w-[min(19rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-white/10 bg-panel-surface/95 shadow-2xl backdrop-blur-md [color-scheme:dark]"
+          >
+            <div className="border-b border-white/8 px-4 py-3">
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted">
+                Hazard intelligence
+              </p>
+            </div>
+            <ul className="divide-y divide-white/6 py-1">
+              {publicDataCommandItems.map(item => {
+                if (item.kind === 'external' && !fireEnabled) return null
+
+                const itemActive =
+                  item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
+
+                const rowClass = `group/item flex w-full flex-col gap-0.5 px-4 py-3 text-left transition-colors ${
+                  itemActive
+                    ? 'bg-white/[0.06]'
+                    : 'hover:bg-white/[0.04] focus-visible:bg-white/[0.04]'
+                }`
+
+                if (item.kind === 'external') {
+                  return (
+                    <li key={item.id} role="none">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={handleFireSelect}
+                        className={rowClass}
+                      >
+                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-white transition-colors group-hover/item:text-command-watch">
+                          {item.label}
+                        </span>
+                        <span className="font-mono text-[9px] leading-relaxed text-ink-faint">
+                          {item.description}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                }
+
+                return (
+                  <li key={item.id} role="none">
+                    <Link
+                      to={item.to}
+                      role="menuitem"
+                      onClick={() => setOpen(false)}
+                      className={rowClass}
+                    >
+                      <span
+                        className={`font-mono text-[10px] uppercase tracking-[0.14em] transition-colors ${
+                          itemActive ? 'text-command-watch' : 'text-white group-hover/item:text-command-live'
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                      <span className="font-mono text-[9px] leading-relaxed text-ink-faint">
+                        {item.description}
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
+  const [expanded, setExpanded] = useState(publicDataCommandActive(pathname))
+  const fireEnabled = isFireAlertsDemoEnabled() && Boolean(FIRE_ALERTS_DEMO_URL)
+  const active = publicDataCommandActive(pathname)
+
+  return (
+    <li className="border-b border-[#1a1a1a]">
+      <button
+        type="button"
+        onClick={() => setExpanded(value => !value)}
+        aria-expanded={expanded}
+        className={`flex w-full items-center justify-between gap-3 py-4 text-left transition-colors ${
+          active ? 'text-white' : 'text-ink-muted hover:text-white'
+        }`}
+      >
+        <span>
+          <span className="font-display text-base font-medium tracking-tight">
+            {PUBLIC_DATA_COMMAND_LABEL}
+          </span>
+          <span className="mt-1 block text-[12px] leading-relaxed text-ink-faint">
+            Live hazard feeds and regional intelligence
+          </span>
+        </span>
+        <ChevronDown
+          className={`shrink-0 text-ink-faint transition-transform duration-300 ${
+            expanded ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded ? (
+          <motion.ul
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: dropdownEase }}
+            className="overflow-hidden border-t border-[#141414] bg-[#080808]/80"
+          >
+            {publicDataCommandItems.map(item => {
+              if (item.kind === 'external' && !fireEnabled) return null
+
+              const itemActive =
+                item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
+
+              const rowClass = `block border-b border-[#121212] px-4 py-3.5 pl-6 transition-colors last:border-b-0 ${
+                itemActive ? 'bg-white/[0.04] text-white' : 'text-ink-muted hover:bg-white/[0.03] hover:text-white'
+              }`
+
+              if (item.kind === 'external') {
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        onNavigateFire()
+                      }}
+                      className={`${rowClass} w-full text-left`}
+                    >
+                      <span className="font-display text-sm font-medium tracking-tight">{item.label}</span>
+                      <span className="mt-1 block text-[11px] leading-relaxed text-ink-faint">
+                        {item.description}
+                      </span>
+                    </button>
+                  </li>
+                )
+              }
+
+              return (
+                <li key={item.id}>
+                  <Link to={item.to} onClick={onClose} className={rowClass}>
+                    <span className="font-display text-sm font-medium tracking-tight">{item.label}</span>
+                    <span className="mt-1 block text-[11px] leading-relaxed text-ink-faint">
+                      {item.description}
+                    </span>
+                  </Link>
+                </li>
+              )
+            })}
+          </motion.ul>
+        ) : null}
+      </AnimatePresence>
+    </li>
+  )
+}
+
+function MobileMenuPanel({ open, onClose, pathname, onNavigateFire }) {
   return (
     <AnimatePresence>
-      {open && (
+      {open ? (
         <motion.div
           role="dialog"
           aria-modal="true"
@@ -76,7 +319,7 @@ function MobileMenuPanel({ open, onClose, pathname }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
-            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{ duration: 0.3, ease: dropdownEase }}
             className="safe-bottom-bar relative z-10 flex h-full flex-col bg-[#050505] px-6 pb-6 pt-[calc(var(--safe-top)+5.25rem)]"
           >
             <div className="flex items-center justify-between border-b border-[#222] pb-4">
@@ -94,29 +337,49 @@ function MobileMenuPanel({ open, onClose, pathname }) {
             </div>
 
             <ul className="mt-2 flex flex-1 flex-col">
-              {mobileMenuLinks.map(item => {
-                const active = pathActive(pathname, item.to)
-                return (
-                  <li key={item.to} className="border-b border-[#1a1a1a]">
-                    <Link
-                      to={item.to}
-                      onClick={onClose}
-                      className={`block py-4 transition-colors ${
-                        active ? 'text-white' : 'text-ink-muted hover:text-white'
-                      }`}
-                    >
-                      <span className="font-display text-base font-medium tracking-tight">{item.label}</span>
-                      <span className="mt-1 block text-[12px] leading-relaxed text-ink-faint">
-                        {item.description}
-                      </span>
-                    </Link>
-                  </li>
-                )
-              })}
+              <li className="border-b border-[#1a1a1a]">
+                <Link
+                  to="/"
+                  onClick={onClose}
+                  className={`block py-4 transition-colors ${
+                    pathActive(pathname, '/') ? 'text-white' : 'text-ink-muted hover:text-white'
+                  }`}
+                >
+                  <span className="font-display text-base font-medium tracking-tight">Home</span>
+                  <span className="mt-1 block text-[12px] leading-relaxed text-ink-faint">
+                    AXIOM overview and product showcase
+                  </span>
+                </Link>
+              </li>
+
+              <MobilePublicDataSection
+                pathname={pathname}
+                onClose={onClose}
+                onNavigateFire={onNavigateFire}
+              />
+
+              <li className="border-b border-[#1a1a1a]">
+                <Link
+                  to={PROPERTY_INTELLIGENCE_PATH}
+                  onClick={onClose}
+                  className={`block py-4 transition-colors ${
+                    pathActive(pathname, PROPERTY_INTELLIGENCE_PATH)
+                      ? 'text-white'
+                      : 'text-ink-muted hover:text-white'
+                  }`}
+                >
+                  <span className="font-display text-base font-medium tracking-tight">
+                    {PROPERTY_INTELLIGENCE_LABEL}
+                  </span>
+                  <span className="mt-1 block text-[12px] leading-relaxed text-ink-faint">
+                    Address-level COPE enrichment and property dossiers
+                  </span>
+                </Link>
+              </li>
             </ul>
           </motion.nav>
         </motion.div>
-      )}
+      ) : null}
     </AnimatePresence>
   )
 }
@@ -125,8 +388,26 @@ export default function Nav() {
   const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [headerHidden, setHeaderHidden] = useState(false)
+  const [fireNoticeOpen, setFireNoticeOpen] = useState(false)
   const lastScrollY = useRef(0)
   const isHome = pathname === '/'
+
+  const navigateToFirePreview = useCallback(() => {
+    if (!isFireAlertsDemoEnabled() || !FIRE_ALERTS_DEMO_URL) return
+
+    if (isFirePreviewNoticeAcked()) {
+      window.location.assign(FIRE_ALERTS_DEMO_URL)
+      return
+    }
+
+    setFireNoticeOpen(true)
+  }, [])
+
+  const handleFireContinue = useCallback(() => {
+    ackFirePreviewNotice()
+    setFireNoticeOpen(false)
+    if (FIRE_ALERTS_DEMO_URL) window.location.assign(FIRE_ALERTS_DEMO_URL)
+  }, [])
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -154,7 +435,7 @@ export default function Nav() {
   useEffect(() => {
     if (!isHome || menuOpen) {
       setHeaderHidden(false)
-      return
+      return undefined
     }
 
     const media = window.matchMedia('(max-width: 767px)')
@@ -181,7 +462,6 @@ export default function Nav() {
   }, [isHome, menuOpen])
 
   const closeMenu = () => setMenuOpen(false)
-
   const headerVisible = !headerHidden || menuOpen
 
   return (
@@ -199,17 +479,15 @@ export default function Nav() {
 
           <nav
             aria-label="Main"
-            className="hidden min-w-0 flex-1 justify-end gap-8 text-xs tracking-widest text-ink-muted uppercase md:flex"
+            className="hidden min-w-0 flex-1 items-center justify-end gap-8 text-xs text-ink-muted md:flex"
           >
-            {navLinks.map(link => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                label={link.label}
-                pathname={pathname}
-                className={`${linkClass} shrink-0 whitespace-nowrap`}
-              />
-            ))}
+            <PublicDataCommandDropdown pathname={pathname} onNavigateFire={navigateToFirePreview} />
+            <NavLink
+              to={PROPERTY_INTELLIGENCE_PATH}
+              label={PROPERTY_INTELLIGENCE_LABEL}
+              pathname={pathname}
+              className={`${linkClass} shrink-0 whitespace-nowrap uppercase tracking-widest`}
+            />
           </nav>
 
           <div className="ml-auto flex items-center md:hidden">
@@ -236,7 +514,18 @@ export default function Nav() {
         </div>
       </header>
 
-      <MobileMenuPanel open={menuOpen} onClose={closeMenu} pathname={pathname} />
+      <MobileMenuPanel
+        open={menuOpen}
+        onClose={closeMenu}
+        pathname={pathname}
+        onNavigateFire={navigateToFirePreview}
+      />
+
+      <FirePreviewNoticeModal
+        open={fireNoticeOpen}
+        onContinue={handleFireContinue}
+        onCancel={() => setFireNoticeOpen(false)}
+      />
     </>
   )
 }

@@ -39,3 +39,11 @@ export function isCoiTrackerDemoEnabled() {
   if (import.meta.env.DEV) return true
   return Boolean(import.meta.env.VITE_COI_TRACKER_DEMO_URL?.trim())
 }
+
+/**
+ * Fire & Hotspots preview: always on in local dev; production requires VITE_FIRE_ALERTS_DEMO_URL.
+ */
+export function isFireAlertsDemoEnabled() {
+  if (import.meta.env.DEV) return true
+  return Boolean(import.meta.env.VITE_FIRE_ALERTS_DEMO_URL?.trim())
+}
