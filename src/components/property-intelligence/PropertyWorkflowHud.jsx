@@ -171,10 +171,11 @@ export default function PropertyWorkflowHud({
   ])
 
   const showPricing = Boolean(
-    activePresetId &&
+    hasLocationInput &&
+      activePresetId &&
       selectedSources?.length &&
       (scheduleMode
-        ? scheduleRows.length > 0 && (loadingBatchQuote || Boolean(batchQuote?.totals))
+        ? loadingBatchQuote || Boolean(batchQuote?.totals)
         : Boolean(pricingQuote?.totals)),
   )
 
