@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+
+import { estimateQuoteFromCatalog } from '../../services/propertyApi'
 
 import PropertySearchBar from './PropertySearchBar'
 
@@ -137,17 +139,44 @@ export default function PropertyWorkflowHud({
 
   const readyForGenerate = scheduleMode ? scheduleReady : locationLocked && Boolean(activePresetId)
 
+  const hasLocationInput = scheduleMode ? scheduleRows.length > 0 : locationLocked
+
+  const packageStepActive = hasLocationInput && !activePresetId
+  const packageLoading = hasLocationInput && loadingCatalog
+
+  const pricingQuote = useMemo(() => {
+    if (scheduleMode) {
+      return batchQuote?.totals ? { totals: batchQuote.totals } : null
+    }
+    if (
+      catalog &&
+      selectedSources?.length &&
+      activePresetId &&
+      (!quoteSynced || loadingQuote)
+    ) {
+      const estimate = estimateQuoteFromCatalog(catalog, selectedSources)
+      if (estimate?.totals) return estimate
+    }
+    return quoteSynced ? displayQuote : quote
+  }, [
+    scheduleMode,
+    batchQuote?.totals,
+    catalog,
+    selectedSources,
+    activePresetId,
+    quoteSynced,
+    loadingQuote,
+    displayQuote,
+    quote,
+  ])
+
   const showPricing = Boolean(
     activePresetId &&
       selectedSources?.length &&
       (scheduleMode
         ? scheduleRows.length > 0 && (loadingBatchQuote || Boolean(batchQuote?.totals))
-        : Boolean((quoteSynced ? displayQuote : quote)?.totals)),
+        : Boolean(pricingQuote?.totals)),
   )
-
-  const pricingQuote = scheduleMode ? { totals: batchQuote?.totals } : quoteSynced ? displayQuote : quote
-
-  const hasLocationInput = scheduleMode ? scheduleRows.length > 0 : locationLocked
 
   const [packageExpanded, setPackageExpanded] = useState(false)
   const [learnMoreOpen, setLearnMoreOpen] = useState(false)
@@ -332,9 +361,21 @@ export default function PropertyWorkflowHud({
         <section
           className="side-panel-section shrink-0 border-b-0 pb-2"
           aria-label="Data package"
+          aria-busy={packageLoading || undefined}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="side-panel-title mb-0 block">Data Package</span>
+            <span
+              className={`side-panel-title mb-0 block ${packageStepActive ? 'text-command-watch' : ''}`}
+            >
+              Data Package
+              {packageLoading ? (
+                <span className="eq-loading-dots ml-0.5 inline-flex w-[1.1rem]" aria-hidden>
+                  <span>.</span>
+                  <span>.</span>
+                  <span>.</span>
+                </span>
+              ) : null}
+            </span>
             <button
               type="button"
               onClick={() => setPackageExpanded(expanded => !expanded)}

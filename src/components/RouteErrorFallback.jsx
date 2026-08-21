@@ -11,7 +11,7 @@ export default function RouteErrorFallback({ title = 'Something went wrong' }) {
       <p className="font-display text-lg text-white">{title}</p>
       <p className="max-w-lg font-mono text-[11px] leading-relaxed text-ink-muted">
         {chunkError
-          ? 'The app could not load a page module, usually after a dev-server restart or hot reload. Reload the page to fetch the latest code.'
+          ? 'This view is out of date. Refresh the page to load the latest version.'
           : message}
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
@@ -20,7 +20,7 @@ export default function RouteErrorFallback({ title = 'Something went wrong' }) {
           onClick={() => window.location.reload()}
           className="rounded border border-[#444] px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-white transition hover:border-white"
         >
-          Reload page
+          Refresh page
         </button>
         <Link
           to="/"

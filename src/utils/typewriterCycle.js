@@ -1,4 +1,18 @@
 export const TYPEWRITER_MESSAGES = ['LOADING...', 'connecting with data source...']
+export const TYPEWRITER_TRACKING_EM = 0.14
+
+export function longestTypewriterMessage(messages = TYPEWRITER_MESSAGES) {
+  return messages.reduce((longest, message) =>
+    message.length > longest.length ? message : longest,
+  '')
+}
+
+/** Fixed box width: longest line, letter-spacing, and caret. Does not follow the typed text. */
+export function typewriterBoxWidthCss(message = longestTypewriterMessage()) {
+  const letters = message.length
+  const gaps = Math.max(letters - 1, 0)
+  return `calc(${letters}ch + ${gaps} * ${TYPEWRITER_TRACKING_EM}em + 0.85em)`
+}
 
 export const TYPEWRITER_TYPE_MS = 38
 export const TYPEWRITER_DELETE_MS = 22

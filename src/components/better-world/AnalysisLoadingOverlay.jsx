@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   TYPEWRITER_MESSAGES,
+  typewriterBoxWidthCss,
   typewriterDelayMs,
   typewriterStep,
 } from '../../utils/typewriterCycle'
@@ -54,8 +55,11 @@ export default function AnalysisLoadingOverlay() {
       aria-busy="true"
       aria-label="Loading, connecting with data source"
     >
-      <div className="min-w-[21.5rem] rounded border border-[#333] bg-[#0d0d0d]/95 px-3 py-2 shadow-lg">
-        <p className="flex items-center font-mono text-[10px] tracking-[0.14em] text-ink-secondary">
+      <div className="shrink-0 rounded border border-[#333] bg-[#0d0d0d]/95 px-3 py-2 shadow-lg">
+        <p
+          className="flex items-center overflow-hidden whitespace-nowrap font-mono text-[10px] tracking-[0.14em] text-ink-secondary"
+          style={{ width: typewriterBoxWidthCss() }}
+        >
           <span>{frame.text}</span>
           <span className="eq-loading-caret" aria-hidden>
             |

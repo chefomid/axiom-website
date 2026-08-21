@@ -1,6 +1,12 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { typewriterDelayMs, typewriterStep } from './typewriterCycle.js'
+import {
+  TYPEWRITER_MESSAGES,
+  longestTypewriterMessage,
+  typewriterBoxWidthCss,
+  typewriterDelayMs,
+  typewriterStep,
+} from './typewriterCycle.js'
 
 describe('typewriterStep', () => {
   it('types the current message one character at a time', () => {
@@ -23,6 +29,14 @@ describe('typewriterStep', () => {
 
     const next = typewriterStep({ text: '', messageIndex: 0, phase: 'deleting', messages: ['Hi', 'Bye'] })
     assert.deepEqual(next, { text: '', messageIndex: 1, phase: 'typing' })
+  })
+})
+
+describe('typewriter box width', () => {
+  it('sizes to the longest message, not LOADING', () => {
+    assert.equal(longestTypewriterMessage(), 'connecting with data source...')
+    assert.ok(longestTypewriterMessage().length > TYPEWRITER_MESSAGES[0].length)
+    assert.match(typewriterBoxWidthCss(), /30ch/)
   })
 })
 

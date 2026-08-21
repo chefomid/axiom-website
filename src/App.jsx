@@ -38,7 +38,7 @@ const router = createBrowserRouter([
       {
         path: PROPERTY_INTELLIGENCE_PATH,
         element: <PropertyIntelligence />,
-        errorElement: <RouteErrorFallback title="Property Intelligence unavailable" />,
+        errorElement: <RouteErrorFallback title="This page is stale" />,
       },
       { path: REPORT_PRINT_PATH, element: <ReportPrint /> },
       { path: CAREERS_PATH, element: <Careers /> },
