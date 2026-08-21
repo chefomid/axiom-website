@@ -220,7 +220,7 @@ function PhonePaySection({ checkoutUrl, phoneUrlLoading, defaultOpen = false, at
                 <QRCodeSVG value={checkoutUrl} size={160} level="M" includeMargin={false} />
               </div>
               <p className="mt-3 font-sans text-sm leading-relaxed text-ink-secondary">
-                Scan with your phone&apos;s camera. Apple Pay and saved cards work on mobile.
+                Scan with your phone&apos;s camera. Apple Pay accepted.
               </p>
             </div>
           </motion.div>
@@ -320,7 +320,6 @@ export default function CheckoutPayModal({
   stripePublishableKey,
   preparing = false,
   phoneUrlLoading = false,
-  waiting = false,
   timedOut = false,
   pollTrouble = false,
   checkingStatus = false,
@@ -389,18 +388,6 @@ export default function CheckoutPayModal({
                   />
                 )}
               </AnimatePresence>
-
-              {waiting && !preparing ? (
-                <motion.div
-                  className="mt-4 flex items-center justify-center gap-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={FADE}
-                >
-                  <span className="street-view-spinner h-3.5 w-3.5 shrink-0" aria-hidden />
-                  <p className="font-mono text-[12px] text-ink-secondary">Waiting for payment…</p>
-                </motion.div>
-              ) : null}
 
               {pollTrouble && !timedOut ? (
                 <div className="mt-4 space-y-3 text-center">

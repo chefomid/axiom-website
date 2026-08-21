@@ -21,7 +21,6 @@ const CheckoutPayContext = createContext(null)
 export function CheckoutPayProvider({ children }) {
   const isDesktop = useIsLgUp()
   const [modal, setModal] = useState(null)
-  const [waiting, setWaiting] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
   const [pollTrouble, setPollTrouble] = useState(false)
   const [checkingStatus, setCheckingStatus] = useState(false)
@@ -74,7 +73,6 @@ export function CheckoutPayProvider({ children }) {
     clearPolling()
     onCancelRef.current?.()
     setModal(null)
-    setWaiting(false)
     setTimedOut(false)
     setPollTrouble(false)
     setCheckingStatus(false)
@@ -119,7 +117,6 @@ export function CheckoutPayProvider({ children }) {
       bootstrapIdRef.current += 1
       clearPolling()
       setModal(null)
-      setWaiting(false)
       setTimedOut(false)
       setPollTrouble(false)
       setCheckingStatus(false)
@@ -324,7 +321,6 @@ export function CheckoutPayProvider({ children }) {
         balanceBefore,
         creditsToAdd: creditsToAdd ?? 0,
       })
-      setWaiting(true)
       setTimedOut(false)
       setPollTrouble(false)
 
@@ -473,7 +469,6 @@ export function CheckoutPayProvider({ children }) {
       const bootstrapId = bootstrapIdRef.current + 1
       bootstrapIdRef.current = bootstrapId
 
-      setWaiting(false)
       setTimedOut(false)
       setPollTrouble(false)
       setPhoneUrlLoading(true)
@@ -526,7 +521,6 @@ export function CheckoutPayProvider({ children }) {
         stripePublishableKey={modal?.publishableKey || stripePublishableKey}
         preparing={modal?.preparing ?? false}
         phoneUrlLoading={phoneUrlLoading}
-        waiting={waiting}
         timedOut={timedOut}
         pollTrouble={pollTrouble}
         checkingStatus={checkingStatus}
