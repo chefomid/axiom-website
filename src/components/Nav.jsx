@@ -35,7 +35,7 @@ const publicDataCommandItems = [
 ]
 
 const subNavItemClass =
-  'block py-0.5 text-[9px] uppercase tracking-[0.16em] text-ink-faint transition-colors duration-300 hover:text-white'
+  'block py-0.5 text-left text-[9px] uppercase tracking-[0.16em] text-white/30 transition-colors duration-300 hover:text-white/55'
 
 function pathActive(pathname, to) {
   return pathname === to || (to !== '/' && pathname.startsWith(`${to}/`))
@@ -113,72 +113,74 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
 
   return (
     <div ref={rootRef} className="group relative shrink-0">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-controls="nav-pdc-menu"
-        onClick={() => setOpen(value => !value)}
-        className={`inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors duration-300 ${
-          active || open ? 'text-white' : 'text-ink-muted hover:text-white'
-        }`}
-      >
-        <span>{PUBLIC_DATA_COMMAND_LABEL}</span>
-        <ChevronDown
-          className={`shrink-0 transition-all duration-300 ${
-            open
-              ? 'rotate-180 opacity-100'
-              : 'opacity-0 group-hover:opacity-70 group-focus-within:opacity-70'
+      <div className="relative flex flex-col items-start">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-controls="nav-pdc-menu"
+          onClick={() => setOpen(value => !value)}
+          className={`inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors duration-300 ${
+            active || open ? 'text-white' : 'text-ink-muted hover:text-white'
           }`}
-        />
-      </button>
+        >
+          <span>{PUBLIC_DATA_COMMAND_LABEL}</span>
+          <ChevronDown
+            className={`shrink-0 transition-all duration-300 ${
+              open
+                ? 'rotate-180 opacity-100'
+                : 'opacity-0 group-hover:opacity-70 group-focus-within:opacity-70'
+            }`}
+          />
+        </button>
 
-      <AnimatePresence>
-        {open ? (
-          <motion.ul
-            id="nav-pdc-menu"
-            role="menu"
-            aria-label={PUBLIC_DATA_COMMAND_LABEL}
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -2 }}
-            transition={{ duration: 0.16, ease: dropdownEase }}
-            className="absolute right-0 top-full z-[60] mt-1 flex flex-col items-end gap-0.5"
-          >
-            {publicDataCommandItems.map(item => {
-              if (item.kind === 'external' && !fireEnabled) return null
+        <AnimatePresence>
+          {open ? (
+            <motion.ul
+              id="nav-pdc-menu"
+              role="menu"
+              aria-label={PUBLIC_DATA_COMMAND_LABEL}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -2 }}
+              transition={{ duration: 0.16, ease: dropdownEase }}
+              className="absolute left-0 top-full z-[60] mt-1 flex flex-col items-start gap-0.5"
+            >
+              {publicDataCommandItems.map(item => {
+                if (item.kind === 'external' && !fireEnabled) return null
 
-              const itemActive =
-                item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
+                const itemActive =
+                  item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
 
-              const rowClass = `${subNavItemClass} ${itemActive ? 'text-white' : ''}`
+                const rowClass = `${subNavItemClass} ${itemActive ? 'text-white/55' : ''}`
 
-              if (item.kind === 'external') {
+                if (item.kind === 'external') {
+                  return (
+                    <li key={item.id} role="none">
+                      <button type="button" role="menuitem" onClick={handleFireSelect} className={rowClass}>
+                        {item.label}
+                      </button>
+                    </li>
+                  )
+                }
+
                 return (
                   <li key={item.id} role="none">
-                    <button type="button" role="menuitem" onClick={handleFireSelect} className={rowClass}>
+                    <Link
+                      to={item.to}
+                      role="menuitem"
+                      onClick={() => setOpen(false)}
+                      className={rowClass}
+                    >
                       {item.label}
-                    </button>
+                    </Link>
                   </li>
                 )
-              }
-
-              return (
-                <li key={item.id} role="none">
-                  <Link
-                    to={item.to}
-                    role="menuitem"
-                    onClick={() => setOpen(false)}
-                    className={rowClass}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              )
-            })}
-          </motion.ul>
-        ) : null}
-      </AnimatePresence>
+              })}
+            </motion.ul>
+          ) : null}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }
@@ -223,7 +225,7 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
               const itemActive =
                 item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
 
-              const rowClass = `${subNavItemClass} w-full text-right ${itemActive ? 'text-white' : ''}`
+              const rowClass = `${subNavItemClass} pl-0 ${itemActive ? 'text-white/55' : ''}`
 
               if (item.kind === 'external') {
                 return (
