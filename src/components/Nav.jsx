@@ -142,7 +142,7 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
                   const itemActive =
                     item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
 
-                  const rowClass = `${subNavItemClass} w-full text-right ${itemActive ? 'text-white/55' : ''}`}
+                  const rowClass = `${subNavItemClass} w-full text-right ${itemActive ? 'text-white/55' : ''}`
 
                   if (item.kind === 'external') {
                     return (
