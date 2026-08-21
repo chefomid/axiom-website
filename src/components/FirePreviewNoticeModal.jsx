@@ -39,7 +39,7 @@ export default function FirePreviewNoticeModal({ open, onContinue, onCancel }) {
             className="w-full max-w-md overflow-hidden rounded-t-xl border border-[#e5e5e5] bg-white shadow-2xl md:rounded-xl [color-scheme:light]"
           >
             <div className="p-5 md:p-6">
-              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#c4841f]">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#e8a838]">
                 Web preview
               </p>
               <h2
