@@ -146,6 +146,8 @@ function Hero() {
 }
 
 function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
+  const productHeaderClass = 'bg-[#e8a838] text-[#141414] border-[#c98620]'
+
   const pillars = [
     {
       label: '01',
@@ -156,14 +158,14 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
           name: 'Insurance Manager',
           description: 'Policy and exposure intelligence. Tracks endorsements, parses contracts for review, surfaces coverage gaps and E&O exposure, and enforces broker accountability for accuracy.',
           onClick: onOpenInsuranceManager,
-          headerClass: 'bg-[#9AA0A8] text-[#111111] border-[#7a8088]',
+          headerClass: productHeaderClass,
         },
         {
           name: 'COI Tracker',
           description: 'Autonomous certificate intelligence. Batch parses COIs, matches policies to properties and tenants, flags non-compliance with structured assessment notes, and runs an autonomous mailroom that drafts, sends, and tracks tenant threads.',
           onClick: onOpenCoi,
           demoUrl: isCoiTrackerDemoEnabled() && COI_TRACKER_DEMO_URL ? COI_TRACKER_DEMO_URL : null,
-          headerClass: 'bg-[#0b2d6b] text-white border-[#082456]',
+          headerClass: productHeaderClass,
         },
       ],
     },
