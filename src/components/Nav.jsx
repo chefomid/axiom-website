@@ -18,11 +18,13 @@ const dropdownEase = [0.25, 0.1, 0.25, 1]
 
 function FlameIcon({ className = '' }) {
   return (
-    <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className={className} width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M12 22c4.4 0 7-2.9 7-6.6 0-3.2-2-5.5-3.6-7.2-.3 1.6-1.2 2.7-2.4 3.2.3-3.3-1.3-6.9-4.5-9.4.3 3.1-1.1 4.6-2.6 6.3C4.5 9.9 5 12 5 15.4 5 19.1 7.6 22 12 22Z"
+        fill="currentColor"
+        fillOpacity="0.18"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.6"
         strokeLinejoin="round"
       />
     </svg>
@@ -31,11 +33,11 @@ function FlameIcon({ className = '' }) {
 
 function SeismicIcon({ className = '' }) {
   return (
-    <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className={className} width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M2 12h3l2-5 3 10 3-14 3 12 2-3h4"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -49,6 +51,8 @@ const publicDataCommandItems = [
     label: FIRE_HOTSPOTS_LABEL,
     kind: 'external',
     Icon: FlameIcon,
+    iconClass: 'text-[#e8a838]',
+    iconWrapClass: 'border-[#e8a838]/35 bg-[#e8a838]/10',
   },
   {
     id: 'seismic',
@@ -56,18 +60,37 @@ const publicDataCommandItems = [
     to: EARTHQUAKE_ANALYSIS_PATH,
     kind: 'internal',
     Icon: SeismicIcon,
+    iconClass: 'text-[#4a9eff]',
+    iconWrapClass: 'border-[#4a9eff]/35 bg-[#4a9eff]/10',
   },
 ]
 
 const subNavItemClass =
-  'block py-0.5 text-[9px] uppercase tracking-widest text-white/75 transition-colors duration-300 hover:text-white'
+  'block rounded-sm py-1 text-[9px] uppercase tracking-widest text-white/90 transition-colors duration-300 hover:bg-white/[0.06] hover:text-white'
 
-function SubNavItemContent({ item }) {
-  const { Icon, label } = item
+function SubNavItemContent({ item, align = 'end' }) {
+  const { Icon, label, iconClass, iconWrapClass } = item
   return (
-    <span className="inline-flex items-center gap-1.5">
-      {Icon ? <Icon className="shrink-0" /> : null}
+    <span
+      className={`inline-flex w-full items-center gap-2 ${align === 'end' ? 'justify-end' : 'justify-start'}`}
+    >
+      {align === 'start' && Icon ? (
+        <span
+          className={`inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${iconWrapClass}`}
+          aria-hidden
+        >
+          <Icon className={iconClass} />
+        </span>
+      ) : null}
       <span>{label}</span>
+      {align === 'end' && Icon ? (
+        <span
+          className={`inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${iconWrapClass}`}
+          aria-hidden
+        >
+          <Icon className={iconClass} />
+        </span>
+      ) : null}
     </span>
   )
 }
@@ -173,7 +196,7 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -2 }}
                 transition={{ duration: 0.16, ease: dropdownEase }}
-                className="absolute right-0 top-full z-10 mt-1 flex w-full flex-col items-stretch gap-0.5"
+                className="absolute right-0 top-full z-10 mt-1.5 flex w-full min-w-[11rem] flex-col items-stretch gap-0.5 rounded-md border border-[#2a2a2a] bg-[#0a0a0a]/95 px-1 py-1.5 shadow-lg backdrop-blur-sm"
               >
                 {publicDataCommandItems.map(item => {
                   if (item.kind === 'external' && !fireEnabled) return null
@@ -276,7 +299,7 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
                       }}
                       className={rowClass}
                     >
-                      <SubNavItemContent item={item} />
+                      <SubNavItemContent item={item} align="start" />
                     </button>
                   </li>
                 )
@@ -285,7 +308,7 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
               return (
                 <li key={item.id}>
                   <Link to={item.to} onClick={onClose} className={rowClass}>
-                    <SubNavItemContent item={item} />
+                    <SubNavItemContent item={item} align="start" />
                   </Link>
                 </li>
               )
