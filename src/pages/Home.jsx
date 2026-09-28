@@ -182,8 +182,8 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
         {
           name: 'AXIOM Assistant',
           layout: 'compact',
+          image: '/assistant/capture-ui.png',
           video: '/assistant/capture-loop.mp4',
-          poster: '/assistant/capture-ui.png',
           imageAlt: 'AXIOM Assistant live capture interface',
           onClick: onOpenAssistant,
           description:
@@ -240,7 +240,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
                 </span>
                 <div
                   className={`grid grid-cols-1 gap-3 ${
-                    p.tools.some(t => t.layout !== 'compact') ? 'sm:grid-cols-2' : 'sm:max-w-[17rem]'
+                    p.tools.some(t => t.layout !== 'compact') ? 'sm:grid-cols-2' : 'sm:max-w-md'
                   }`}
                 >
                   {p.tools.map(t => {
@@ -257,10 +257,28 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
                           }`}
                         >
                           <div className="overflow-hidden border-b border-[#2d2d2d] bg-[#242424] p-2">
-                            {t.video ? (
+                            {t.video && t.image ? (
+                              <div className="flex items-stretch gap-2">
+                                <video
+                                  src={t.video}
+                                  autoPlay
+                                  loop
+                                  muted
+                                  playsInline
+                                  preload="auto"
+                                  className="block w-[34%] shrink-0 self-start rounded-sm object-cover object-top"
+                                  aria-label={`${t.name} preview clip`}
+                                />
+                                <img
+                                  src={t.image}
+                                  alt={t.imageAlt ?? t.name}
+                                  className="block min-w-0 flex-1 rounded-sm object-cover object-top"
+                                  loading="lazy"
+                                />
+                              </div>
+                            ) : t.video ? (
                               <video
                                 src={t.video}
-                                poster={t.poster}
                                 autoPlay
                                 loop
                                 muted
