@@ -181,7 +181,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
           image: '/assistant/capture-ui.png',
           imageAlt: 'AXIOM Assistant live capture interface',
           description:
-            'Notes, memos, and meetings. Records audio, transcribes sessions, and drafts reports on the AXIOM stack.',
+            'Plug and play desktop capture for notes, memos, and meetings. Structured data architecture organizes every session into a searchable corpus that feeds context back across the AXIOM stack.',
         },
       ],
     },
