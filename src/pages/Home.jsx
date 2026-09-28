@@ -173,6 +173,17 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
       label: '02',
       title: 'Edge AI',
       body: "Edge AI for insured operations is in development, not yet available. We're designing custom hardware to capture vision, audio, and environmental data, process it on-device through fine-tuned models, and integrate with the AXIOM software stack in real time.",
+      toolsLabel: 'Ecosystem Tools',
+      tools: [
+        {
+          name: 'AXIOM Assistant',
+          layout: 'compact',
+          image: '/assistant/capture-ui.png',
+          imageAlt: 'AXIOM Assistant live capture interface',
+          description:
+            'Notes, memos, and meetings. Records audio, transcribes sessions, and drafts reports on the AXIOM stack.',
+        },
+      ],
     },
   ]
 
@@ -219,10 +230,42 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
             {p.tools && (
               <div className="flex flex-col gap-4 border-t border-[#2a2a2a] mt-2 pt-6">
                 <span className="text-xs font-semibold tracking-[0.2em] text-white uppercase pb-1.5 border-b border-[#2d2d2d]">
-                  Included Services
+                  {p.toolsLabel ?? 'Included Services'}
                 </span>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div
+                  className={`grid grid-cols-1 gap-3 ${
+                    p.tools.some(t => t.layout !== 'compact') ? 'sm:grid-cols-2' : 'sm:max-w-[17rem]'
+                  }`}
+                >
                   {p.tools.map(t => {
+                    if (t.layout === 'compact') {
+                      const Tag = t.onClick ? 'button' : 'div'
+                      return (
+                        <Tag
+                          key={t.name}
+                          onClick={t.onClick}
+                          className={`group overflow-hidden rounded-lg border border-[#3a3a3a] bg-[#1c1c1c] text-left transition-colors ${
+                            t.onClick
+                              ? 'cursor-pointer hover:border-[#5c5c5c] hover:bg-[#222222] active:scale-[0.99]'
+                              : ''
+                          }`}
+                        >
+                          <div className="overflow-hidden border-b border-[#2d2d2d] bg-[#242424] p-2">
+                            <img
+                              src={t.image}
+                              alt={t.imageAlt ?? t.name}
+                              className="block h-auto w-full rounded-sm object-cover object-top"
+                              loading="lazy"
+                            />
+                          </div>
+                          <div className="space-y-1 px-3 py-2.5">
+                            <p className="font-display text-sm font-semibold text-white">{t.name}</p>
+                            <p className="text-[11px] leading-relaxed text-ink-muted">{t.description}</p>
+                          </div>
+                        </Tag>
+                      )
+                    }
+
                     const Tag = t.onClick ? 'button' : 'div'
                     return (
                       <Tag
