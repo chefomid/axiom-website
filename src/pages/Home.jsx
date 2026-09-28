@@ -186,8 +186,9 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
           video: '/assistant/capture-loop.mp4',
           imageAlt: 'AXIOM Assistant live capture interface',
           onClick: onOpenAssistant,
+          learnMore: true,
           description:
-            'Plug and play desktop capture for notes, memos, and meetings. Structured data architecture organizes every session into a searchable corpus that feeds context back across the AXIOM stack.',
+            'Plug and play desktop capture for notes, memos, and meetings, with LLM services for transcription, Q&A, and structured reports. Every session joins a searchable corpus that feeds context back across the AXIOM stack.',
         },
       ],
     },
@@ -310,7 +311,27 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
                               ) : null}
                             </div>
                             <p className="text-[11px] leading-relaxed text-ink-muted">{t.description}</p>
-                            {t.onClick ? (
+                            {t.learnMore && t.onClick ? (
+                              <span
+                                role="link"
+                                tabIndex={0}
+                                onClick={event => {
+                                  event.stopPropagation()
+                                  t.onClick()
+                                }}
+                                onKeyDown={event => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault()
+                                    event.stopPropagation()
+                                    t.onClick()
+                                  }
+                                }}
+                                className="mt-1 w-fit cursor-pointer font-mono text-[9px] uppercase tracking-[0.14em] text-[#9AA0A8] underline underline-offset-2 transition-colors hover:text-white"
+                              >
+                                Learn more
+                              </span>
+                            ) : null}
+                            {t.onClick && !t.learnMore ? (
                               <span className="pt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[#9AA0A8] sm:hidden">
                                 Tap to explore
                               </span>
