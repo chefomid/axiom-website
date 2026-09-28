@@ -182,7 +182,8 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
         {
           name: 'AXIOM Assistant',
           layout: 'compact',
-          image: '/assistant/capture-ui.png',
+          video: '/assistant/capture-loop.mp4',
+          poster: '/assistant/capture-ui.png',
           imageAlt: 'AXIOM Assistant live capture interface',
           onClick: onOpenAssistant,
           description:
@@ -256,12 +257,26 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
                           }`}
                         >
                           <div className="overflow-hidden border-b border-[#2d2d2d] bg-[#242424] p-2">
-                            <img
-                              src={t.image}
-                              alt={t.imageAlt ?? t.name}
-                              className="block h-auto w-full rounded-sm object-cover object-top"
-                              loading="lazy"
-                            />
+                            {t.video ? (
+                              <video
+                                src={t.video}
+                                poster={t.poster}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                preload="auto"
+                                className="block h-auto w-full rounded-sm object-cover object-top"
+                                aria-label={t.imageAlt ?? t.name}
+                              />
+                            ) : (
+                              <img
+                                src={t.image}
+                                alt={t.imageAlt ?? t.name}
+                                className="block h-auto w-full rounded-sm object-cover object-top"
+                                loading="lazy"
+                              />
+                            )}
                           </div>
                           <div className="space-y-1 px-3 py-2.5">
                             <div className="flex items-center justify-between gap-2">
