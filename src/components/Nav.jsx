@@ -47,7 +47,6 @@ const publicDataCommandItems = [
     kind: 'external',
     Icon: WildfireFlameIcon,
     iconClass: 'h-3.5 w-3.5',
-    iconWrapClass: 'border-[#ff9a1f]/40 bg-[#ff9a1f]/12',
   },
   {
     id: 'seismic',
@@ -56,7 +55,6 @@ const publicDataCommandItems = [
     kind: 'internal',
     Icon: SeismicWaveIcon,
     iconClass: 'h-3.5 w-3.5',
-    iconWrapClass: 'border-[#4a9eff]/40 bg-[#4a9eff]/12',
   },
 ]
 
@@ -64,28 +62,14 @@ const subNavItemClass =
   'block rounded-sm py-1 text-[9px] uppercase tracking-widest text-white/90 transition-colors duration-300 hover:bg-white/[0.06] hover:text-white'
 
 function SubNavItemContent({ item, align = 'end' }) {
-  const { Icon, label, iconClass, iconWrapClass } = item
+  const { Icon, label, iconClass } = item
   return (
     <span
       className={`inline-flex w-full items-center gap-2 ${align === 'end' ? 'justify-end' : 'justify-start'}`}
     >
-      {align === 'start' && Icon ? (
-        <span
-          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${iconWrapClass}`}
-          aria-hidden
-        >
-          <Icon className={iconClass} />
-        </span>
-      ) : null}
+      {align === 'start' && Icon ? <Icon className={iconClass} aria-hidden /> : null}
       <span>{label}</span>
-      {align === 'end' && Icon ? (
-        <span
-          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${iconWrapClass}`}
-          aria-hidden
-        >
-          <Icon className={iconClass} />
-        </span>
-      ) : null}
+      {align === 'end' && Icon ? <Icon className={iconClass} aria-hidden /> : null}
     </span>
   )
 }
