@@ -146,7 +146,7 @@ function Hero() {
 }
 
 function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
-  const productHeaderClass = 'bg-[#e8a838] text-[#141414] border-[#c98620]'
+  const productHeaderClass = 'bg-[#f0b54a] text-[#141414] border-[#e8a838]'
 
   const pillars = [
     {
