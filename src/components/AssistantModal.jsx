@@ -100,7 +100,11 @@ export default function AssistantModal({ open, onClose }) {
                     key={item.src}
                     className="overflow-hidden rounded-lg border border-[#2d2d2d] bg-[#1c1c1c]"
                   >
-                    <div className="border-b border-[#2d2d2d] bg-[#242424] p-1.5">
+                    <figcaption className="space-y-0.5 border-b border-[#d4d4d4] bg-white px-3 py-2.5">
+                      <p className="font-display text-[12px] font-semibold text-[#141414]">{item.title}</p>
+                      <p className="text-[10px] leading-relaxed text-[#5c5c5c]">{item.caption}</p>
+                    </figcaption>
+                    <div className="bg-[#242424] p-1.5">
                       <img
                         src={item.src}
                         alt={item.title}
@@ -108,10 +112,6 @@ export default function AssistantModal({ open, onClose }) {
                         loading="lazy"
                       />
                     </div>
-                    <figcaption className="space-y-0.5 px-3 py-2">
-                      <p className="font-display text-[12px] font-semibold text-white">{item.title}</p>
-                      <p className="text-[10px] leading-relaxed text-ink-muted">{item.caption}</p>
-                    </figcaption>
                   </figure>
                 ))}
               </div>
