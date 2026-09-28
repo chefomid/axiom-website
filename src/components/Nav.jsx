@@ -16,22 +16,61 @@ import { isFireAlertsDemoEnabled } from '../config/features'
 const linkClass = 'hover:text-white transition-colors duration-300'
 const dropdownEase = [0.25, 0.1, 0.25, 1]
 
+function FlameIcon({ className = '' }) {
+  return (
+    <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 22c4.4 0 7-2.9 7-6.6 0-3.2-2-5.5-3.6-7.2-.3 1.6-1.2 2.7-2.4 3.2.3-3.3-1.3-6.9-4.5-9.4.3 3.1-1.1 4.6-2.6 6.3C4.5 9.9 5 12 5 15.4 5 19.1 7.6 22 12 22Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function SeismicIcon({ className = '' }) {
+  return (
+    <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M2 12h3l2-5 3 10 3-14 3 12 2-3h4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 const publicDataCommandItems = [
   {
     id: 'fire',
     label: FIRE_HOTSPOTS_LABEL,
     kind: 'external',
+    Icon: FlameIcon,
   },
   {
     id: 'seismic',
     label: EARTHQUAKE_ANALYSIS_LABEL,
     to: EARTHQUAKE_ANALYSIS_PATH,
     kind: 'internal',
+    Icon: SeismicIcon,
   },
 ]
 
 const subNavItemClass =
-  'block py-0.5 text-[9px] uppercase tracking-widest text-white/30 transition-colors duration-300 hover:text-white/55'
+  'block py-0.5 text-[9px] uppercase tracking-widest text-white/75 transition-colors duration-300 hover:text-white'
+
+function SubNavItemContent({ item }) {
+  const { Icon, label } = item
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {Icon ? <Icon className="shrink-0" /> : null}
+      <span>{label}</span>
+    </span>
+  )
+}
 
 function pathActive(pathname, to) {
   return pathname === to || (to !== '/' && pathname.startsWith(`${to}/`))
@@ -142,13 +181,13 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
                   const itemActive =
                     item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
 
-                  const rowClass = `${subNavItemClass} w-full text-right ${itemActive ? 'text-white/55' : ''}`
+                  const rowClass = `${subNavItemClass} w-full text-right ${itemActive ? 'text-white' : ''}`
 
                   if (item.kind === 'external') {
                     return (
                       <li key={item.id} role="none">
                         <button type="button" role="menuitem" onClick={handleFireSelect} className={rowClass}>
-                          {item.label}
+                          <SubNavItemContent item={item} />
                         </button>
                       </li>
                     )
@@ -162,7 +201,7 @@ function PublicDataCommandDropdown({ pathname, onNavigateFire }) {
                         onClick={() => setOpen(false)}
                         className={rowClass}
                       >
-                        {item.label}
+                        <SubNavItemContent item={item} />
                       </Link>
                     </li>
                   )
@@ -224,7 +263,7 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
               const itemActive =
                 item.kind === 'internal' && item.to ? pathActive(pathname, item.to) : false
 
-              const rowClass = `${subNavItemClass} pl-0 text-left ${itemActive ? 'text-white/55' : ''}`
+              const rowClass = `${subNavItemClass} pl-0 text-left ${itemActive ? 'text-white' : ''}`
 
               if (item.kind === 'external') {
                 return (
@@ -237,7 +276,7 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
                       }}
                       className={rowClass}
                     >
-                      {item.label}
+                      <SubNavItemContent item={item} />
                     </button>
                   </li>
                 )
@@ -246,7 +285,7 @@ function MobilePublicDataSection({ pathname, onClose, onNavigateFire }) {
               return (
                 <li key={item.id}>
                   <Link to={item.to} onClick={onClose} className={rowClass}>
-                    {item.label}
+                    <SubNavItemContent item={item} />
                   </Link>
                 </li>
               )
