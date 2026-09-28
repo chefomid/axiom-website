@@ -259,16 +259,18 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
                           <div className="overflow-hidden border-b border-[#2d2d2d] bg-[#242424] p-2">
                             {t.video && t.image ? (
                               <div className="flex items-stretch gap-2">
-                                <video
-                                  src={t.video}
-                                  autoPlay
-                                  loop
-                                  muted
-                                  playsInline
-                                  preload="auto"
-                                  className="block w-[34%] shrink-0 self-start rounded-sm object-cover object-top"
-                                  aria-label={`${t.name} preview clip`}
-                                />
+                                <div className="w-[34%] shrink-0 self-start overflow-hidden rounded-lg">
+                                  <video
+                                    src={t.video}
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                    preload="auto"
+                                    className="block w-full object-cover object-top"
+                                    aria-label={`${t.name} preview clip`}
+                                  />
+                                </div>
                                 <img
                                   src={t.image}
                                   alt={t.imageAlt ?? t.name}
@@ -277,16 +279,18 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
                                 />
                               </div>
                             ) : t.video ? (
-                              <video
-                                src={t.video}
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
-                                preload="auto"
-                                className="block h-auto w-full rounded-sm object-cover object-top"
-                                aria-label={t.imageAlt ?? t.name}
-                              />
+                              <div className="overflow-hidden rounded-lg">
+                                <video
+                                  src={t.video}
+                                  autoPlay
+                                  loop
+                                  muted
+                                  playsInline
+                                  preload="auto"
+                                  className="block h-auto w-full object-cover object-top"
+                                  aria-label={t.imageAlt ?? t.name}
+                                />
+                              </div>
                             ) : (
                               <img
                                 src={t.image}
