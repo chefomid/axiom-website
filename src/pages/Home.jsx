@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Nav from '../components/Nav'
 import SiteFooter from '../components/SiteFooter'
+import AssistantModal from '../components/AssistantModal'
 import CoiTrackerModal from '../components/CoiTrackerModal'
 import InsuranceManagerModal from '../components/InsuranceManagerModal'
 import { COI_TRACKER_DEMO_URL } from '../constants/routes'
@@ -74,6 +75,7 @@ function AbstractBackground() {
 export default function Home() {
   const [coiOpen, setCoiOpen] = useState(false)
   const [insuranceManagerOpen, setInsuranceManagerOpen] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(false)
 
   useEffect(() => {
     document.body.classList.add('home-snap')
@@ -88,6 +90,7 @@ export default function Home() {
       <Pillars
         onOpenCoi={() => setCoiOpen(true)}
         onOpenInsuranceManager={() => setInsuranceManagerOpen(true)}
+        onOpenAssistant={() => setAssistantOpen(true)}
       />
       <Thesis />
       <SiteFooter />
@@ -96,6 +99,7 @@ export default function Home() {
         open={insuranceManagerOpen}
         onClose={() => setInsuranceManagerOpen(false)}
       />
+      <AssistantModal open={assistantOpen} onClose={() => setAssistantOpen(false)} />
     </div>
   )
 }
@@ -145,7 +149,7 @@ function Hero() {
   )
 }
 
-function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
+function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
   const productHeaderClass = 'bg-white text-[#141414] border-[#d4d4d4]'
 
   const pillars = [
@@ -180,6 +184,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
           layout: 'compact',
           image: '/assistant/capture-ui.png',
           imageAlt: 'AXIOM Assistant live capture interface',
+          onClick: onOpenAssistant,
           description:
             'Plug and play desktop capture for notes, memos, and meetings. Structured data architecture organizes every session into a searchable corpus that feeds context back across the AXIOM stack.',
         },
@@ -259,8 +264,20 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
                             />
                           </div>
                           <div className="space-y-1 px-3 py-2.5">
-                            <p className="font-display text-sm font-semibold text-white">{t.name}</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-display text-sm font-semibold text-white">{t.name}</p>
+                              {t.onClick ? (
+                                <span className="shrink-0 text-ink-faint transition-colors group-hover:text-white">
+                                  <CardOpenArrow />
+                                </span>
+                              ) : null}
+                            </div>
                             <p className="text-[11px] leading-relaxed text-ink-muted">{t.description}</p>
+                            {t.onClick ? (
+                              <span className="pt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[#9AA0A8] sm:hidden">
+                                Tap to explore
+                              </span>
+                            ) : null}
                           </div>
                         </Tag>
                       )
