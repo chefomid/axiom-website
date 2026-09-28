@@ -12,35 +12,30 @@ import {
   PUBLIC_DATA_COMMAND_PATH,
 } from '../constants/routes'
 import { isFireAlertsDemoEnabled } from '../config/features'
+import WildfireFlameIcon from './better-world/WildfireFlameIcon'
 
 const linkClass = 'hover:text-white transition-colors duration-300'
 const dropdownEase = [0.25, 0.1, 0.25, 1]
 
-function FlameIcon({ className = '' }) {
+function SeismicWaveIcon({ className = 'h-3.5 w-3.5' }) {
   return (
-    <svg className={className} width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg viewBox="0 0 16 16" aria-hidden className={`shrink-0 ${className}`}>
+      <defs>
+        <linearGradient id="nav-seismic-grad" x1="2" y1="8" x2="14" y2="8" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#7ec8ff" />
+          <stop offset="0.5" stopColor="#4a9eff" />
+          <stop offset="1" stopColor="#2563eb" />
+        </linearGradient>
+      </defs>
       <path
-        d="M12 22c4.4 0 7-2.9 7-6.6 0-3.2-2-5.5-3.6-7.2-.3 1.6-1.2 2.7-2.4 3.2.3-3.3-1.3-6.9-4.5-9.4.3 3.1-1.1 4.6-2.6 6.3C4.5 9.9 5 12 5 15.4 5 19.1 7.6 22 12 22Z"
-        fill="currentColor"
-        fillOpacity="0.18"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function SeismicIcon({ className = '' }) {
-  return (
-    <svg className={className} width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M2 12h3l2-5 3 10 3-14 3 12 2-3h4"
-        stroke="currentColor"
-        strokeWidth="2"
+        fill="none"
+        stroke="url(#nav-seismic-grad)"
+        strokeWidth="1.75"
         strokeLinecap="round"
         strokeLinejoin="round"
+        d="M1.5 8h2l1.2-3.2 2.3 6.4 2.2-7.6 2.1 6.8 1.4-3.2h2.3"
       />
+      <circle cx="8" cy="8" r="1.15" fill="#b8dcff" />
     </svg>
   )
 }
@@ -50,18 +45,18 @@ const publicDataCommandItems = [
     id: 'fire',
     label: FIRE_HOTSPOTS_LABEL,
     kind: 'external',
-    Icon: FlameIcon,
-    iconClass: 'text-[#e8a838]',
-    iconWrapClass: 'border-[#e8a838]/35 bg-[#e8a838]/10',
+    Icon: WildfireFlameIcon,
+    iconClass: 'h-3.5 w-3.5',
+    iconWrapClass: 'border-[#ff9a1f]/40 bg-[#ff9a1f]/12',
   },
   {
     id: 'seismic',
     label: EARTHQUAKE_ANALYSIS_LABEL,
     to: EARTHQUAKE_ANALYSIS_PATH,
     kind: 'internal',
-    Icon: SeismicIcon,
-    iconClass: 'text-[#4a9eff]',
-    iconWrapClass: 'border-[#4a9eff]/35 bg-[#4a9eff]/10',
+    Icon: SeismicWaveIcon,
+    iconClass: 'h-3.5 w-3.5',
+    iconWrapClass: 'border-[#4a9eff]/40 bg-[#4a9eff]/12',
   },
 ]
 
@@ -76,7 +71,7 @@ function SubNavItemContent({ item, align = 'end' }) {
     >
       {align === 'start' && Icon ? (
         <span
-          className={`inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${iconWrapClass}`}
+          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${iconWrapClass}`}
           aria-hidden
         >
           <Icon className={iconClass} />
@@ -85,7 +80,7 @@ function SubNavItemContent({ item, align = 'end' }) {
       <span>{label}</span>
       {align === 'end' && Icon ? (
         <span
-          className={`inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${iconWrapClass}`}
+          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${iconWrapClass}`}
           aria-hidden
         >
           <Icon className={iconClass} />

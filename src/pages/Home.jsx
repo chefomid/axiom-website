@@ -156,12 +156,14 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
           name: 'Insurance Manager',
           description: 'Policy and exposure intelligence. Tracks endorsements, parses contracts for review, surfaces coverage gaps and E&O exposure, and enforces broker accountability for accuracy.',
           onClick: onOpenInsuranceManager,
+          headerClass: 'bg-[#9AA0A8] text-[#111111] border-[#7a8088]',
         },
         {
           name: 'COI Tracker',
           description: 'Autonomous certificate intelligence. Batch parses COIs, matches policies to properties and tenants, flags non-compliance with structured assessment notes, and runs an autonomous mailroom that drafts, sends, and tracks tenant threads.',
           onClick: onOpenCoi,
           demoUrl: isCoiTrackerDemoEnabled() && COI_TRACKER_DEMO_URL ? COI_TRACKER_DEMO_URL : null,
+          headerClass: 'bg-[#0b2d6b] text-white border-[#082456]',
         },
       ],
     },
@@ -230,10 +232,20 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager }) {
                             : 'border-[#2d2d2d] bg-[#111111]'
                         }`}
                       >
-                        <span className="flex items-center justify-between gap-2 border-b border-[#2d2d2d] pb-2 font-display text-sm font-semibold text-white">
+                        <span
+                          className={`-mx-4 -mt-4 mb-0.5 flex items-center justify-between gap-2 rounded-t-lg border-b px-4 py-2.5 font-display text-sm font-semibold ${
+                            t.headerClass ?? 'border-[#2d2d2d] bg-transparent text-white'
+                          }`}
+                        >
                           {t.name}
                           {t.onClick && (
-                            <span className="shrink-0 text-ink-faint transition-colors group-hover:text-white">
+                            <span
+                              className={`shrink-0 transition-colors ${
+                                t.headerClass
+                                  ? 'text-current opacity-70 group-hover:opacity-100'
+                                  : 'text-ink-faint group-hover:text-white'
+                              }`}
+                            >
                               <CardOpenArrow />
                             </span>
                           )}
