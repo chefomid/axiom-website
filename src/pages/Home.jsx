@@ -177,7 +177,7 @@ function Pillars({ onOpenCoi, onOpenInsuranceManager, onOpenAssistant }) {
       label: '02',
       title: 'Edge AI',
       body: "Edge AI for insured operations is in development, not yet available. We're designing custom hardware to capture vision, audio, and environmental data, process it on-device through fine-tuned models, and integrate with the AXIOM software stack in real time.",
-      toolsLabel: 'Ecosystem Tools',
+      toolsLabel: 'Add-Ons',
       tools: [
         {
           name: 'AXIOM Assistant',
